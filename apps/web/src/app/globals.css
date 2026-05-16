@@ -1,0 +1,19 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg: 250 250 249;
+  --fg: 28 25 23;
+  --muted: 120 113 108;
+  --border: 231 229 228;
+}
+
+body {
+  background: rgb(var(--bg));
+  color: rgb(var(--fg));
+  font-feature-settings: 'cv02', 'cv03', 'cv04';
+}
+
+.scrollbar-thin::-webkit-scrollbar { height: 8px; width: 8px; }
+.scrollbar-thin::-webkit-scrollbar-thumb { background: rgb(var(--border)); border-radius: 4px; }

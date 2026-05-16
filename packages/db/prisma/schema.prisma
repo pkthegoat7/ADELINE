@@ -1,0 +1,623 @@
+// ────────────────────────────────────────────────────────────────
+// Adelina PMS — Schema Prisma
+// Multi-tenant via tenant_id em toda tabela operacional + RLS
+// ────────────────────────────────────────────────────────────────
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["multiSchema"]
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ════════════════════════════════════════════════════════════════
+// TENANCY & USERS
+// ════════════════════════════════════════════════════════════════
+
+enum TenantPlan {
+  trial
+  starter
+  pro
+  enterprise
+}
+
+enum TenantStatus {
+  active
+  suspended
+  cancelled
+}
+
+model Tenant {
+  id        String       @id @default(uuid()) @db.Uuid
+  name      String
+  slug      String       @unique
+  plan      TenantPlan   @default(trial)
+  status    TenantStatus @default(active)
+  createdAt DateTime     @default(now()) @map("created_at")
+  updatedAt DateTime     @updatedAt @map("updated_at")
+
+  users           User[]
+  properties      Property[]
+  guests          Guest[]
+  reservations    Reservation[]
+
+  @@map("tenants")
+}
+
+enum UserRole {
+  owner
+  manager
+  receptionist
+  housekeeper
+  readonly
+}
+
+model User {
+  id        String   @id @db.Uuid // = supabase.auth.users.id
+  tenantId  String   @map("tenant_id") @db.Uuid
+  email     String   @unique
+  fullName  String?  @map("full_name")
+  role      UserRole @default(receptionist)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@map("users")
+}
+
+// ════════════════════════════════════════════════════════════════
+// ESTRUTURA FÍSICA
+// ════════════════════════════════════════════════════════════════
+
+model Property {
+  id          String   @id @default(uuid()) @db.Uuid
+  tenantId    String   @map("tenant_id") @db.Uuid
+  name        String
+  slug        String
+  address     String?
+  city        String?
+  state       String?
+  country     String   @default("BR")
+  timezone    String   @default("America/Sao_Paulo")
+  currency    String   @default("BRL")
+  cnpj        String?
+  phone       String?
+  email       String?
+  description String?
+  amenities   Json     @default("[]")
+  photos      Json     @default("[]")
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  tenant             Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  roomTypes          RoomType[]
+  rooms              Room[]
+  reservations       Reservation[]
+  channelConnections ChannelConnection[]
+
+  @@unique([tenantId, slug])
+  @@index([tenantId])
+  @@map("properties")
+}
+
+model RoomType {
+  id          String   @id @default(uuid()) @db.Uuid
+  propertyId  String   @map("property_id") @db.Uuid
+  name        String   // "Suíte Master", "Standard Casal"
+  code        String   // "SM", "STD"
+  capacity    Int      @default(2)
+  beds        Int      @default(1)
+  basePrice   Decimal  @map("base_price") @db.Decimal(10, 2)
+  description String?
+  amenities   Json     @default("[]")
+  photos      Json     @default("[]")
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  property         Property          @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  rooms            Room[]
+  rateCalendar     RateCalendar[]
+  reservationRooms ReservationRoom[]
+
+  @@unique([propertyId, code])
+  @@index([propertyId])
+  @@map("room_types")
+}
+
+enum RoomStatus {
+  clean
+  dirty
+  inspected
+  maintenance
+  out_of_order
+}
+
+model Room {
+  id           String     @id @default(uuid()) @db.Uuid
+  propertyId   String     @map("property_id") @db.Uuid
+  roomTypeId   String     @map("room_type_id") @db.Uuid
+  code         String     // "101", "Suite A"
+  floor        Int?
+  status       RoomStatus @default(clean)
+  notes        String?
+  active       Boolean    @default(true)
+  createdAt    DateTime   @default(now()) @map("created_at")
+  updatedAt    DateTime   @updatedAt @map("updated_at")
+
+  property             Property             @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  roomType             RoomType             @relation(fields: [roomTypeId], references: [id], onDelete: Restrict)
+  availability         AvailabilityCalendar[]
+  reservationRooms     ReservationRoom[]
+  housekeepingTasks    HousekeepingTask[]
+  maintenanceTickets   MaintenanceTicket[]
+  channelRoomMappings  ChannelRoomMapping[]
+
+  @@unique([propertyId, code])
+  @@index([propertyId])
+  @@index([roomTypeId])
+  @@map("rooms")
+}
+
+// ════════════════════════════════════════════════════════════════
+// DISPONIBILIDADE & TARIFAS (núcleo do channel manager)
+// ════════════════════════════════════════════════════════════════
+
+enum AvailabilityStatus {
+  available
+  blocked
+  reserved
+  maintenance
+}
+
+enum ChannelSource {
+  internal
+  direct
+  airbnb
+  booking
+  expedia
+  vrbo
+  despegar
+  walk_in
+}
+
+/// Linha por (room, dia). Fonte da verdade do estoque.
+model AvailabilityCalendar {
+  id            String             @id @default(uuid()) @db.Uuid
+  roomId        String             @map("room_id") @db.Uuid
+  date          DateTime           @db.Date
+  status        AvailabilityStatus @default(available)
+  source        ChannelSource      @default(internal)
+  sourceRef     String?            @map("source_ref") // ID externo do bloqueio
+  reservationId String?            @map("reservation_id") @db.Uuid
+  note          String?
+  createdAt     DateTime           @default(now()) @map("created_at")
+  updatedAt     DateTime           @updatedAt @map("updated_at")
+
+  room        Room         @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  reservation Reservation? @relation(fields: [reservationId], references: [id], onDelete: SetNull)
+
+  @@unique([roomId, date])
+  @@index([date])
+  @@index([reservationId])
+  @@map("availability_calendar")
+}
+
+/// Preço/restrições por (room_type, dia, canal opcional).
+model RateCalendar {
+  id                  String         @id @default(uuid()) @db.Uuid
+  roomTypeId          String         @map("room_type_id") @db.Uuid
+  date                DateTime       @db.Date
+  channel             ChannelSource? // null = preço base
+  price               Decimal        @db.Decimal(10, 2)
+  minStay             Int            @default(1) @map("min_stay")
+  maxStay             Int?           @map("max_stay")
+  closedToArrival     Boolean        @default(false) @map("closed_to_arrival")
+  closedToDeparture   Boolean        @default(false) @map("closed_to_departure")
+  createdAt           DateTime       @default(now()) @map("created_at")
+  updatedAt           DateTime       @updatedAt @map("updated_at")
+
+  roomType RoomType @relation(fields: [roomTypeId], references: [id], onDelete: Cascade)
+
+  @@unique([roomTypeId, date, channel])
+  @@index([date])
+  @@map("rate_calendar")
+}
+
+// ════════════════════════════════════════════════════════════════
+// HÓSPEDES & RESERVAS
+// ════════════════════════════════════════════════════════════════
+
+enum DocumentType {
+  cpf
+  rg
+  passport
+  cnh
+  other
+}
+
+model Guest {
+  id           String       @id @default(uuid()) @db.Uuid
+  tenantId     String       @map("tenant_id") @db.Uuid
+  fullName     String       @map("full_name")
+  documentType DocumentType @default(cpf) @map("document_type")
+  document     String?
+  email        String?
+  phone        String?
+  birthDate    DateTime?    @map("birth_date") @db.Date
+  nationality  String?
+  address      Json?
+  notes        String?
+  marketing    Boolean      @default(false)
+  createdAt    DateTime     @default(now()) @map("created_at")
+  updatedAt    DateTime     @updatedAt @map("updated_at")
+
+  tenant            Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  reservations      Reservation[]
+  reservationGuests ReservationGuest[]
+
+  @@index([tenantId])
+  @@index([tenantId, document])
+  @@index([tenantId, email])
+  @@map("guests")
+}
+
+enum ReservationStatus {
+  pending      // criada, ainda sem confirmação
+  confirmed    // confirmada (paga ou garantida)
+  checked_in
+  checked_out
+  cancelled
+  no_show
+}
+
+enum PaymentStatus {
+  pending
+  partial
+  paid
+  refunded
+  chargeback
+}
+
+model Reservation {
+  id                    String            @id @default(uuid()) @db.Uuid
+  tenantId              String            @map("tenant_id") @db.Uuid
+  propertyId            String            @map("property_id") @db.Uuid
+  code                  String            // ex: ADL-2026-00012 (humano)
+  guestId               String            @map("guest_id") @db.Uuid
+  channel               ChannelSource     @default(direct)
+  channelReservationId  String?           @map("channel_reservation_id")
+  channelRaw            Json?             @map("channel_raw") // payload bruto do canal
+  checkIn               DateTime          @map("check_in") @db.Date
+  checkOut              DateTime          @map("check_out") @db.Date
+  adults                Int               @default(1)
+  children              Int               @default(0)
+  totalAmount           Decimal           @map("total_amount") @db.Decimal(10, 2)
+  commissionAmount      Decimal           @default(0) @map("commission_amount") @db.Decimal(10, 2)
+  netAmount             Decimal           @map("net_amount") @db.Decimal(10, 2)
+  currency              String            @default("BRL")
+  status                ReservationStatus @default(pending)
+  paymentStatus         PaymentStatus     @default(pending) @map("payment_status")
+  notes                 String?
+  specialRequests       String?           @map("special_requests")
+  source                String?           // origem do tráfego (instagram, google, etc)
+  createdAt             DateTime          @default(now()) @map("created_at")
+  updatedAt             DateTime          @updatedAt @map("updated_at")
+  cancelledAt           DateTime?         @map("cancelled_at")
+  cancelReason          String?           @map("cancel_reason")
+  checkedInAt           DateTime?         @map("checked_in_at")
+  checkedOutAt          DateTime?         @map("checked_out_at")
+
+  tenant            Tenant                 @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  property          Property               @relation(fields: [propertyId], references: [id], onDelete: Restrict)
+  guest             Guest                  @relation(fields: [guestId], references: [id], onDelete: Restrict)
+  rooms             ReservationRoom[]
+  guests            ReservationGuest[]
+  payments          Payment[]
+  folio             Folio?
+  availability      AvailabilityCalendar[]
+
+  @@unique([tenantId, code])
+  @@unique([channel, channelReservationId])
+  @@index([tenantId])
+  @@index([propertyId, checkIn, checkOut])
+  @@index([status])
+  @@map("reservations")
+}
+
+model ReservationRoom {
+  id              String   @id @default(uuid()) @db.Uuid
+  reservationId   String   @map("reservation_id") @db.Uuid
+  roomId          String   @map("room_id") @db.Uuid
+  roomTypeId      String   @map("room_type_id") @db.Uuid
+  guestsCount     Int      @default(1) @map("guests_count")
+  nightlyRates    Json     @map("nightly_rates") // [{date, price}]
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  reservation Reservation @relation(fields: [reservationId], references: [id], onDelete: Cascade)
+  room        Room        @relation(fields: [roomId], references: [id], onDelete: Restrict)
+  roomType    RoomType    @relation(fields: [roomTypeId], references: [id], onDelete: Restrict)
+
+  @@unique([reservationId, roomId])
+  @@index([roomId])
+  @@map("reservation_rooms")
+}
+
+model ReservationGuest {
+  reservationId String  @map("reservation_id") @db.Uuid
+  guestId       String  @map("guest_id") @db.Uuid
+  isPrimary     Boolean @default(false) @map("is_primary")
+  fnrhData      Json?   @map("fnrh_data") // dados do FNRH preenchidos no check-in digital
+  fnrhSignedAt  DateTime? @map("fnrh_signed_at")
+
+  reservation Reservation @relation(fields: [reservationId], references: [id], onDelete: Cascade)
+  guest       Guest       @relation(fields: [guestId], references: [id], onDelete: Cascade)
+
+  @@id([reservationId, guestId])
+  @@map("reservation_guests")
+}
+
+// ════════════════════════════════════════════════════════════════
+// FINANCEIRO
+// ════════════════════════════════════════════════════════════════
+
+enum PaymentMethod {
+  cash
+  pix
+  credit_card
+  debit_card
+  bank_transfer
+  link
+  channel_collected // cobrado pelo canal (Booking/Airbnb)
+}
+
+model Payment {
+  id                   String        @id @default(uuid()) @db.Uuid
+  reservationId        String        @map("reservation_id") @db.Uuid
+  amount               Decimal       @db.Decimal(10, 2)
+  method               PaymentMethod
+  gateway              String?       // stripe, asaas, ...
+  gatewayTransactionId String?       @map("gateway_transaction_id")
+  status               PaymentStatus @default(pending)
+  paidAt               DateTime?     @map("paid_at")
+  metadata             Json?
+  createdAt            DateTime      @default(now()) @map("created_at")
+
+  reservation Reservation @relation(fields: [reservationId], references: [id], onDelete: Cascade)
+
+  @@index([reservationId])
+  @@index([status])
+  @@map("payments")
+}
+
+model Folio {
+  id            String   @id @default(uuid()) @db.Uuid
+  reservationId String   @unique @map("reservation_id") @db.Uuid
+  closedAt      DateTime? @map("closed_at")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  reservation Reservation @relation(fields: [reservationId], references: [id], onDelete: Cascade)
+  items       FolioItem[]
+
+  @@map("folios")
+}
+
+enum FolioItemType {
+  room
+  service
+  minibar
+  food
+  beverage
+  laundry
+  tax
+  discount
+  other
+}
+
+model FolioItem {
+  id          String        @id @default(uuid()) @db.Uuid
+  folioId     String        @map("folio_id") @db.Uuid
+  description String
+  type        FolioItemType
+  quantity    Decimal       @default(1) @db.Decimal(10, 2)
+  unitPrice   Decimal       @map("unit_price") @db.Decimal(10, 2)
+  amount      Decimal       @db.Decimal(10, 2)
+  date        DateTime      @default(now()) @db.Date
+  createdAt   DateTime      @default(now()) @map("created_at")
+
+  folio Folio @relation(fields: [folioId], references: [id], onDelete: Cascade)
+
+  @@index([folioId])
+  @@map("folio_items")
+}
+
+// ════════════════════════════════════════════════════════════════
+// OPERAÇÃO (housekeeping + manutenção)
+// ════════════════════════════════════════════════════════════════
+
+enum HousekeepingType {
+  checkout_clean
+  daily_clean
+  deep_clean
+  inspection
+  turnover
+}
+
+enum HousekeepingStatus {
+  pending
+  in_progress
+  done
+  blocked
+}
+
+model HousekeepingTask {
+  id             String             @id @default(uuid()) @db.Uuid
+  roomId         String             @map("room_id") @db.Uuid
+  type           HousekeepingType
+  status         HousekeepingStatus @default(pending)
+  assignedToId   String?            @map("assigned_to_id") @db.Uuid
+  scheduledFor   DateTime           @map("scheduled_for")
+  startedAt      DateTime?          @map("started_at")
+  completedAt    DateTime?          @map("completed_at")
+  notes          String?
+  createdAt      DateTime           @default(now()) @map("created_at")
+
+  room Room @relation(fields: [roomId], references: [id], onDelete: Cascade)
+
+  @@index([roomId])
+  @@index([status, scheduledFor])
+  @@map("housekeeping_tasks")
+}
+
+enum MaintenancePriority {
+  low
+  medium
+  high
+  urgent
+}
+
+enum MaintenanceStatus {
+  open
+  in_progress
+  resolved
+  cancelled
+}
+
+model MaintenanceTicket {
+  id          String              @id @default(uuid()) @db.Uuid
+  roomId      String              @map("room_id") @db.Uuid
+  priority    MaintenancePriority @default(medium)
+  status      MaintenanceStatus   @default(open)
+  title       String
+  description String?
+  reportedAt  DateTime            @default(now()) @map("reported_at")
+  resolvedAt  DateTime?           @map("resolved_at")
+
+  room Room @relation(fields: [roomId], references: [id], onDelete: Cascade)
+
+  @@index([roomId])
+  @@index([status, priority])
+  @@map("maintenance_tickets")
+}
+
+// ════════════════════════════════════════════════════════════════
+// CHANNEL MANAGER
+// ════════════════════════════════════════════════════════════════
+
+enum ChannelConnectionStatus {
+  active
+  paused
+  error
+  disabled
+}
+
+model ChannelConnection {
+  id              String                  @id @default(uuid()) @db.Uuid
+  propertyId      String                  @map("property_id") @db.Uuid
+  channel         ChannelSource
+  status          ChannelConnectionStatus @default(active)
+  // iCal
+  icalImportUrl   String?                 @map("ical_import_url")
+  icalExportToken String?                 @map("ical_export_token") // usado para gerar URL pública assinada
+  // API direta (criptografado)
+  credentials     Json?                   // {api_key, hotel_id, ...} — encrypt at rest
+  // Sync
+  lastSyncAt      DateTime?               @map("last_sync_at")
+  lastSyncHash    String?                 @map("last_sync_hash")
+  syncError       String?                 @map("sync_error")
+  errorCount      Int                     @default(0) @map("error_count")
+  createdAt       DateTime                @default(now()) @map("created_at")
+  updatedAt       DateTime                @updatedAt @map("updated_at")
+
+  property     Property             @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  roomMappings ChannelRoomMapping[]
+  syncLogs     SyncLog[]
+
+  @@unique([propertyId, channel])
+  @@index([status, lastSyncAt])
+  @@map("channel_connections")
+}
+
+model ChannelRoomMapping {
+  id               String  @id @default(uuid()) @db.Uuid
+  connectionId     String  @map("connection_id") @db.Uuid
+  roomId           String  @map("room_id") @db.Uuid
+  externalRoomId   String  @map("external_room_id")
+  externalRoomName String? @map("external_room_name")
+
+  connection ChannelConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  room       Room              @relation(fields: [roomId], references: [id], onDelete: Cascade)
+
+  @@unique([connectionId, externalRoomId])
+  @@unique([connectionId, roomId])
+  @@map("channel_room_mappings")
+}
+
+enum SyncDirection {
+  inbound  // do canal -> nós
+  outbound // nós -> canal
+}
+
+enum SyncStatus {
+  success
+  noop
+  conflict
+  error
+}
+
+model SyncLog {
+  id           String        @id @default(uuid()) @db.Uuid
+  connectionId String        @map("connection_id") @db.Uuid
+  direction    SyncDirection
+  status       SyncStatus
+  payloadHash  String?       @map("payload_hash") // p/ idempotência (skip iguais)
+  itemsCount   Int           @default(0) @map("items_count")
+  conflicts    Int           @default(0)
+  error        String?
+  durationMs   Int?          @map("duration_ms")
+  createdAt    DateTime      @default(now()) @map("created_at")
+
+  connection ChannelConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+
+  @@index([connectionId, createdAt])
+  @@map("sync_logs")
+}
+
+// ════════════════════════════════════════════════════════════════
+// PRECIFICAÇÃO DINÂMICA (regras)
+// ════════════════════════════════════════════════════════════════
+
+enum PricingRuleType {
+  weekday      // sábado/domingo +20%
+  occupancy    // se ocupação > X% então preço +Y%
+  lead_time    // se reserva < X dias então +Y%
+  date_range   // feriados, alta temporada
+  min_stay     // mínimo de diárias
+}
+
+model PricingRule {
+  id          String          @id @default(uuid()) @db.Uuid
+  tenantId    String          @map("tenant_id") @db.Uuid
+  propertyId  String?         @map("property_id") @db.Uuid
+  roomTypeId  String?         @map("room_type_id") @db.Uuid
+  name        String
+  type        PricingRuleType
+  priority    Int             @default(0) // maior = aplicado depois (override)
+  config      Json            // {weekday: [6,0], adjustPct: 20} etc
+  startDate   DateTime?       @map("start_date") @db.Date
+  endDate     DateTime?       @map("end_date") @db.Date
+  active      Boolean         @default(true)
+  createdAt   DateTime        @default(now()) @map("created_at")
+  updatedAt   DateTime        @updatedAt @map("updated_at")
+
+  @@index([tenantId, active])
+  @@map("pricing_rules")
+}
