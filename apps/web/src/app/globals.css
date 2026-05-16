@@ -12,8 +12,73 @@
 body {
   background: rgb(var(--bg));
   color: rgb(var(--fg));
-  font-feature-settings: 'cv02', 'cv03', 'cv04';
+  font-feature-settings: 'cv02', 'cv03', 'cv04', 'ss01';
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
-.scrollbar-thin::-webkit-scrollbar { height: 8px; width: 8px; }
-.scrollbar-thin::-webkit-scrollbar-thumb { background: rgb(var(--border)); border-radius: 4px; }
+/* Transições padrão pra elementos interativos */
+button,
+a,
+input,
+select,
+textarea {
+  transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease,
+    box-shadow 150ms ease, transform 150ms ease, opacity 150ms ease;
+}
+
+/* Foco acessível e bonito */
+*:focus-visible {
+  outline: 2px solid rgb(232 152 36 / 0.5);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Scrollbar */
+.scrollbar-thin::-webkit-scrollbar {
+  height: 8px;
+  width: 8px;
+}
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: rgb(var(--border));
+  border-radius: 4px;
+}
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background: rgb(168 162 158);
+}
+
+/* Card com hover sutil */
+.card-hover {
+  transition: transform 200ms ease, box-shadow 200ms ease, border-color 200ms ease;
+}
+.card-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px -8px rgb(0 0 0 / 0.12), 0 2px 6px rgb(0 0 0 / 0.04);
+  border-color: rgb(214 211 209);
+}
+
+/* Skeleton shimmer */
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    rgb(231 229 228) 0%,
+    rgb(245 245 244) 50%,
+    rgb(231 229 228) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s linear infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+/* Selection */
+::selection {
+  background: rgb(232 152 36 / 0.2);
+}

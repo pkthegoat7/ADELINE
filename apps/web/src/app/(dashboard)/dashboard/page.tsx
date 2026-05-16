@@ -71,7 +71,7 @@ export default function DashboardPage() {
   return (
     <div className="p-6 space-y-6">
       <header>
-        <h1 className="text-2xl font-bold">Visão geral</h1>
+        <h1 className="text-2xl font-bold tracking-tight">Visão geral</h1>
         <p className="text-stone-500 text-sm capitalize">{todayLabel}</p>
       </header>
 
@@ -154,9 +154,9 @@ export default function DashboardPage() {
             showNights
           />
         </div>
-        <div className="bg-white border border-stone-200 rounded-lg p-5 space-y-3">
+        <div className="bg-white border border-stone-200 rounded-lg p-5 space-y-3 shadow-soft">
           <div className="flex items-center justify-between">
-            <h2 className="font-semibold flex items-center gap-2">
+            <h2 className="font-semibold flex items-center gap-2 tracking-tight">
               <Plug className="w-4 h-4 text-stone-500" />
               Canais
             </h2>
@@ -215,12 +215,12 @@ export default function DashboardPage() {
     icon: typeof BedDouble;
   }) {
     return (
-      <div className="bg-white rounded-lg border border-stone-200 p-4">
+      <div className="bg-white rounded-lg border border-stone-200 p-4 card-hover">
         <div className="flex items-center justify-between mb-2">
-          <span className="text-sm text-stone-500">{label}</span>
+          <span className="text-sm text-stone-500 font-medium">{label}</span>
           <Icon className="w-4 h-4 text-stone-400" />
         </div>
-        <div className="text-2xl font-bold">{value}</div>
+        <div className="text-2xl font-bold tracking-tight">{value}</div>
         <div className="text-xs text-stone-500 mt-1">{sub}</div>
       </div>
     );
@@ -246,9 +246,9 @@ export default function DashboardPage() {
     showDate?: boolean;
   }) {
     return (
-      <div className="bg-white border border-stone-200 rounded-lg p-5">
+      <div className="bg-white border border-stone-200 rounded-lg p-5 shadow-soft">
         <div className="flex items-center justify-between mb-3">
-          <h2 className="font-semibold flex items-center gap-2">
+          <h2 className="font-semibold flex items-center gap-2 tracking-tight">
             <Icon className="w-4 h-4 text-stone-500" />
             {title}
           </h2>

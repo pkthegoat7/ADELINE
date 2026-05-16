@@ -6,6 +6,8 @@ import { api } from '@/lib/api';
 import { Plug, RefreshCw, Plus, Trash2, Copy, ChevronDown, ChevronRight } from 'lucide-react';
 import { format } from 'date-fns';
 import { ConnectChannelModal } from '@/components/ConnectChannelModal';
+import { SkeletonCards } from '@/components/ui/Skeleton';
+import { toast } from '@/lib/toast';
 
 interface Channel {
   id: string;
@@ -38,18 +40,22 @@ export default function ChannelsPage() {
   const sync = useMutation({
     mutationFn: (id: string) => api(`/channels/${id}/sync`, { method: 'POST' }),
     onSuccess: () => {
+      toast.info('Sincronização enfileirada', 'Pode levar alguns segundos.');
       setTimeout(() => {
         qc.invalidateQueries({ queryKey: ['channels'] });
         qc.invalidateQueries({ queryKey: ['calendar'] });
       }, 1500);
     },
-    onError: (err: Error) => alert(`Erro: ${err.message}`),
+    onError: (err: Error) => toast.error('Erro ao sincronizar', err.message),
   });
 
   const remove = useMutation({
     mutationFn: (id: string) => api(`/channels/${id}`, { method: 'DELETE' }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['channels'] }),
-    onError: (err: Error) => alert(`Erro: ${err.message}`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['channels'] });
+      toast.success('Canal removido');
+    },
+    onError: (err: Error) => toast.error('Erro ao remover', err.message),
   });
 
   function confirmRemove(c: Channel) {
@@ -67,7 +73,7 @@ export default function ChannelsPage() {
     <div className="p-6 space-y-4">
       <header className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Canais conectados</h1>
+          <h1 className="text-2xl font-bold tracking-tight">Canais conectados</h1>
           <p className="text-stone-500 text-sm">Channel manager bidirecional via iCal.</p>
         </div>
         <div className="flex items-center gap-2">
@@ -88,7 +94,7 @@ export default function ChannelsPage() {
         </div>
       </header>
 
-      {isLoading && <div className="text-stone-500">Carregando…</div>}
+      {isLoading && <SkeletonCards count={2} />}
 
       {!isLoading && data?.length === 0 && (
         <div className="bg-white border border-stone-200 rounded-lg p-8 text-center space-y-3">
@@ -124,9 +130,11 @@ export default function ChannelsPage() {
         ))}
       </div>
 
-      {modalOpen && propertyId && (
-        <ConnectChannelModal propertyId={propertyId} onClose={() => setModalOpen(false)} />
-      )}
+      <ConnectChannelModal
+        propertyId={propertyId}
+        open={modalOpen && !!propertyId}
+        onClose={() => setModalOpen(false)}
+      />
     </div>
   );
 }
@@ -155,7 +163,7 @@ function ChannelCard({
   });
 
   return (
-    <div className="bg-white border border-stone-200 rounded-lg p-5 space-y-3">
+    <div className="bg-white border border-stone-200 rounded-lg p-5 space-y-3 card-hover">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Plug className="w-4 h-4 text-stone-400" />

@@ -2,9 +2,11 @@
 
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { X } from 'lucide-react';
 import { format } from 'date-fns';
 import { api } from '@/lib/api';
+import { Modal } from '@/components/ui/Modal';
+import { Spinner } from '@/components/ui/Spinner';
+import { toast } from '@/lib/toast';
 
 interface Room {
   id: string;
@@ -44,10 +46,12 @@ const CHANNELS = [
 export function NewReservationModal({
   propertyId,
   editing,
+  open,
   onClose,
 }: {
   propertyId: string;
   editing?: EditingReservation;
+  open: boolean;
   onClose: () => void;
 }) {
   const qc = useQueryClient();
@@ -80,12 +84,13 @@ export function NewReservationModal({
   const rooms = useQuery({
     queryKey: ['rooms', propertyId],
     queryFn: () => api<Room[]>(`/rooms?propertyId=${propertyId}`),
+    enabled: open,
   });
 
   const guests = useQuery({
     queryKey: ['guests', guestSearch],
     queryFn: () => api<Guest[]>(`/guests${guestSearch ? `?q=${encodeURIComponent(guestSearch)}` : ''}`),
-    enabled: guestMode === 'existing',
+    enabled: open && guestMode === 'existing',
   });
 
   const submit = useMutation({
@@ -129,203 +134,233 @@ export function NewReservationModal({
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['reservations'] });
       qc.invalidateQueries({ queryKey: ['calendar'] });
+      qc.invalidateQueries({ queryKey: ['dashboard-summary'] });
+      qc.invalidateQueries({ queryKey: ['day-summary'] });
+      toast.success(isEditing ? 'Reserva atualizada' : 'Reserva criada');
       onClose();
     },
     onError: (err: Error) => setError(err.message),
   });
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
-      <div
-        className="bg-white rounded-lg shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto"
-        onClick={(e) => e.stopPropagation()}
+    <Modal open={open} onClose={onClose} title={isEditing ? 'Editar reserva' : 'Nova reserva'} size="xl">
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          setError(null);
+          submit.mutate();
+        }}
+        className="p-5 space-y-4"
       >
-        <div className="flex items-center justify-between p-4 border-b border-stone-200">
-          <h2 className="text-lg font-semibold">{isEditing ? 'Editar reserva' : 'Nova reserva'}</h2>
-          <button onClick={onClose} className="text-stone-400 hover:text-stone-700">
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            setError(null);
-            submit.mutate();
-          }}
-          className="p-4 space-y-4"
-        >
-          <div>
-            <label className="text-xs font-medium text-stone-700 uppercase">Hóspede</label>
-            <div className="flex gap-2 mt-1 mb-2 text-sm">
-              <button
-                type="button"
-                onClick={() => setGuestMode('new')}
-                className={`px-3 py-1 rounded ${guestMode === 'new' ? 'bg-stone-900 text-white' : 'bg-stone-100'}`}
-              >
-                Novo
-              </button>
-              <button
-                type="button"
-                onClick={() => setGuestMode('existing')}
-                className={`px-3 py-1 rounded ${guestMode === 'existing' ? 'bg-stone-900 text-white' : 'bg-stone-100'}`}
-              >
-                Existente
-              </button>
-            </div>
-
-            {guestMode === 'new' ? (
-              <div className="space-y-2">
-                <input
-                  type="text"
-                  placeholder="Nome completo"
-                  value={newGuestName}
-                  onChange={(e) => setNewGuestName(e.target.value)}
-                  className="w-full px-3 py-2 text-sm border border-stone-300 rounded"
-                />
-                <input
-                  type="tel"
-                  placeholder="Telefone (opcional)"
-                  value={newGuestPhone}
-                  onChange={(e) => setNewGuestPhone(e.target.value)}
-                  className="w-full px-3 py-2 text-sm border border-stone-300 rounded"
-                />
-              </div>
-            ) : (
-              <div className="space-y-2">
-                <input
-                  type="text"
-                  placeholder="Buscar por nome, documento, email…"
-                  value={guestSearch}
-                  onChange={(e) => setGuestSearch(e.target.value)}
-                  className="w-full px-3 py-2 text-sm border border-stone-300 rounded"
-                />
-                <select
-                  value={selectedGuestId}
-                  onChange={(e) => setSelectedGuestId(e.target.value)}
-                  className="w-full px-3 py-2 text-sm border border-stone-300 rounded"
-                  size={Math.min(5, (guests.data?.length ?? 0) + 1)}
-                >
-                  <option value="">Selecione…</option>
-                  {guests.data?.map((g) => (
-                    <option key={g.id} value={g.id}>
-                      {g.fullName} {g.phone ? `— ${g.phone}` : ''}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
+        {/* Hóspede */}
+        <Field label="Hóspede">
+          <div className="flex gap-1.5 mb-2">
+            <TabPill active={guestMode === 'new'} onClick={() => setGuestMode('new')}>
+              Novo
+            </TabPill>
+            <TabPill active={guestMode === 'existing'} onClick={() => setGuestMode('existing')}>
+              Existente
+            </TabPill>
           </div>
 
-          <div>
-            <label className="text-xs font-medium text-stone-700 uppercase">Quarto</label>
-            <select
-              value={roomId}
-              onChange={(e) => setRoomId(e.target.value)}
-              className="mt-1 w-full px-3 py-2 text-sm border border-stone-300 rounded"
-            >
-              <option value="">Selecione…</option>
-              {rooms.data?.map((r) => (
-                <option key={r.id} value={r.id}>
-                  {r.code} — {r.roomType.name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="text-xs font-medium text-stone-700 uppercase">Check-in</label>
-              <input
-                type="date"
-                value={checkIn}
-                onChange={(e) => setCheckIn(e.target.value)}
-                className="mt-1 w-full px-3 py-2 text-sm border border-stone-300 rounded"
+          {guestMode === 'new' ? (
+            <div className="space-y-2">
+              <Input
+                type="text"
+                placeholder="Nome completo"
+                value={newGuestName}
+                onChange={(e) => setNewGuestName(e.target.value)}
+              />
+              <Input
+                type="tel"
+                placeholder="Telefone (opcional)"
+                value={newGuestPhone}
+                onChange={(e) => setNewGuestPhone(e.target.value)}
               />
             </div>
-            <div>
-              <label className="text-xs font-medium text-stone-700 uppercase">Check-out</label>
-              <input
-                type="date"
-                value={checkOut}
-                onChange={(e) => setCheckOut(e.target.value)}
-                className="mt-1 w-full px-3 py-2 text-sm border border-stone-300 rounded"
+          ) : (
+            <div className="space-y-2">
+              <Input
+                type="text"
+                placeholder="Buscar por nome, documento, email…"
+                value={guestSearch}
+                onChange={(e) => setGuestSearch(e.target.value)}
               />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-3 gap-3">
-            <div>
-              <label className="text-xs font-medium text-stone-700 uppercase">Adultos</label>
-              <input
-                type="number"
-                min={1}
-                value={adults}
-                onChange={(e) => setAdults(Number(e.target.value))}
-                className="mt-1 w-full px-3 py-2 text-sm border border-stone-300 rounded"
-              />
-            </div>
-            <div>
-              <label className="text-xs font-medium text-stone-700 uppercase">Crianças</label>
-              <input
-                type="number"
-                min={0}
-                value={children}
-                onChange={(e) => setChildren(Number(e.target.value))}
-                className="mt-1 w-full px-3 py-2 text-sm border border-stone-300 rounded"
-              />
-            </div>
-            <div>
-              <label className="text-xs font-medium text-stone-700 uppercase">Canal</label>
-              <select
-                value={channel}
-                onChange={(e) => setChannel(e.target.value as typeof CHANNELS[number]['value'])}
-                className="mt-1 w-full px-3 py-2 text-sm border border-stone-300 rounded"
+              <Select
+                value={selectedGuestId}
+                onChange={(e) => setSelectedGuestId(e.target.value)}
+                size={Math.min(5, (guests.data?.length ?? 0) + 1)}
               >
-                {CHANNELS.map((c) => (
-                  <option key={c.value} value={c.value}>{c.label}</option>
+                <option value="">Selecione…</option>
+                {guests.data?.map((g) => (
+                  <option key={g.id} value={g.id}>
+                    {g.fullName} {g.phone ? `— ${g.phone}` : ''}
+                  </option>
                 ))}
-              </select>
-            </div>
-          </div>
-
-          <div>
-            <label className="text-xs font-medium text-stone-700 uppercase">Valor total (R$)</label>
-            <input
-              type="number"
-              step="0.01"
-              min="0"
-              placeholder="0,00"
-              value={totalAmount}
-              onChange={(e) => setTotalAmount(e.target.value)}
-              className="mt-1 w-full px-3 py-2 text-sm border border-stone-300 rounded"
-            />
-          </div>
-
-          {error && (
-            <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded px-3 py-2">
-              {error}
+              </Select>
             </div>
           )}
+        </Field>
 
-          <div className="flex justify-end gap-2 pt-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 text-sm text-stone-700 hover:bg-stone-100 rounded"
+        <Field label="Quarto">
+          <Select value={roomId} onChange={(e) => setRoomId(e.target.value)}>
+            <option value="">Selecione…</option>
+            {rooms.data?.map((r) => (
+              <option key={r.id} value={r.id}>
+                {r.code} — {r.roomType.name}
+              </option>
+            ))}
+          </Select>
+        </Field>
+
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="Check-in">
+            <Input type="date" value={checkIn} onChange={(e) => setCheckIn(e.target.value)} />
+          </Field>
+          <Field label="Check-out">
+            <Input type="date" value={checkOut} onChange={(e) => setCheckOut(e.target.value)} />
+          </Field>
+        </div>
+
+        <div className="grid grid-cols-3 gap-3">
+          <Field label="Adultos">
+            <Input
+              type="number"
+              min={1}
+              value={adults}
+              onChange={(e) => setAdults(Number(e.target.value))}
+            />
+          </Field>
+          <Field label="Crianças">
+            <Input
+              type="number"
+              min={0}
+              value={children}
+              onChange={(e) => setChildren(Number(e.target.value))}
+            />
+          </Field>
+          <Field label="Canal">
+            <Select
+              value={channel}
+              onChange={(e) => setChannel(e.target.value as typeof CHANNELS[number]['value'])}
             >
-              Cancelar
-            </button>
-            <button
-              type="submit"
-              disabled={submit.isPending}
-              className="px-4 py-2 text-sm bg-stone-900 text-white rounded hover:bg-stone-800 disabled:opacity-50"
-            >
-              {submit.isPending ? (isEditing ? 'Salvando…' : 'Criando…') : (isEditing ? 'Salvar alterações' : 'Criar reserva')}
-            </button>
+              {CHANNELS.map((c) => (
+                <option key={c.value} value={c.value}>
+                  {c.label}
+                </option>
+              ))}
+            </Select>
+          </Field>
+        </div>
+
+        <Field label="Valor total (R$)">
+          <Input
+            type="number"
+            step="0.01"
+            min="0"
+            placeholder="0,00"
+            value={totalAmount}
+            onChange={(e) => setTotalAmount(e.target.value)}
+          />
+        </Field>
+
+        {error && (
+          <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-md px-3 py-2">
+            {error}
           </div>
-        </form>
-      </div>
+        )}
+
+        <div className="flex justify-end gap-2 pt-2 border-t border-stone-100 -mx-5 px-5 mt-4 pt-4">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-4 py-2 text-sm text-stone-700 hover:bg-stone-100 rounded-md active:scale-95"
+          >
+            Cancelar
+          </button>
+          <button
+            type="submit"
+            disabled={submit.isPending}
+            className="px-4 py-2 text-sm bg-stone-900 text-white rounded-md hover:bg-stone-800 active:scale-95 disabled:opacity-50 inline-flex items-center gap-2"
+          >
+            {submit.isPending && <Spinner size={14} />}
+            {submit.isPending
+              ? isEditing
+                ? 'Salvando…'
+                : 'Criando…'
+              : isEditing
+                ? 'Salvar alterações'
+                : 'Criar reserva'}
+          </button>
+        </div>
+      </form>
+    </Modal>
+  );
+}
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <label className="text-xs font-medium text-stone-700 uppercase tracking-wider">
+        {label}
+      </label>
+      <div className="mt-1">{children}</div>
     </div>
+  );
+}
+
+function Input(props: React.InputHTMLAttributes<HTMLInputElement>) {
+  return (
+    <input
+      {...props}
+      className="w-full px-3 py-2 text-sm border border-stone-300 rounded-md focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 outline-none"
+    />
+  );
+}
+
+function Select({
+  children,
+  size,
+  value,
+  onChange,
+}: {
+  children: React.ReactNode;
+  size?: number;
+  value: string;
+  onChange: React.ChangeEventHandler<HTMLSelectElement>;
+}) {
+  return (
+    <select
+      value={value}
+      onChange={onChange}
+      size={size}
+      className="w-full px-3 py-2 text-sm border border-stone-300 rounded-md focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 outline-none"
+    >
+      {children}
+    </select>
+  );
+}
+
+function TabPill({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`px-3 py-1 text-xs font-medium rounded-md transition ${
+        active
+          ? 'bg-stone-900 text-white shadow-sm'
+          : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
+      }`}
+    >
+      {children}
+    </button>
   );
 }

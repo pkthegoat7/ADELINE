@@ -7,6 +7,9 @@ import { api } from '@/lib/api';
 import { cn } from '@/lib/cn';
 import { RoomFormModal, type EditingRoom } from '@/components/RoomFormModal';
 import { RoomTypesModal } from '@/components/RoomTypesModal';
+import { SkeletonCards } from '@/components/ui/Skeleton';
+import { Spinner } from '@/components/ui/Spinner';
+import { toast } from '@/lib/toast';
 
 interface Room {
   id: string;
@@ -45,8 +48,9 @@ export default function RoomsPage() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['rooms'] });
       qc.invalidateQueries({ queryKey: ['calendar'] });
+      toast.success('Status atualizado');
     },
-    onError: (err: Error) => alert(`Erro ao atualizar: ${err.message}`),
+    onError: (err: Error) => toast.error('Erro ao atualizar', err.message),
   });
 
   const deactivate = useMutation({
@@ -54,8 +58,9 @@ export default function RoomsPage() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['rooms'] });
       qc.invalidateQueries({ queryKey: ['calendar'] });
+      toast.success('Quarto desativado');
     },
-    onError: (err: Error) => alert(`${err.message}`),
+    onError: (err: Error) => toast.error('Não foi possível desativar', err.message),
   });
 
   function startEdit(r: Room) {
@@ -67,14 +72,12 @@ export default function RoomsPage() {
 
   function confirmDeactivate(r: Room) {
     if (!r.active) {
-      alert('Quarto já está desativado.');
+      toast.info('Quarto já está desativado');
       return;
     }
     if (
       confirm(
-        `Desativar quarto ${r.code}?\n\n` +
-          `O histórico de reservas é preservado. Esta operação pode ser revertida no banco.\n\n` +
-          `Se houver reservas ativas/futuras, a operação será bloqueada.`,
+        `Desativar quarto ${r.code}?\n\nO histórico de reservas é preservado. Bloqueado se houver reservas ativas/futuras.`,
       )
     ) {
       deactivate.mutate(r.id);
@@ -88,7 +91,7 @@ export default function RoomsPage() {
     <div className="p-6 space-y-4">
       <header className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Quartos</h1>
+          <h1 className="text-2xl font-bold tracking-tight">Quartos</h1>
           <p className="text-stone-500 text-sm">
             {visibleRooms.length} {showInactive ? 'total' : 'ativos'}
             {!showInactive && inactiveCount > 0 && (
@@ -113,7 +116,7 @@ export default function RoomsPage() {
           <button
             onClick={() => setTypesModalOpen(true)}
             disabled={!propertyId}
-            className="flex items-center gap-2 px-4 py-2 text-sm border border-stone-300 rounded-md hover:bg-stone-100 disabled:opacity-50"
+            className="flex items-center gap-2 px-4 py-2 text-sm border border-stone-300 rounded-md hover:bg-stone-100 active:scale-95 disabled:opacity-50"
           >
             <Tags className="w-4 h-4" />
             Tipos de quarto
@@ -121,7 +124,7 @@ export default function RoomsPage() {
           <button
             onClick={() => setModalState({ mode: 'create' })}
             disabled={!propertyId}
-            className="flex items-center gap-2 px-4 py-2 bg-stone-900 text-white text-sm rounded-md hover:bg-stone-800 disabled:opacity-50"
+            className="flex items-center gap-2 px-4 py-2 bg-stone-900 text-white text-sm rounded-md hover:bg-stone-800 active:scale-95 disabled:opacity-50 shadow-soft"
           >
             <Plus className="w-4 h-4" />
             Novo quarto
@@ -129,7 +132,7 @@ export default function RoomsPage() {
         </div>
       </header>
 
-      {isLoading && <div className="text-stone-500">Carregando…</div>}
+      {isLoading && <SkeletonCards count={6} />}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
         {visibleRooms.map((r) => {
@@ -138,7 +141,7 @@ export default function RoomsPage() {
             <div
               key={r.id}
               className={cn(
-                'bg-white border border-stone-200 rounded-lg p-4 space-y-3',
+                'bg-white border border-stone-200 rounded-lg p-4 space-y-3 card-hover',
                 !r.active && 'opacity-60',
               )}
             >
@@ -190,16 +193,21 @@ export default function RoomsPage() {
               <div className="flex gap-1 pt-1 border-t border-stone-100">
                 <button
                   onClick={() => startEdit(r)}
-                  className="flex-1 flex items-center justify-center gap-1 text-xs py-1.5 text-stone-600 hover:bg-stone-100 rounded"
+                  className="flex-1 flex items-center justify-center gap-1 text-xs py-1.5 text-stone-600 hover:bg-stone-100 rounded-md active:scale-95"
                 >
                   <Pencil className="w-3 h-3" /> Editar
                 </button>
                 <button
                   onClick={() => confirmDeactivate(r)}
                   disabled={!r.active || deactivate.isPending}
-                  className="flex-1 flex items-center justify-center gap-1 text-xs py-1.5 text-red-600 hover:bg-red-50 rounded disabled:opacity-30 disabled:cursor-not-allowed"
+                  className="flex-1 flex items-center justify-center gap-1 text-xs py-1.5 text-red-600 hover:bg-red-50 rounded-md active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed"
                 >
-                  <Trash2 className="w-3 h-3" /> Desativar
+                  {deactivate.isPending && deactivate.variables === r.id ? (
+                    <Spinner size={12} />
+                  ) : (
+                    <Trash2 className="w-3 h-3" />
+                  )}{' '}
+                  Desativar
                 </button>
               </div>
             </div>
@@ -213,17 +221,18 @@ export default function RoomsPage() {
         </div>
       )}
 
-      {modalState.mode !== 'closed' && propertyId && (
-        <RoomFormModal
-          propertyId={propertyId}
-          editing={modalState.mode === 'edit' ? modalState.editing : undefined}
-          onClose={() => setModalState({ mode: 'closed' })}
-        />
-      )}
+      <RoomFormModal
+        propertyId={propertyId}
+        editing={modalState.mode === 'edit' ? modalState.editing : undefined}
+        open={modalState.mode !== 'closed' && !!propertyId}
+        onClose={() => setModalState({ mode: 'closed' })}
+      />
 
-      {typesModalOpen && propertyId && (
-        <RoomTypesModal propertyId={propertyId} onClose={() => setTypesModalOpen(false)} />
-      )}
+      <RoomTypesModal
+        propertyId={propertyId}
+        open={typesModalOpen && !!propertyId}
+        onClose={() => setTypesModalOpen(false)}
+      />
     </div>
   );
 }

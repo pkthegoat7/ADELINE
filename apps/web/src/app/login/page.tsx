@@ -33,14 +33,19 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-stone-50 p-4">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-stone-50 via-white to-brand-50/40 p-4">
       <form
         onSubmit={onSubmit}
-        className="w-full max-w-sm bg-white border border-stone-200 rounded-lg p-6 shadow-sm space-y-4"
+        className="w-full max-w-sm bg-white border border-stone-200 rounded-xl p-7 shadow-modal space-y-4 animate-scale-in"
       >
-        <div>
-          <h1 className="text-xl font-semibold text-stone-900">Pousada Adelina</h1>
-          <p className="text-sm text-stone-500">Acesse sua conta</p>
+        <div className="flex items-center gap-3 pb-2">
+          <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-brand-400 to-brand-600 flex items-center justify-center text-stone-900 font-bold shadow-sm">
+            A
+          </div>
+          <div>
+            <h1 className="text-lg font-bold tracking-tight text-stone-900">Adelina PMS</h1>
+            <p className="text-xs text-stone-500">Acesse sua conta</p>
+          </div>
         </div>
 
         <div className="space-y-1">

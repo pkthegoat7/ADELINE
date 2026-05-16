@@ -41,9 +41,10 @@ async function bootstrap() {
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api/docs', app, document);
 
-  const port = Number(process.env.API_PORT ?? 3333);
+  // Render/Heroku/Fly injetam PORT; local usa API_PORT do .env; fallback 3333.
+  const port = Number(process.env.PORT ?? process.env.API_PORT ?? 3333);
   await app.listen({ port, host: '0.0.0.0' });
-  Logger.log(`🚀 API on http://localhost:${port}/api  (docs: /api/docs)`, 'Bootstrap');
+  Logger.log(`🚀 API on port ${port} (prefix /api · docs /api/docs)`, 'Bootstrap');
 }
 
 bootstrap();

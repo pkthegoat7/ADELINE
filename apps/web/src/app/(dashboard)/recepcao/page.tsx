@@ -15,6 +15,8 @@ import {
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { cn } from '@/lib/cn';
+import { toast } from '@/lib/toast';
+import { Spinner } from '@/components/ui/Spinner';
 
 type Tab = 'checkins' | 'checkouts';
 
@@ -71,8 +73,9 @@ export default function RecepcaoPage() {
       qc.invalidateQueries({ queryKey: ['reservations'] });
       qc.invalidateQueries({ queryKey: ['calendar'] });
       qc.invalidateQueries({ queryKey: ['dashboard-summary'] });
+      toast.success('Check-in registrado');
     },
-    onError: (err: Error) => alert(`Erro: ${err.message}`),
+    onError: (err: Error) => toast.error('Erro no check-in', err.message),
   });
 
   const checkOut = useMutation({
@@ -83,8 +86,9 @@ export default function RecepcaoPage() {
       qc.invalidateQueries({ queryKey: ['calendar'] });
       qc.invalidateQueries({ queryKey: ['rooms'] });
       qc.invalidateQueries({ queryKey: ['dashboard-summary'] });
+      toast.success('Check-out registrado', 'Quarto marcado como sujo pra housekeeping.');
     },
-    onError: (err: Error) => alert(`Erro: ${err.message}`),
+    onError: (err: Error) => toast.error('Erro no check-out', err.message),
   });
 
   const isToday = format(date, 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd');
@@ -96,7 +100,7 @@ export default function RecepcaoPage() {
     <div className="p-6 space-y-4">
       <header className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Recepção</h1>
+          <h1 className="text-2xl font-bold tracking-tight">Recepção</h1>
           <p className="text-stone-500 text-sm capitalize">
             {dateLabel} {isToday && '· Hoje'}
           </p>
@@ -236,7 +240,7 @@ function ReservationRow({
   const alreadyCheckedOut = r.status === 'checked_out' && tab === 'checkouts';
 
   return (
-    <div className="bg-white border border-stone-200 rounded-lg p-4 flex items-center gap-4">
+    <div className="bg-white border border-stone-200 rounded-lg p-4 flex items-center gap-4 card-hover">
       {/* Indicador de status */}
       <div className="flex-shrink-0">
         {alreadyCheckedIn || alreadyCheckedOut ? (

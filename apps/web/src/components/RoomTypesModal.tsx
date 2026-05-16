@@ -2,9 +2,12 @@
 
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { X, Plus, Pencil, Trash2 } from 'lucide-react';
+import { Plus, Pencil, Trash2 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { cn } from '@/lib/cn';
+import { Modal } from '@/components/ui/Modal';
+import { Spinner } from '@/components/ui/Spinner';
+import { toast } from '@/lib/toast';
 
 interface RoomType {
   id: string;
@@ -35,7 +38,15 @@ const EMPTY: FormState = {
   description: '',
 };
 
-export function RoomTypesModal({ propertyId, onClose }: { propertyId: string; onClose: () => void }) {
+export function RoomTypesModal({
+  propertyId,
+  open,
+  onClose,
+}: {
+  propertyId: string;
+  open: boolean;
+  onClose: () => void;
+}) {
   const qc = useQueryClient();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<FormState>(EMPTY);
@@ -44,6 +55,7 @@ export function RoomTypesModal({ propertyId, onClose }: { propertyId: string; on
   const types = useQuery({
     queryKey: ['room-types', propertyId],
     queryFn: () => api<RoomType[]>(`/room-types?propertyId=${propertyId}`),
+    enabled: open,
   });
 
   const isEditing = !!editingId;
@@ -93,6 +105,7 @@ export function RoomTypesModal({ propertyId, onClose }: { propertyId: string; on
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['room-types'] });
       qc.invalidateQueries({ queryKey: ['rooms'] });
+      toast.success(isEditing ? 'Tipo atualizado' : 'Tipo criado');
       resetForm();
     },
     onError: (err: Error) => setError(err.message),
@@ -103,19 +116,19 @@ export function RoomTypesModal({ propertyId, onClose }: { propertyId: string; on
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['room-types'] });
       qc.invalidateQueries({ queryKey: ['rooms'] });
+      toast.success('Tipo desativado');
     },
-    onError: (err: Error) => alert(err.message),
+    onError: (err: Error) => toast.error('Não foi possível desativar', err.message),
   });
 
   function confirmDeactivate(t: RoomType) {
     if (!t.active) {
-      alert('Tipo já está desativado.');
+      toast.info('Tipo já está desativado');
       return;
     }
     if (
       confirm(
-        `Desativar tipo "${t.name}"?\n\n` +
-          `Bloqueado se houver quartos ativos com este tipo. Histórico preservado.`,
+        `Desativar tipo "${t.name}"?\n\nBloqueado se houver quartos ativos com este tipo. Histórico preservado.`,
       )
     ) {
       deactivate.mutate(t.id);
@@ -126,211 +139,207 @@ export function RoomTypesModal({ propertyId, onClose }: { propertyId: string; on
   const inactiveTypes = types.data?.filter((t) => !t.active) ?? [];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
-      <div
-        className="bg-white rounded-lg shadow-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-center justify-between p-4 border-b border-stone-200">
-          <h2 className="text-lg font-semibold">Tipos de quarto</h2>
-          <button onClick={onClose} className="text-stone-400 hover:text-stone-700">
-            <X className="w-5 h-5" />
-          </button>
-        </div>
+    <Modal open={open} onClose={onClose} title="Tipos de quarto" size="xl">
+      <div className="p-5 grid md:grid-cols-2 gap-6">
+        {/* Lista */}
+        <div className="space-y-2">
+          <h3 className="text-xs font-semibold text-stone-700 uppercase tracking-wider">
+            Tipos cadastrados ({visibleTypes.length})
+          </h3>
+          {types.isLoading && <div className="text-stone-400 text-sm">Carregando…</div>}
 
-        <div className="p-4 grid md:grid-cols-2 gap-6">
-          {/* Lista */}
-          <div className="space-y-2">
-            <h3 className="text-sm font-semibold text-stone-700 mb-2">
-              Tipos cadastrados ({visibleTypes.length})
-            </h3>
-            {types.isLoading && <div className="text-stone-400 text-sm">Carregando…</div>}
-
-            {visibleTypes.map((t) => (
-              <div
-                key={t.id}
-                className={cn(
-                  'border rounded p-3 text-sm',
-                  editingId === t.id ? 'border-stone-900 bg-stone-50' : 'border-stone-200',
-                )}
-              >
-                <div className="flex items-start justify-between">
-                  <div>
-                    <div className="font-semibold">
-                      {t.name} <span className="text-xs text-stone-400 font-mono">({t.code})</span>
-                    </div>
-                    <div className="text-xs text-stone-500">
-                      Cap. {t.capacity} · {t.beds} cama(s) ·{' '}
-                      <span className="font-mono">
-                        {Number(t.basePrice).toLocaleString('pt-BR', {
-                          style: 'currency',
-                          currency: 'BRL',
-                        })}
-                      </span>
-                    </div>
-                    {t.description && (
-                      <div className="text-xs text-stone-500 mt-1">{t.description}</div>
-                    )}
+          {visibleTypes.map((t) => (
+            <div
+              key={t.id}
+              className={cn(
+                'border rounded-md p-3 text-sm transition',
+                editingId === t.id
+                  ? 'border-stone-900 bg-stone-50 ring-1 ring-stone-900'
+                  : 'border-stone-200 hover:border-stone-300',
+              )}
+            >
+              <div className="flex items-start justify-between gap-2">
+                <div className="flex-1 min-w-0">
+                  <div className="font-semibold truncate">
+                    {t.name}{' '}
+                    <span className="text-xs text-stone-400 font-mono font-normal">({t.code})</span>
                   </div>
-                  <div className="flex gap-1">
-                    <button
-                      onClick={() => startEdit(t)}
-                      title="Editar"
-                      className="p-1 text-stone-500 hover:text-stone-900 hover:bg-stone-100 rounded"
-                    >
-                      <Pencil className="w-3.5 h-3.5" />
-                    </button>
-                    <button
-                      onClick={() => confirmDeactivate(t)}
-                      title="Desativar"
-                      className="p-1 text-red-500 hover:text-red-700 hover:bg-red-50 rounded"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
+                  <div className="text-xs text-stone-500">
+                    Cap. {t.capacity} · {t.beds} cama(s) ·{' '}
+                    <span className="font-mono">
+                      {Number(t.basePrice).toLocaleString('pt-BR', {
+                        style: 'currency',
+                        currency: 'BRL',
+                      })}
+                    </span>
                   </div>
+                  {t.description && (
+                    <div className="text-xs text-stone-500 mt-1 line-clamp-2">{t.description}</div>
+                  )}
+                </div>
+                <div className="flex gap-0.5 flex-shrink-0">
+                  <button
+                    onClick={() => startEdit(t)}
+                    title="Editar"
+                    className="p-1 text-stone-500 hover:text-stone-900 hover:bg-stone-100 rounded active:scale-95"
+                  >
+                    <Pencil className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    onClick={() => confirmDeactivate(t)}
+                    title="Desativar"
+                    className="p-1 text-red-500 hover:text-red-700 hover:bg-red-50 rounded active:scale-95"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
                 </div>
               </div>
-            ))}
-
-            {!types.isLoading && visibleTypes.length === 0 && (
-              <div className="text-sm text-stone-400 italic p-3 border border-dashed border-stone-200 rounded">
-                Nenhum tipo ativo. Crie um no formulário ao lado.
-              </div>
-            )}
-
-            {inactiveTypes.length > 0 && (
-              <details className="mt-3 text-xs text-stone-500">
-                <summary className="cursor-pointer hover:text-stone-700">
-                  {inactiveTypes.length} tipo(s) desativado(s)
-                </summary>
-                <ul className="mt-1 pl-3 space-y-0.5">
-                  {inactiveTypes.map((t) => (
-                    <li key={t.id} className="opacity-70">
-                      {t.name} ({t.code})
-                    </li>
-                  ))}
-                </ul>
-              </details>
-            )}
-          </div>
-
-          {/* Formulário */}
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              setError(null);
-              submit.mutate();
-            }}
-            className="space-y-3"
-          >
-            <h3 className="text-sm font-semibold text-stone-700">
-              {isEditing ? 'Editar tipo' : 'Novo tipo'}
-            </h3>
-
-            <div>
-              <label className="text-xs font-medium text-stone-700 uppercase">Nome</label>
-              <input
-                type="text"
-                required
-                placeholder="Ex: Suíte Master"
-                value={form.name}
-                onChange={(e) => setForm({ ...form, name: e.target.value })}
-                className="mt-1 w-full px-3 py-2 text-sm border border-stone-300 rounded"
-              />
             </div>
+          ))}
 
-            <div>
-              <label className="text-xs font-medium text-stone-700 uppercase">Código</label>
-              <input
-                type="text"
-                required
-                placeholder="Ex: SM"
-                value={form.code}
-                onChange={(e) => setForm({ ...form, code: e.target.value.toUpperCase() })}
-                className="mt-1 w-full px-3 py-2 text-sm border border-stone-300 rounded uppercase"
-              />
+          {!types.isLoading && visibleTypes.length === 0 && (
+            <div className="text-sm text-stone-400 italic p-3 border border-dashed border-stone-200 rounded-md">
+              Nenhum tipo ativo. Crie um no formulário ao lado.
             </div>
+          )}
 
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <label className="text-xs font-medium text-stone-700 uppercase">Capacidade</label>
-                <input
-                  type="number"
-                  min={1}
-                  value={form.capacity}
-                  onChange={(e) => setForm({ ...form, capacity: Number(e.target.value) })}
-                  className="mt-1 w-full px-3 py-2 text-sm border border-stone-300 rounded"
-                />
-              </div>
-              <div>
-                <label className="text-xs font-medium text-stone-700 uppercase">Camas</label>
-                <input
-                  type="number"
-                  min={1}
-                  value={form.beds}
-                  onChange={(e) => setForm({ ...form, beds: Number(e.target.value) })}
-                  className="mt-1 w-full px-3 py-2 text-sm border border-stone-300 rounded"
-                />
-              </div>
-            </div>
+          {inactiveTypes.length > 0 && (
+            <details className="mt-3 text-xs text-stone-500">
+              <summary className="cursor-pointer hover:text-stone-700 select-none">
+                {inactiveTypes.length} tipo(s) desativado(s)
+              </summary>
+              <ul className="mt-1 pl-3 space-y-0.5">
+                {inactiveTypes.map((t) => (
+                  <li key={t.id} className="opacity-70">
+                    {t.name} ({t.code})
+                  </li>
+                ))}
+              </ul>
+            </details>
+          )}
+        </div>
 
-            <div>
-              <label className="text-xs font-medium text-stone-700 uppercase">
-                Preço base (R$/noite)
-              </label>
+        {/* Formulário */}
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            setError(null);
+            submit.mutate();
+          }}
+          className="space-y-3"
+        >
+          <h3 className="text-xs font-semibold text-stone-700 uppercase tracking-wider">
+            {isEditing ? 'Editar tipo' : 'Novo tipo'}
+          </h3>
+
+          <FormField label="Nome">
+            <input
+              type="text"
+              required
+              placeholder="Ex: Suíte Master"
+              value={form.name}
+              onChange={(e) => setForm({ ...form, name: e.target.value })}
+              className="w-full px-3 py-2 text-sm border border-stone-300 rounded-md focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 outline-none"
+            />
+          </FormField>
+
+          <FormField label="Código">
+            <input
+              type="text"
+              required
+              placeholder="Ex: SM"
+              value={form.code}
+              onChange={(e) => setForm({ ...form, code: e.target.value.toUpperCase() })}
+              className="w-full px-3 py-2 text-sm border border-stone-300 rounded-md focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 outline-none uppercase"
+            />
+          </FormField>
+
+          <div className="grid grid-cols-2 gap-2">
+            <FormField label="Capacidade">
               <input
                 type="number"
-                step="0.01"
-                min="0"
-                required
-                placeholder="0,00"
-                value={form.basePrice}
-                onChange={(e) => setForm({ ...form, basePrice: e.target.value })}
-                className="mt-1 w-full px-3 py-2 text-sm border border-stone-300 rounded"
+                min={1}
+                value={form.capacity}
+                onChange={(e) => setForm({ ...form, capacity: Number(e.target.value) })}
+                className="w-full px-3 py-2 text-sm border border-stone-300 rounded-md focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 outline-none"
               />
-            </div>
-
-            <div>
-              <label className="text-xs font-medium text-stone-700 uppercase">
-                Descrição (opcional)
-              </label>
-              <textarea
-                rows={2}
-                placeholder="Comodidades, diferenciais…"
-                value={form.description}
-                onChange={(e) => setForm({ ...form, description: e.target.value })}
-                className="mt-1 w-full px-3 py-2 text-sm border border-stone-300 rounded"
+            </FormField>
+            <FormField label="Camas">
+              <input
+                type="number"
+                min={1}
+                value={form.beds}
+                onChange={(e) => setForm({ ...form, beds: Number(e.target.value) })}
+                className="w-full px-3 py-2 text-sm border border-stone-300 rounded-md focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 outline-none"
               />
+            </FormField>
+          </div>
+
+          <FormField label="Preço base (R$/noite)">
+            <input
+              type="number"
+              step="0.01"
+              min="0"
+              required
+              placeholder="0,00"
+              value={form.basePrice}
+              onChange={(e) => setForm({ ...form, basePrice: e.target.value })}
+              className="w-full px-3 py-2 text-sm border border-stone-300 rounded-md focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 outline-none"
+            />
+          </FormField>
+
+          <FormField label="Descrição (opcional)">
+            <textarea
+              rows={2}
+              placeholder="Comodidades, diferenciais…"
+              value={form.description}
+              onChange={(e) => setForm({ ...form, description: e.target.value })}
+              className="w-full px-3 py-2 text-sm border border-stone-300 rounded-md focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 outline-none resize-none"
+            />
+          </FormField>
+
+          {error && (
+            <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-md px-3 py-2">
+              {error}
             </div>
+          )}
 
-            {error && (
-              <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded px-3 py-2">
-                {error}
-              </div>
-            )}
-
-            <div className="flex gap-2 pt-1">
-              {isEditing && (
-                <button
-                  type="button"
-                  onClick={resetForm}
-                  className="flex-1 px-3 py-2 text-sm text-stone-700 border border-stone-300 rounded hover:bg-stone-50"
-                >
-                  Cancelar edição
-                </button>
-              )}
+          <div className="flex gap-2 pt-1">
+            {isEditing && (
               <button
-                type="submit"
-                disabled={submit.isPending}
-                className="flex-1 flex items-center justify-center gap-1 px-3 py-2 text-sm bg-stone-900 text-white rounded hover:bg-stone-800 disabled:opacity-50"
+                type="button"
+                onClick={resetForm}
+                className="flex-1 px-3 py-2 text-sm text-stone-700 border border-stone-300 rounded-md hover:bg-stone-50 active:scale-95"
               >
-                {isEditing ? null : <Plus className="w-4 h-4" />}
-                {submit.isPending ? 'Salvando…' : isEditing ? 'Salvar alterações' : 'Adicionar tipo'}
+                Cancelar edição
               </button>
-            </div>
-          </form>
-        </div>
+            )}
+            <button
+              type="submit"
+              disabled={submit.isPending}
+              className="flex-1 flex items-center justify-center gap-1 px-3 py-2 text-sm bg-stone-900 text-white rounded-md hover:bg-stone-800 active:scale-95 disabled:opacity-50"
+            >
+              {submit.isPending ? (
+                <Spinner size={14} />
+              ) : !isEditing ? (
+                <Plus className="w-4 h-4" />
+              ) : null}
+              {submit.isPending ? 'Salvando…' : isEditing ? 'Salvar alterações' : 'Adicionar tipo'}
+            </button>
+          </div>
+        </form>
       </div>
+    </Modal>
+  );
+}
+
+function FormField({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <label className="text-xs font-medium text-stone-700 uppercase tracking-wider">
+        {label}
+      </label>
+      <div className="mt-1">{children}</div>
     </div>
   );
 }
