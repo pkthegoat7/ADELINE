@@ -88,16 +88,20 @@ export default function RoomsPage() {
   const inactiveCount = data?.filter((r) => !r.active).length ?? 0;
 
   return (
-    <div className="p-6 space-y-4">
-      <header className="flex items-center justify-between">
+    <div className="p-6 lg:p-8 space-y-5 max-w-[1600px]">
+      <header className="flex items-end justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Quartos</h1>
-          <p className="text-stone-500 text-sm">
+          <div className="flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-ink-muted mb-1">
+            <span className="ornament">◆</span>
+            <span>Inventário</span>
+          </div>
+          <h2 className="font-serif text-3xl tracking-serif text-ink">Quartos</h2>
+          <p className="text-sm text-ink-muted mt-1 num-tabular">
             {visibleRooms.length} {showInactive ? 'total' : 'ativos'}
             {!showInactive && inactiveCount > 0 && (
               <button
                 onClick={() => setShowInactive(true)}
-                className="ml-2 underline hover:text-stone-700"
+                className="ml-2 underline hover:text-brand-600 transition-colors"
               >
                 ({inactiveCount} desativado{inactiveCount > 1 ? 's' : ''})
               </button>
@@ -105,7 +109,7 @@ export default function RoomsPage() {
             {showInactive && (
               <button
                 onClick={() => setShowInactive(false)}
-                className="ml-2 underline hover:text-stone-700"
+                className="ml-2 underline hover:text-brand-600 transition-colors"
               >
                 ocultar desativados
               </button>
@@ -113,19 +117,11 @@ export default function RoomsPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <button
-            onClick={() => setTypesModalOpen(true)}
-            disabled={!propertyId}
-            className="flex items-center gap-2 px-4 py-2 text-sm border border-stone-300 rounded-md hover:bg-stone-100 active:scale-95 disabled:opacity-50"
-          >
+          <button onClick={() => setTypesModalOpen(true)} disabled={!propertyId} className="btn-secondary">
             <Tags className="w-4 h-4" />
             Tipos de quarto
           </button>
-          <button
-            onClick={() => setModalState({ mode: 'create' })}
-            disabled={!propertyId}
-            className="flex items-center gap-2 px-4 py-2 bg-stone-900 text-white text-sm rounded-md hover:bg-stone-800 active:scale-95 disabled:opacity-50 shadow-soft"
-          >
+          <button onClick={() => setModalState({ mode: 'create' })} disabled={!propertyId} className="btn-primary">
             <Plus className="w-4 h-4" />
             Novo quarto
           </button>
@@ -141,16 +137,16 @@ export default function RoomsPage() {
             <div
               key={r.id}
               className={cn(
-                'bg-white border border-stone-200 rounded-lg p-4 space-y-3 card-hover',
+                'surface-card p-5 space-y-3 card-hover',
                 !r.active && 'opacity-60',
               )}
             >
               <div className="flex items-start justify-between">
                 <div>
-                  <div className="text-2xl font-bold">{r.code}</div>
-                  <div className="text-sm text-stone-500">{r.roomType.name}</div>
+                  <div className="font-serif text-2xl tracking-serif text-ink">{r.code}</div>
+                  <div className="text-sm text-ink-soft">{r.roomType.name}</div>
                   {r.floor !== null && (
-                    <div className="text-xs text-stone-400">Andar {r.floor}</div>
+                    <div className="text-xs text-ink-muted">Andar {r.floor}</div>
                   )}
                 </div>
                 <div className="flex flex-col items-end gap-1">

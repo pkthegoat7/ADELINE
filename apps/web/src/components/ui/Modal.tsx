@@ -39,29 +39,31 @@ export function Modal({ open, onClose, title, description, size = 'lg', children
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          transition={{ duration: 0.15 }}
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
+          transition={{ duration: 0.18 }}
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-soft"
           onClick={onClose}
         >
           <motion.div
-            initial={{ opacity: 0, scale: 0.96, y: 8 }}
+            initial={{ opacity: 0, scale: 0.95, y: 12 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.96, y: 8 }}
-            transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+            transition={{ duration: 0.24, ease: [0.16, 1, 0.3, 1] }}
             onClick={(e) => e.stopPropagation()}
-            className={`bg-white rounded-xl shadow-modal w-full ${SIZE[size]} max-h-[90vh] overflow-hidden flex flex-col`}
+            className={`bg-surface-elevated rounded-2xl shadow-modal w-full ${SIZE[size]} max-h-[90vh] overflow-hidden flex flex-col border border-line`}
           >
             {(title || description) && (
-              <div className="flex items-start justify-between px-5 py-4 border-b border-stone-200">
+              <div className="flex items-start justify-between px-6 py-5 border-b border-line-soft bg-gradient-to-b from-surface-sunken/50 to-transparent">
                 <div>
-                  {title && <h2 className="text-lg font-semibold tracking-tight">{title}</h2>}
+                  {title && (
+                    <h2 className="font-serif text-[1.35rem] tracking-serif text-ink">{title}</h2>
+                  )}
                   {description && (
-                    <p className="text-sm text-stone-500 mt-0.5">{description}</p>
+                    <p className="text-sm text-ink-muted mt-1">{description}</p>
                   )}
                 </div>
                 <button
                   onClick={onClose}
-                  className="text-stone-400 hover:text-stone-700 hover:bg-stone-100 rounded-md p-1 -mt-1 -mr-1"
+                  className="text-ink-muted hover:text-ink hover:bg-surface-sunken rounded-lg p-1.5 -mt-1 -mr-1.5 transition-colors"
                   aria-label="Fechar"
                 >
                   <X className="w-5 h-5" />

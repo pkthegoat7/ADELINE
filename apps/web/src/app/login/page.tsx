@@ -1,11 +1,19 @@
 'use client';
 
-import { useState } from 'react';
+import { Suspense, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 
 export default function LoginPage() {
+  return (
+    <Suspense fallback={<LoginShell loading />}>
+      <LoginForm />
+    </Suspense>
+  );
+}
+
+function LoginForm() {
   const router = useRouter();
   const params = useSearchParams();
   const next = params.get('next') ?? '/dashboard';
@@ -28,28 +36,15 @@ export default function LoginPage() {
       setError(translateError(signInError.message));
       return;
     }
-    router.replace(next);
+    router.replace(next as never);
     router.refresh();
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-stone-50 via-white to-brand-50/40 p-4">
-      <form
-        onSubmit={onSubmit}
-        className="w-full max-w-sm bg-white border border-stone-200 rounded-xl p-7 shadow-modal space-y-4 animate-scale-in"
-      >
-        <div className="flex items-center gap-3 pb-2">
-          <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-brand-400 to-brand-600 flex items-center justify-center text-stone-900 font-bold shadow-sm">
-            A
-          </div>
-          <div>
-            <h1 className="text-lg font-bold tracking-tight text-stone-900">Adelina PMS</h1>
-            <p className="text-xs text-stone-500">Acesse sua conta</p>
-          </div>
-        </div>
-
-        <div className="space-y-1">
-          <label className="text-xs font-medium text-stone-700" htmlFor="email">
+    <LoginShell>
+      <form onSubmit={onSubmit} className="space-y-4">
+        <div className="space-y-1.5">
+          <label className="text-[11px] uppercase tracking-[0.18em] font-semibold text-ink-muted" htmlFor="email">
             Email
           </label>
           <input
@@ -59,18 +54,18 @@ export default function LoginPage() {
             required
             autoComplete="email"
             onChange={(e) => setEmail(e.target.value)}
-            className="w-full px-3 py-2 text-sm border border-stone-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-500"
+            className="input-base"
           />
         </div>
 
-        <div className="space-y-1">
+        <div className="space-y-1.5">
           <div className="flex items-center justify-between">
-            <label className="text-xs font-medium text-stone-700" htmlFor="password">
+            <label className="text-[11px] uppercase tracking-[0.18em] font-semibold text-ink-muted" htmlFor="password">
               Senha
             </label>
             <Link
               href="/esqueci-senha"
-              className="text-xs text-stone-600 hover:text-stone-900 hover:underline"
+              className="text-xs text-ink-soft hover:text-brand-600 hover:underline transition-colors"
             >
               Esqueceu?
             </Link>
@@ -82,25 +77,64 @@ export default function LoginPage() {
             required
             autoComplete="current-password"
             onChange={(e) => setPassword(e.target.value)}
-            className="w-full px-3 py-2 text-sm border border-stone-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brand-500"
+            className="input-base"
           />
         </div>
 
         {error && (
-          <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded px-3 py-2">
+          <div className="text-sm text-red-700 dark:text-red-300 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800/40 rounded-lg px-3 py-2.5">
             {error}
           </div>
         )}
 
-        <button
-          type="submit"
-          disabled={loading}
-          className="w-full py-2 bg-stone-900 text-white text-sm font-medium rounded-md hover:bg-stone-800 disabled:opacity-50"
-        >
+        <button type="submit" disabled={loading} className="btn-primary w-full">
           {loading ? 'Entrando…' : 'Entrar'}
         </button>
-
       </form>
+    </LoginShell>
+  );
+}
+
+function LoginShell({ children, loading }: { children?: React.ReactNode; loading?: boolean }) {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-surface p-4 relative overflow-hidden">
+      {/* Ornamento de fundo */}
+      <div
+        aria-hidden
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          backgroundImage:
+            'radial-gradient(ellipse 60% 50% at 30% 20%, rgb(245 230 211 / 0.45), transparent 60%), radial-gradient(ellipse 50% 40% at 80% 80%, rgb(237 206 170 / 0.35), transparent 60%)',
+        }}
+      />
+      <div className="relative w-full max-w-sm surface-card p-7 shadow-modal space-y-5 animate-scale-in glow-border">
+        <div className="flex items-center gap-3 pb-1">
+          <div className="relative w-12 h-12 rounded-xl bg-gradient-to-br from-gold-300 via-brand-400 to-brand-700 flex items-center justify-center text-[#1a140d] shadow-md shadow-brand-900/30">
+            <span className="font-serif font-bold text-lg">A</span>
+            <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-gold-300 shadow-md shadow-gold-500/60 animate-pulse" />
+          </div>
+          <div>
+            <div className="font-serif text-xl tracking-serif text-ink">Adelina</div>
+            <p className="text-[10px] uppercase tracking-[0.2em] text-ink-muted -mt-0.5">
+              Pousadas boutique
+            </p>
+          </div>
+        </div>
+
+        <div className="divider-ornament">
+          <span className="ornament">◆</span>
+        </div>
+
+        {loading ? (
+          <div className="py-6 text-center text-ink-muted text-sm">Carregando…</div>
+        ) : (
+          children
+        )}
+
+        <p className="text-[11px] text-ink-muted text-center pt-2">
+          Acesso restrito a colaboradores autorizados.
+        </p>
+      </div>
     </div>
   );
 }

@@ -29,3 +29,6 @@ packages/db/prisma/migrations/dev.db*
 # Next
 apps/web/next-env.d.ts
 apps/web/.vercel
+
+# TypeScript incremental build cache
+*.tsbuildinfo

@@ -15,6 +15,7 @@ import { AvailabilityModule } from './modules/availability/availability.module';
 import { GuestsModule } from './modules/guests/guests.module';
 import { ChannelManagerModule } from './modules/channel-manager/channel-manager.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
+import { SearchModule } from './modules/search/search.module';
 
 @Module({
   imports: [
@@ -39,6 +40,7 @@ import { DashboardModule } from './modules/dashboard/dashboard.module';
     GuestsModule,
     ChannelManagerModule,
     DashboardModule,
+    SearchModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })

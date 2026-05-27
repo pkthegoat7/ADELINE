@@ -1,6 +1,14 @@
 import { Controller, Get, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
-import { addDays, endOfDay, endOfMonth, startOfDay, startOfMonth } from 'date-fns';
+import {
+  addDays,
+  eachDayOfInterval,
+  endOfDay,
+  endOfMonth,
+  startOfDay,
+  startOfMonth,
+  subDays,
+} from 'date-fns';
 import { TenantId } from '../../common/decorators/tenant.decorator';
 import { PrismaService } from '../../common/prisma/prisma.service';
 
@@ -145,6 +153,70 @@ export class DashboardController {
         0,
       );
 
+      // ADR / RevPAR — sobre reservas do mês com noites
+      const adrAgg = await tx.reservation.findMany({
+        where: {
+          ...where,
+          status: { not: 'cancelled' },
+          checkIn: { gte: monthStart, lte: monthEnd },
+        },
+        select: {
+          totalAmount: true,
+          checkIn: true,
+          checkOut: true,
+          rooms: { select: { id: true } },
+        },
+      });
+      let roomNights = 0;
+      let roomRevenue = 0;
+      for (const r of adrAgg) {
+        const nights = Math.max(
+          1,
+          Math.round((+r.checkOut - +r.checkIn) / 86_400_000),
+        );
+        const units = Math.max(1, r.rooms.length);
+        roomNights += nights * units;
+        roomRevenue += Number(r.totalAmount);
+      }
+      const daysInMonth = Math.max(
+        1,
+        Math.round((+monthEnd - +monthStart) / 86_400_000) + 1,
+      );
+      const availableRoomNights = totalRooms * daysInMonth;
+      const adr = roomNights > 0 ? roomRevenue / roomNights : 0;
+      const revPar = availableRoomNights > 0 ? roomRevenue / availableRoomNights : 0;
+
+      // Série de ocupação dos últimos 30 dias (para sparkline)
+      const seriesStart = startOfDay(subDays(today, 29));
+      const seriesEnd = endOfDay(today);
+      const seriesReservations = await tx.reservation.findMany({
+        where: {
+          ...where,
+          status: { in: [...activeStatuses, 'checked_out'] },
+          checkIn: { lte: seriesEnd },
+          checkOut: { gt: seriesStart },
+        },
+        select: { checkIn: true, checkOut: true, rooms: { select: { id: true } } },
+      });
+      const occupancySeries = eachDayOfInterval({ start: seriesStart, end: today }).map(
+        (d) => {
+          const dayStart = startOfDay(d);
+          const dayEnd = endOfDay(d);
+          let occupied = 0;
+          for (const r of seriesReservations) {
+            if (r.checkIn <= dayEnd && r.checkOut > dayStart) {
+              occupied += Math.max(1, r.rooms.length);
+            }
+          }
+          return {
+            date: dayStart.toISOString().split('T')[0],
+            occupied,
+            total: totalRooms,
+            percent: totalRooms > 0 ? Math.round((occupied / totalRooms) * 100) : 0,
+          };
+        },
+      );
+
       // Canais
       const channels = await tx.channelConnection.findMany({
         where: propertyId ? { propertyId } : undefined,
@@ -171,6 +243,9 @@ export class DashboardController {
           value: monthRevenue,
           reservationCount: monthReservations.length,
         },
+        adr,
+        revPar,
+        occupancySeries,
         channels,
       };
     });

@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Plus, Search } from 'lucide-react';
 import { api } from '@/lib/api';
+import { cn } from '@/lib/cn';
 import { Modal } from '@/components/ui/Modal';
 import { SkeletonTable } from '@/components/ui/Skeleton';
 import { Spinner } from '@/components/ui/Spinner';
@@ -30,38 +31,39 @@ export default function GuestsPage() {
   });
 
   return (
-    <div className="p-6 space-y-4">
-      <header className="flex items-center justify-between">
+    <div className="p-6 lg:p-8 space-y-5 max-w-[1400px]">
+      <header className="flex items-end justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Hóspedes</h1>
-          <p className="text-stone-500 text-sm">{data?.length ?? 0} resultados</p>
+          <div className="flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-ink-muted mb-1">
+            <span className="ornament">◆</span>
+            <span>Cadastro</span>
+          </div>
+          <h2 className="font-serif text-3xl tracking-serif text-ink">Hóspedes</h2>
+          <p className="text-sm text-ink-muted mt-1 num-tabular">{data?.length ?? 0} resultados</p>
         </div>
-        <button
-          onClick={() => setModalOpen(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-stone-900 text-white text-sm rounded-md hover:bg-stone-800 active:scale-95 shadow-soft"
-        >
+        <button onClick={() => setModalOpen(true)} className="btn-primary">
           <Plus className="w-4 h-4" />
           Novo hóspede
         </button>
       </header>
 
       <div className="relative max-w-md">
-        <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-stone-400" />
+        <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted" />
         <input
           type="search"
           placeholder="Buscar por nome, documento, email, telefone…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="w-full pl-9 pr-3 py-2 text-sm border border-stone-300 rounded-md focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 outline-none"
+          className="input-base pl-9"
         />
       </div>
 
       {isLoading ? (
         <SkeletonTable rows={5} cols={5} />
       ) : (
-        <div className="bg-white border border-stone-200 rounded-lg overflow-hidden shadow-soft">
+        <div className="surface-card overflow-hidden shadow-soft">
           <table className="w-full text-sm">
-            <thead className="bg-stone-50 border-b border-stone-200 text-stone-600 text-xs uppercase tracking-wider">
+            <thead className="bg-surface-sunken/60 border-b border-line text-ink-muted text-[10px] uppercase tracking-[0.18em]">
               <tr>
                 <th className="text-left p-3 font-semibold">Nome</th>
                 <th className="text-left p-3 font-semibold">Documento</th>
@@ -71,26 +73,29 @@ export default function GuestsPage() {
               </tr>
             </thead>
             <tbody>
-              {data?.map((g) => (
+              {data?.map((g, idx) => (
                 <tr
                   key={g.id}
-                  className="border-b border-stone-100 last:border-0 hover:bg-stone-50/60 transition-colors"
+                  className={cn(
+                    'border-b border-line-soft last:border-0 hover:bg-brand-50/40 dark:hover:bg-brand-900/10 transition-colors',
+                    idx % 2 === 1 && 'bg-surface-sunken/20',
+                  )}
                 >
-                  <td className="p-3 font-medium">{g.fullName}</td>
-                  <td className="p-3 text-stone-600">
+                  <td className="p-3 font-medium text-ink">{g.fullName}</td>
+                  <td className="p-3 text-ink-soft">
                     {g.document ? `${g.documentType.toUpperCase()}: ${g.document}` : '—'}
                   </td>
-                  <td className="p-3 text-stone-600">{g.email ?? '—'}</td>
-                  <td className="p-3 text-stone-600">{g.phone ?? '—'}</td>
-                  <td className="p-3 text-stone-600">{g.nationality ?? '—'}</td>
+                  <td className="p-3 text-ink-soft">{g.email ?? '—'}</td>
+                  <td className="p-3 text-ink-soft">{g.phone ?? '—'}</td>
+                  <td className="p-3 text-ink-soft">{g.nationality ?? '—'}</td>
                 </tr>
               ))}
               {data?.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="p-12 text-center text-stone-400">
-                    <div className="inline-flex flex-col items-center gap-2">
-                      <div className="w-12 h-12 rounded-full bg-stone-100 flex items-center justify-center">
-                        <Search className="w-5 h-5 text-stone-400" />
+                  <td colSpan={5} className="p-12 text-center text-ink-muted">
+                    <div className="inline-flex flex-col items-center gap-3">
+                      <div className="w-12 h-12 rounded-full bg-surface-sunken flex items-center justify-center">
+                        <Search className="w-5 h-5 text-ink-muted" />
                       </div>
                       Nenhum hóspede encontrado.
                     </div>

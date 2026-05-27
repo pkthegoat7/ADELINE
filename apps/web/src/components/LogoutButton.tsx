@@ -22,9 +22,9 @@ export function LogoutButton() {
     <button
       onClick={onLogout}
       disabled={loading}
-      className="w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm text-stone-400 hover:text-stone-50 hover:bg-stone-800/50 disabled:opacity-50"
+      className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-[13px] text-sand-300/70 hover:text-sand-50 hover:bg-white/[0.04] disabled:opacity-50 transition-colors"
     >
-      {loading ? <Spinner size={16} /> : <LogOut className="w-4 h-4" />}
+      {loading ? <Spinner size={14} /> : <LogOut className="w-3.5 h-3.5" />}
       Sair
     </button>
   );

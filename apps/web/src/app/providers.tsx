@@ -3,6 +3,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Toaster } from 'sonner';
+import { useTheme } from '@/lib/theme';
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const [client] = useState(
@@ -13,6 +14,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
         },
       }),
   );
+  const { theme } = useTheme();
   return (
     <QueryClientProvider client={client}>
       {children}
@@ -20,8 +22,12 @@ export function Providers({ children }: { children: React.ReactNode }) {
         position="top-right"
         richColors
         closeButton
+        theme={theme}
         toastOptions={{
-          style: { fontFamily: 'var(--font-inter), system-ui' },
+          style: {
+            fontFamily: 'var(--font-inter), system-ui',
+            borderRadius: '10px',
+          },
         }}
       />
     </QueryClientProvider>

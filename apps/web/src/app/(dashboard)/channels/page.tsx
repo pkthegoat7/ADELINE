@@ -70,24 +70,21 @@ export default function ChannelsPage() {
   }
 
   return (
-    <div className="p-6 space-y-4">
-      <header className="flex items-center justify-between">
+    <div className="p-6 lg:p-8 space-y-5 max-w-[1400px]">
+      <header className="flex items-end justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Canais conectados</h1>
-          <p className="text-stone-500 text-sm">Channel manager bidirecional via iCal.</p>
+          <div className="flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-ink-muted mb-1">
+            <span className="ornament">◆</span>
+            <span>Integrações</span>
+          </div>
+          <h2 className="font-serif text-3xl tracking-serif text-ink">Canais conectados</h2>
+          <p className="text-sm text-ink-muted mt-1">Channel manager bidirecional via iCal.</p>
         </div>
         <div className="flex items-center gap-2">
-          <button
-            onClick={() => refetch()}
-            className="inline-flex items-center gap-2 px-3 py-1.5 text-sm border border-stone-300 rounded-md hover:bg-stone-100"
-          >
+          <button onClick={() => refetch()} className="btn-secondary">
             <RefreshCw className="w-4 h-4" /> Atualizar
           </button>
-          <button
-            onClick={() => setModalOpen(true)}
-            disabled={!propertyId}
-            className="flex items-center gap-2 px-4 py-2 bg-stone-900 text-white text-sm rounded-md hover:bg-stone-800 disabled:opacity-50"
-          >
+          <button onClick={() => setModalOpen(true)} disabled={!propertyId} className="btn-primary">
             <Plus className="w-4 h-4" />
             Conectar canal
           </button>
@@ -97,18 +94,16 @@ export default function ChannelsPage() {
       {isLoading && <SkeletonCards count={2} />}
 
       {!isLoading && data?.length === 0 && (
-        <div className="bg-white border border-stone-200 rounded-lg p-8 text-center space-y-3">
-          <Plug className="w-10 h-10 mx-auto text-stone-300" />
-          <h2 className="text-lg font-semibold text-stone-700">Nenhum canal conectado</h2>
-          <p className="text-sm text-stone-500 max-w-md mx-auto">
+        <div className="surface-card p-10 text-center space-y-3">
+          <div className="w-16 h-16 mx-auto rounded-2xl bg-gradient-to-br from-brand-100 to-brand-200 dark:from-brand-900/40 dark:to-brand-800/40 flex items-center justify-center">
+            <Plug className="w-7 h-7 text-brand-600 dark:text-brand-300" />
+          </div>
+          <h2 className="font-serif text-xl tracking-serif text-ink">Nenhum canal conectado</h2>
+          <p className="text-sm text-ink-muted max-w-md mx-auto">
             Conecte Airbnb, Booking ou outro canal via iCal pra sincronizar reservas
             automaticamente a cada 5 minutos.
           </p>
-          <button
-            onClick={() => setModalOpen(true)}
-            disabled={!propertyId}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-stone-900 text-white text-sm rounded-md hover:bg-stone-800 disabled:opacity-50"
-          >
+          <button onClick={() => setModalOpen(true)} disabled={!propertyId} className="btn-primary mx-auto">
             <Plus className="w-4 h-4" />
             Conectar primeiro canal
           </button>
