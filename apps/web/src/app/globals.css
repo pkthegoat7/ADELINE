@@ -97,12 +97,13 @@ body > * {
   z-index: 1;
 }
 
-/* Tipografia serif para headings (Playfair) */
+/* Tipografia display sans pra headings (Inter Tight — estilo SaaS) */
 .font-display,
 .serif {
-  font-family: var(--font-playfair), Georgia, serif;
-  letter-spacing: -0.02em;
-  font-feature-settings: 'kern', 'liga', 'dlig';
+  font-family: var(--font-display), var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  letter-spacing: -0.022em;
+  font-feature-settings: 'kern', 'liga', 'ss01', 'cv11';
+  font-variant-numeric: lining-nums tabular-nums;
 }
 
 /* Transições padrão pra elementos interativos */
@@ -516,27 +517,28 @@ kbd, .kbd {
 /* ---- Tipografia: hierarquia mais rica ---- */
 html {
   font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11', 'ss01', 'ss03';
-  font-variant-numeric: oldstyle-nums proportional-nums;
+  font-variant-numeric: lining-nums tabular-nums;
   -webkit-text-size-adjust: 100%;
 }
 body {
-  font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  font-family: var(--font-inter), ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   font-weight: 400;
-  letter-spacing: -0.005em;
+  letter-spacing: -0.011em;
   line-height: 1.5;
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Headings em Playfair com tracking refinado e ligaduras */
+/* Headings em Inter Tight — peso forte e tracking apertado estilo SaaS */
 h1, h2, h3, .font-display, .serif {
-  font-family: var(--font-playfair), Georgia, serif;
-  font-feature-settings: 'kern', 'liga', 'dlig', 'onum';
-  letter-spacing: -0.022em;
-  line-height: 1.15;
+  font-family: var(--font-display), var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  font-feature-settings: 'kern', 'liga', 'ss01', 'cv11';
+  font-variant-numeric: lining-nums tabular-nums;
+  letter-spacing: -0.028em;
+  line-height: 1.12;
 }
-h1 { font-weight: 600; }
-h2 { font-weight: 600; letter-spacing: -0.018em; }
-h3 { font-weight: 600; letter-spacing: -0.014em; }
+h1 { font-weight: 700; letter-spacing: -0.034em; }
+h2 { font-weight: 700; letter-spacing: -0.028em; }
+h3 { font-weight: 600; letter-spacing: -0.022em; }
 
 /* Pequenos rótulos / eyebrows refinados */
 .eyebrow,

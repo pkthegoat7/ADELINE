@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { Inter, Playfair_Display, JetBrains_Mono } from 'next/font/google';
+import { Inter, Inter_Tight, JetBrains_Mono } from 'next/font/google';
 import './globals.css';
 import { Providers } from './providers';
 
@@ -10,12 +10,11 @@ const inter = Inter({
   weight: ['400', '500', '600', '700', '800'],
 });
 
-const playfair = Playfair_Display({
+const interTight = Inter_Tight({
   subsets: ['latin'],
-  variable: '--font-playfair',
+  variable: '--font-display',
   display: 'swap',
-  weight: ['400', '500', '600', '700'],
-  style: ['normal', 'italic'],
+  weight: ['500', '600', '700', '800'],
 });
 
 const jetbrainsMono = JetBrains_Mono({
@@ -32,7 +31,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="pt-BR" className={`${inter.variable} ${playfair.variable} ${jetbrainsMono.variable}`} suppressHydrationWarning>
+    <html lang="pt-BR" className={`${inter.variable} ${interTight.variable} ${jetbrainsMono.variable}`} suppressHydrationWarning>
       <head>
         {/* Aplica tema antes da hidratação pra evitar flash */}
         <script
