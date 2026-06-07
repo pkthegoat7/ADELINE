@@ -54,21 +54,25 @@ export function RoomFormModal({
       if (!code.trim()) throw new Error('Código obrigatório');
       if (!roomTypeId) throw new Error('Selecione o tipo de quarto');
 
-      const payload = {
+      // Campo opcional: omite quando vazio (backend recusa null com zod number())
+      const floorValue = floor.trim() === '' ? undefined : Number(floor);
+
+      const payload: Record<string, unknown> = {
         propertyId,
         roomTypeId,
         code: code.trim(),
-        floor: floor === '' ? null : Number(floor),
       };
+      if (floorValue !== undefined) payload.floor = floorValue;
 
       if (isEditing) {
+        const body: Record<string, unknown> = {
+          roomTypeId: payload.roomTypeId,
+          code: payload.code,
+        };
+        if (floorValue !== undefined) body.floor = floorValue;
         return api(`/rooms/${editing!.id}`, {
           method: 'PUT',
-          body: JSON.stringify({
-            roomTypeId: payload.roomTypeId,
-            code: payload.code,
-            floor: payload.floor,
-          }),
+          body: JSON.stringify(body),
         });
       }
       return api('/rooms', {
@@ -96,34 +100,34 @@ export function RoomFormModal({
         className="p-5 space-y-4"
       >
         <div>
-          <label className="text-xs font-medium text-stone-700 uppercase tracking-wider">Código</label>
+          <label className="text-xs font-semibold text-ink-soft uppercase tracking-[0.12em]">Código</label>
           <input
             type="text"
             required
             placeholder="Ex: 101, Suite-A"
             value={code}
             onChange={(e) => setCode(e.target.value)}
-            className="mt-1 w-full px-3 py-2 text-sm border border-stone-300 rounded-md focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 outline-none"
+            className="input-base mt-1.5"
           />
         </div>
 
         <div>
-          <label className="text-xs font-medium text-stone-700 uppercase tracking-wider">Andar</label>
+          <label className="text-xs font-semibold text-ink-soft uppercase tracking-[0.12em]">Andar</label>
           <input
             type="number"
             placeholder="(opcional)"
             value={floor}
             onChange={(e) => setFloor(e.target.value)}
-            className="mt-1 w-full px-3 py-2 text-sm border border-stone-300 rounded-md focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 outline-none"
+            className="input-base mt-1.5"
           />
         </div>
 
         <div>
-          <label className="text-xs font-medium text-stone-700 uppercase tracking-wider">Tipo</label>
+          <label className="text-xs font-semibold text-ink-soft uppercase tracking-[0.12em]">Tipo</label>
           <select
             value={roomTypeId}
             onChange={(e) => setRoomTypeId(e.target.value)}
-            className="mt-1 w-full px-3 py-2 text-sm border border-stone-300 rounded-md focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 outline-none"
+            className="input-base mt-1.5 cursor-pointer"
           >
             <option value="">Selecione…</option>
             {types.data?.map((t) => (
@@ -133,30 +137,30 @@ export function RoomFormModal({
             ))}
           </select>
           {types.data?.length === 0 && (
-            <p className="text-xs text-amber-600 mt-1">
+            <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
               Nenhum tipo cadastrado. Crie um tipo primeiro.
             </p>
           )}
         </div>
 
         {error && (
-          <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-md px-3 py-2">
+          <div className="text-sm text-red-700 dark:text-red-300 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/50 rounded-md px-3 py-2">
             {error}
           </div>
         )}
 
-        <div className="flex justify-end gap-2 pt-3 border-t border-stone-100 -mx-5 px-5 mt-4">
+        <div className="flex justify-end gap-2 pt-3 border-t border-line -mx-5 px-5 mt-4">
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 text-sm text-stone-700 hover:bg-stone-100 rounded-md active:scale-95"
+            className="btn-ghost"
           >
             Cancelar
           </button>
           <button
             type="submit"
             disabled={submit.isPending}
-            className="px-4 py-2 text-sm bg-stone-900 text-white rounded-md hover:bg-stone-800 active:scale-95 disabled:opacity-50 inline-flex items-center gap-2"
+            className="btn-primary"
           >
             {submit.isPending && <Spinner size={14} />}
             {submit.isPending ? 'Salvando…' : isEditing ? 'Salvar' : 'Criar'}
