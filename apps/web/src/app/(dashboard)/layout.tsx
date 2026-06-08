@@ -73,7 +73,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   return (
     <div className="min-h-screen flex bg-surface text-ink">
       {/* ============================== SIDEBAR ============================== */}
-      <aside className="w-64 flex flex-col border-r border-line-soft bg-gradient-to-b from-[#1a140d] via-[#221810] to-[#0f0a06] text-sand-100 relative overflow-hidden">
+      <aside className="w-64 flex flex-col border-r border-line-soft bg-gradient-to-b from-[#0a0a0c] via-[#18181b] to-[#050507] text-zinc-100 relative overflow-hidden">
         {/* Ornamento de fundo */}
         <div
           aria-hidden
@@ -87,15 +87,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         {/* Logo */}
         <div className="px-5 pt-6 pb-5 border-b border-white/5 relative">
           <Link href="/" className="flex items-center gap-3 group">
-            <div className="relative w-11 h-11 rounded-xl bg-gradient-to-br from-gold-300 via-brand-400 to-brand-700 flex items-center justify-center text-[#1a140d] shadow-lg shadow-brand-900/50 group-hover:shadow-gold-400/20 transition-all duration-300 group-hover:scale-[1.04]">
+            <div className="relative w-11 h-11 rounded-xl bg-gradient-to-br from-gold-300 via-brand-400 to-brand-700 flex items-center justify-center text-[#0a0a0c] shadow-lg shadow-brand-900/50 group-hover:shadow-gold-400/20 transition-all duration-300 group-hover:scale-[1.04]">
               <span className="font-serif font-bold text-lg" style={{ fontFeatureSettings: '"dlig"' }}>A</span>
               <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-gold-300 shadow-md shadow-gold-500/60 animate-pulse" />
             </div>
             <div className="leading-tight">
-              <div className="font-serif text-[1.15rem] tracking-serif text-sand-50 group-hover:text-gold-200 transition-colors">
+              <div className="font-serif text-[1.15rem] tracking-serif text-zinc-50 group-hover:text-gold-200 transition-colors">
                 Adelina
               </div>
-              <div className="text-[10px] text-sand-300/70 uppercase tracking-[0.2em] -mt-0.5">
+              <div className="text-[10px] text-zinc-300/70 uppercase tracking-[0.2em] -mt-0.5">
                 {data?.tenant.name ?? 'Pousadas'}
               </div>
             </div>
@@ -105,19 +105,19 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         {/* Busca */}
         <button
           onClick={openCmdk}
-          className="mx-3 mt-4 flex items-center gap-2.5 px-3 py-2.5 text-sm rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-sand-300 hover:text-sand-50 border border-white/5 hover:border-white/10 transition-all group"
+          className="mx-3 mt-4 flex items-center gap-2.5 px-3 py-2.5 text-sm rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-zinc-300 hover:text-zinc-50 border border-white/5 hover:border-white/10 transition-all group"
         >
           <Search className="w-3.5 h-3.5 group-hover:text-gold-300 transition-colors" />
           <span className="flex-1 text-left text-xs">Buscar…</span>
           <span className="flex items-center gap-0.5">
-            <kbd className="!bg-white/5 !text-sand-400 !border-white/10">⌘</kbd>
-            <kbd className="!bg-white/5 !text-sand-400 !border-white/10">K</kbd>
+            <kbd className="!bg-white/5 !text-zinc-400 !border-white/10">⌘</kbd>
+            <kbd className="!bg-white/5 !text-zinc-400 !border-white/10">K</kbd>
           </span>
         </button>
 
         {/* Navegação */}
         <nav className="flex-1 px-3 py-5 space-y-0.5 relative">
-          <div className="px-3 pb-2 text-[10px] uppercase text-sand-400/50 font-semibold tracking-[0.18em]">
+          <div className="px-3 pb-2 text-[10px] uppercase text-zinc-400/50 font-semibold tracking-[0.18em]">
             Operação
           </div>
           {navItems.map((item) => (
@@ -148,7 +148,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         {/* Rodapé */}
         <div className="px-3 py-3 border-t border-white/5 space-y-2 relative">
           <LogoutButton />
-          <div className="text-[10px] text-sand-500 px-3 flex items-center justify-between">
+          <div className="text-[10px] text-zinc-500 px-3 flex items-center justify-between">
             <span className="font-mono">v0.2.0</span>
             <span className="flex items-center gap-1">
               <span className="ornament">◆</span>
@@ -228,10 +228,10 @@ function NavLink({
       className={cn(
         'relative flex items-center gap-3 px-3 py-2.5 rounded-lg text-[13.5px] transition-all duration-200 group',
         active
-          ? 'text-sand-50 font-medium'
+          ? 'text-zinc-50 font-medium'
           : accent
             ? 'text-gold-200/80 hover:text-gold-100 hover:bg-white/[0.04]'
-            : 'text-sand-300/80 hover:text-sand-50 hover:bg-white/[0.04]',
+            : 'text-zinc-300/80 hover:text-zinc-50 hover:bg-white/[0.04]',
       )}
     >
       {active && (
@@ -258,7 +258,7 @@ function NavLink({
             ? accent
               ? 'text-gold-300'
               : 'text-gold-300'
-            : 'text-sand-400/60 group-hover:text-sand-200',
+            : 'text-zinc-400/60 group-hover:text-zinc-200',
         )}
       />
       <span className="relative z-10 flex-1">{item.label}</span>
@@ -266,7 +266,7 @@ function NavLink({
         <motion.span
           initial={{ opacity: 0, x: -4 }}
           animate={{ opacity: 1, x: 0 }}
-          className="relative z-10 text-[10px] uppercase tracking-wider text-sand-400/60 font-medium"
+          className="relative z-10 text-[10px] uppercase tracking-wider text-zinc-400/60 font-medium"
         >
           {item.hint}
         </motion.span>

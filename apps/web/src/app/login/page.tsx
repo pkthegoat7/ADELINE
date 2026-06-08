@@ -109,7 +109,7 @@ function LoginShell({ children, loading }: { children?: React.ReactNode; loading
       />
       <div className="relative w-full max-w-sm surface-card p-7 shadow-modal space-y-5 animate-scale-in glow-border">
         <div className="flex items-center gap-3 pb-1">
-          <div className="relative w-12 h-12 rounded-xl bg-gradient-to-br from-gold-300 via-brand-400 to-brand-700 flex items-center justify-center text-[#1a140d] shadow-md shadow-brand-900/30">
+          <div className="relative w-12 h-12 rounded-xl bg-gradient-to-br from-gold-300 via-brand-400 to-brand-700 flex items-center justify-center text-[#0a0a0c] shadow-md shadow-brand-900/30">
             <span className="font-serif font-bold text-lg">A</span>
             <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-gold-300 shadow-md shadow-gold-500/60 animate-pulse" />
           </div>
