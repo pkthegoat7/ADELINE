@@ -105,8 +105,8 @@ export default function DashboardPage() {
             <span className="ornament">◆</span>
             <span>Hoje</span>
           </div>
-          <h2 className="font-serif text-3xl tracking-serif text-ink capitalize">
-            {todayLabel}
+          <h2 className="font-serif text-3xl tracking-serif text-ink">
+            {todayLabel.charAt(0).toUpperCase() + todayLabel.slice(1)}
           </h2>
         </div>
         <div className="flex items-center gap-2 text-xs text-ink-muted">
