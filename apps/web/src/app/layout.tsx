@@ -39,10 +39,28 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             __html: `
               (function() {
                 try {
+                  var h = document.documentElement;
                   var t = localStorage.getItem('adelina-theme');
                   var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-                  var dark = t === 'dark' || (!t && prefersDark);
-                  if (dark) document.documentElement.classList.add('dark');
+                  var dark;
+                  if (t === 'dark') dark = true;
+                  else if (t === 'light') dark = false;
+                  else dark = prefersDark;
+                  if (dark) h.classList.add('dark');
+
+                  var ap = localStorage.getItem('adelina-appearance');
+                  var brand = 'terracota', density = 'normal', radius = 'default';
+                  if (ap) {
+                    var p = JSON.parse(ap);
+                    if (p && typeof p === 'object') {
+                      if (p.brand) brand = p.brand;
+                      if (p.density) density = p.density;
+                      if (p.radius) radius = p.radius;
+                    }
+                  }
+                  h.setAttribute('data-brand', brand);
+                  h.setAttribute('data-density', density);
+                  h.setAttribute('data-radius', radius);
                 } catch(_) {}
               })();
             `,

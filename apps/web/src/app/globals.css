@@ -21,10 +21,15 @@
   --line: 235 225 205;               /* sand-200 */
   --line-soft: 245 239 228;          /* sand-100 */
 
-  /* Brand */
+  /* Brand — defaults sobrescritos por data-brand */
   --brand: 194 115 58;               /* terracota brand-500 */
   --brand-soft: 245 230 211;         /* brand-100 */
+  --brand-deep: 168 90 44;           /* brand-600 — usado em gradientes */
   --gold: 210 133 24;                /* gold-500 */
+
+  /* Radius / density — sobrescritos por data-radius / data-density */
+  --radius-card: 14px;
+  --radius-control: 8px;
 
   /* Status (mantidos próximos do padrão pra clareza semântica) */
   --success: 22 163 74;
@@ -50,10 +55,43 @@
 
   --brand: 209 143 87;               /* brand-400 — mais leve no escuro */
   --brand-soft: 65 45 30;            /* tom escuro pra fundos brand */
+  --brand-deep: 168 90 44;
   --gold: 237 190 82;                /* gold-300 — brilha mais */
 
   --shadow-color: 0 0 0;
 }
+
+/* =================================================================
+   BRAND PRESETS — sobrescrevem --brand/--brand-soft/--brand-deep
+   ================================================================= */
+html[data-brand="ocean"]      { --brand: 37 99 235;  --brand-soft: 219 234 254; --brand-deep: 29 78 216; }
+html[data-brand="ocean"].dark { --brand: 96 165 250; --brand-soft: 30 58 138;  --brand-deep: 37 99 235; }
+
+html[data-brand="emerald"]      { --brand: 5 150 105;  --brand-soft: 209 250 229; --brand-deep: 4 120 87; }
+html[data-brand="emerald"].dark { --brand: 52 211 153; --brand-soft: 6 78 59;     --brand-deep: 5 150 105; }
+
+html[data-brand="violet"]      { --brand: 124 58 237;  --brand-soft: 237 233 254; --brand-deep: 91 33 182; }
+html[data-brand="violet"].dark { --brand: 167 139 250; --brand-soft: 76 29 149;   --brand-deep: 124 58 237; }
+
+html[data-brand="rose"]      { --brand: 225 29 72;   --brand-soft: 255 228 230; --brand-deep: 190 18 60; }
+html[data-brand="rose"].dark { --brand: 251 113 133; --brand-soft: 136 19 55;   --brand-deep: 225 29 72; }
+
+html[data-brand="slate"]      { --brand: 71 85 105;   --brand-soft: 226 232 240; --brand-deep: 51 65 85; }
+html[data-brand="slate"].dark { --brand: 148 163 184; --brand-soft: 30 41 59;    --brand-deep: 100 116 139; }
+
+/* =================================================================
+   DENSITY — escala base via font-size
+   ================================================================= */
+html[data-density="compact"]      { font-size: 14px; }
+html[data-density="normal"]       { font-size: 16px; }
+html[data-density="comfortable"]  { font-size: 17.5px; }
+
+/* =================================================================
+   RADIUS
+   ================================================================= */
+html[data-radius="sharp"]   { --radius-card: 4px;  --radius-control: 4px; }
+html[data-radius="default"] { --radius-card: 14px; --radius-control: 8px; }
+html[data-radius="soft"]    { --radius-card: 20px; --radius-control: 12px; }
 
 /* =================================================================
    BASE
@@ -88,7 +126,7 @@ body::before {
 .dark body::before {
   background-image:
     radial-gradient(ellipse 80% 60% at 20% 0%, rgb(101 82 59 / 0.15), transparent 60%),
-    radial-gradient(ellipse 60% 50% at 100% 100%, rgb(168 90 44 / 0.10), transparent 60%);
+    radial-gradient(ellipse 60% 50% at 100% 100%, rgb(var(--brand-deep) / 0.10), transparent 60%);
 }
 
 /* Garante que o conteúdo fica acima do bg gradient */
@@ -381,7 +419,7 @@ kbd, .kbd {
   background: rgb(var(--surface-elevated));
   border: 1px solid rgb(var(--line));
   color: rgb(var(--ink));
-  border-radius: 8px;
+  border-radius: var(--radius-control);
   padding: 0.5rem 0.75rem;
   font-size: 0.875rem;
   width: 100%;
@@ -407,18 +445,18 @@ kbd, .kbd {
   justify-content: center;
   gap: 0.5rem;
   padding: 0.55rem 1rem;
-  border-radius: 8px;
+  border-radius: var(--radius-control);
   font-size: 0.875rem;
   font-weight: 500;
   color: white;
-  background: linear-gradient(180deg, rgb(var(--brand)), rgb(168 90 44));
-  border: 1px solid rgb(168 90 44);
+  background: linear-gradient(180deg, rgb(var(--brand)), rgb(var(--brand-deep)));
+  border: 1px solid rgb(var(--brand-deep));
   box-shadow: 0 1px 0 rgb(255 255 255 / 0.15) inset, 0 1px 2px rgb(var(--shadow-color) / 0.20);
   transition: transform 150ms ease, box-shadow 200ms ease, filter 150ms ease;
 }
 .btn-primary:hover {
   filter: brightness(1.05);
-  box-shadow: 0 1px 0 rgb(255 255 255 / 0.18) inset, 0 4px 12px rgb(168 90 44 / 0.30);
+  box-shadow: 0 1px 0 rgb(255 255 255 / 0.18) inset, 0 4px 12px rgb(var(--brand-deep) / 0.30);
   transform: translateY(-1px);
 }
 .btn-primary:active {
@@ -438,7 +476,7 @@ kbd, .kbd {
   justify-content: center;
   gap: 0.5rem;
   padding: 0.55rem 1rem;
-  border-radius: 8px;
+  border-radius: var(--radius-control);
   font-size: 0.875rem;
   font-weight: 500;
   color: rgb(var(--ink));
@@ -478,7 +516,7 @@ kbd, .kbd {
 .surface-card {
   background: rgb(var(--surface-elevated));
   border: 1px solid rgb(var(--line));
-  border-radius: 12px;
+  border-radius: var(--radius-card);
 }
 
 /* Glow border sutil pra cards destacados */
@@ -626,7 +664,7 @@ kbd, .kbd,
   position: relative;
   background: rgb(var(--surface-elevated));
   border: 1px solid rgb(var(--line));
-  border-radius: 14px;
+  border-radius: var(--radius-card);
   box-shadow:
     0 1px 0 rgb(255 255 255 / 0.6) inset,
     0 1px 2px rgb(var(--shadow-color) / 0.04),
@@ -660,11 +698,11 @@ kbd, .kbd,
   font-weight: 500;
   letter-spacing: -0.005em;
   background:
-    linear-gradient(180deg, rgb(var(--brand)) 0%, rgb(168 90 44) 100%);
+    linear-gradient(180deg, rgb(var(--brand)) 0%, rgb(var(--brand-deep)) 100%);
   box-shadow:
     0 1px 0 rgb(255 255 255 / 0.22) inset,
     0 -1px 0 rgb(0 0 0 / 0.12) inset,
-    0 4px 12px -2px rgb(168 90 44 / 0.32),
+    0 4px 12px -2px rgb(var(--brand-deep) / 0.32),
     0 1px 2px rgb(var(--shadow-color) / 0.2);
 }
 .btn-primary::after {
@@ -682,7 +720,7 @@ kbd, .kbd,
   box-shadow:
     0 1px 0 rgb(255 255 255 / 0.28) inset,
     0 -1px 0 rgb(0 0 0 / 0.14) inset,
-    0 8px 20px -2px rgb(168 90 44 / 0.42),
+    0 8px 20px -2px rgb(var(--brand-deep) / 0.42),
     0 2px 4px rgb(var(--shadow-color) / 0.22);
 }
 
@@ -837,7 +875,7 @@ main[data-page-anim] {
 }
 .dark .badge-premium {
   background:
-    linear-gradient(135deg, rgb(168 90 44 / 0.18) 0%, rgb(255 255 255 / 0.03) 100%),
+    linear-gradient(135deg, rgb(var(--brand-deep) / 0.18) 0%, rgb(255 255 255 / 0.03) 100%),
     rgb(36 28 20 / 0.6);
   box-shadow:
     0 1px 0 rgb(255 255 255 / 0.06) inset,
@@ -909,7 +947,7 @@ html { color-scheme: light dark; }
 
 /* bg-stone-900 (botao primario hardcoded) -> brand premium */
 .dark .bg-stone-900 {
-  background: linear-gradient(180deg, rgb(var(--brand)), rgb(168 90 44));
+  background: linear-gradient(180deg, rgb(var(--brand)), rgb(var(--brand-deep)));
   color: white;
 }
 .dark .hover\:bg-stone-800:hover {

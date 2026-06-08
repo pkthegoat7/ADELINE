@@ -32,13 +32,14 @@ enum TenantStatus {
 }
 
 model Tenant {
-  id        String       @id @default(uuid()) @db.Uuid
-  name      String
-  slug      String       @unique
-  plan      TenantPlan   @default(trial)
-  status    TenantStatus @default(active)
-  createdAt DateTime     @default(now()) @map("created_at")
-  updatedAt DateTime     @updatedAt @map("updated_at")
+  id         String       @id @default(uuid()) @db.Uuid
+  name       String
+  slug       String       @unique
+  plan       TenantPlan   @default(trial)
+  status     TenantStatus @default(active)
+  appearance Json?        @map("appearance")
+  createdAt  DateTime     @default(now()) @map("created_at")
+  updatedAt  DateTime     @updatedAt @map("updated_at")
 
   users           User[]
   properties      Property[]
