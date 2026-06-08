@@ -152,7 +152,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <span className="font-mono">v0.2.0</span>
             <span className="flex items-center gap-1">
               <span className="ornament">◆</span>
-              <span className="tracking-wider">BOUTIQUE</span>
+              <span className="tracking-wider">ADELINA</span>
             </span>
           </div>
         </div>

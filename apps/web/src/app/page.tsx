@@ -41,7 +41,7 @@ export default function Home() {
         {/* Eyebrow */}
         <div className="eyebrow flex items-center justify-center gap-2 mb-3">
           <span className="ornament">◆</span>
-          <span>Property Management · Boutique</span>
+          <span>Property Management System</span>
           <span className="ornament">◆</span>
         </div>
 
@@ -57,7 +57,7 @@ export default function Home() {
 
         {/* Tagline */}
         <p className="text-base sm:text-lg text-ink-soft leading-relaxed max-w-xl mx-auto">
-          Gestão completa para pousadas e hotéis boutique, com channel manager
+          Gestão completa para pousadas e hotéis, com channel manager
           bidirecional integrado a Airbnb e Booking.
         </p>
 

@@ -25,7 +25,7 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'Adelina PMS — Gestão para pousadas boutique',
+  title: 'Adelina — Gestão para pousadas',
   description: 'Property Management System para pousadas e hotéis de hospitalidade artesanal.',
 };
 

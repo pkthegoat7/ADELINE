@@ -116,7 +116,7 @@ function LoginShell({ children, loading }: { children?: React.ReactNode; loading
           <div>
             <div className="font-serif text-xl tracking-serif text-ink">Adelina</div>
             <p className="text-[10px] uppercase tracking-[0.2em] text-ink-muted -mt-0.5">
-              Pousadas boutique
+              Pousadas e hotéis
             </p>
           </div>
         </div>
