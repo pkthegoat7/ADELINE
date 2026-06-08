@@ -21,10 +21,22 @@
   --line: 235 225 205;               /* sand-200 */
   --line-soft: 245 239 228;          /* sand-100 */
 
-  /* Brand — defaults sobrescritos por data-brand */
-  --brand: 194 115 58;               /* terracota brand-500 */
-  --brand-soft: 245 230 211;         /* brand-100 */
-  --brand-deep: 168 90 44;           /* brand-600 — usado em gradientes */
+  /* Paleta brand completa (terracota — default) — 11 shades */
+  --brand-50:  251 245 238;
+  --brand-100: 245 230 211;
+  --brand-200: 236 206 170;
+  --brand-300: 223 176 125;
+  --brand-400: 209 143 87;
+  --brand-500: 194 115 58;
+  --brand-600: 168 90 44;
+  --brand-700: 135 69 40;
+  --brand-800: 110 58 37;
+  --brand-900: 90 49 32;
+  --brand-950: 50 24 16;
+  /* Aliases semanticos (sobrescritos no .dark pra brilho maior) */
+  --brand: var(--brand-500);
+  --brand-soft: var(--brand-100);
+  --brand-deep: var(--brand-600);
   --gold: 210 133 24;                /* gold-500 */
 
   /* Radius / density — sobrescritos por data-radius / data-density */
@@ -53,31 +65,89 @@
   --line: 65 52 38;                  /* sand-800 escurecido */
   --line-soft: 46 37 26;             /* sand-950 */
 
-  --brand: 209 143 87;               /* brand-400 — mais leve no escuro */
-  --brand-soft: 65 45 30;            /* tom escuro pra fundos brand */
-  --brand-deep: 168 90 44;
+  /* Dark mode usa shade mais clara como ativo, e mais escura como fundo soft */
+  --brand: var(--brand-400);
+  --brand-soft: var(--brand-900);
+  --brand-deep: var(--brand-500);
   --gold: 237 190 82;                /* gold-300 — brilha mais */
 
   --shadow-color: 0 0 0;
 }
 
 /* =================================================================
-   BRAND PRESETS — sobrescrevem --brand/--brand-soft/--brand-deep
+   BRAND PRESETS — paleta completa 11 tons (data-brand troca tudo)
+   Aliases --brand/--brand-soft/--brand-deep seguem via var() em :root
    ================================================================= */
-html[data-brand="ocean"]      { --brand: 37 99 235;  --brand-soft: 219 234 254; --brand-deep: 29 78 216; }
-html[data-brand="ocean"].dark { --brand: 96 165 250; --brand-soft: 30 58 138;  --brand-deep: 37 99 235; }
 
-html[data-brand="emerald"]      { --brand: 5 150 105;  --brand-soft: 209 250 229; --brand-deep: 4 120 87; }
-html[data-brand="emerald"].dark { --brand: 52 211 153; --brand-soft: 6 78 59;     --brand-deep: 5 150 105; }
+html[data-brand="ocean"] {
+  --brand-50:  239 246 255;
+  --brand-100: 219 234 254;
+  --brand-200: 191 219 254;
+  --brand-300: 147 197 253;
+  --brand-400: 96 165 250;
+  --brand-500: 59 130 246;
+  --brand-600: 37 99 235;
+  --brand-700: 29 78 216;
+  --brand-800: 30 64 175;
+  --brand-900: 30 58 138;
+  --brand-950: 23 37 84;
+}
 
-html[data-brand="violet"]      { --brand: 124 58 237;  --brand-soft: 237 233 254; --brand-deep: 91 33 182; }
-html[data-brand="violet"].dark { --brand: 167 139 250; --brand-soft: 76 29 149;   --brand-deep: 124 58 237; }
+html[data-brand="emerald"] {
+  --brand-50:  236 253 245;
+  --brand-100: 209 250 229;
+  --brand-200: 167 243 208;
+  --brand-300: 110 231 183;
+  --brand-400: 52 211 153;
+  --brand-500: 16 185 129;
+  --brand-600: 5 150 105;
+  --brand-700: 4 120 87;
+  --brand-800: 6 95 70;
+  --brand-900: 6 78 59;
+  --brand-950: 2 44 34;
+}
 
-html[data-brand="rose"]      { --brand: 225 29 72;   --brand-soft: 255 228 230; --brand-deep: 190 18 60; }
-html[data-brand="rose"].dark { --brand: 251 113 133; --brand-soft: 136 19 55;   --brand-deep: 225 29 72; }
+html[data-brand="violet"] {
+  --brand-50:  245 243 255;
+  --brand-100: 237 233 254;
+  --brand-200: 221 214 254;
+  --brand-300: 196 181 253;
+  --brand-400: 167 139 250;
+  --brand-500: 139 92 246;
+  --brand-600: 124 58 237;
+  --brand-700: 109 40 217;
+  --brand-800: 91 33 182;
+  --brand-900: 76 29 149;
+  --brand-950: 46 16 101;
+}
 
-html[data-brand="slate"]      { --brand: 71 85 105;   --brand-soft: 226 232 240; --brand-deep: 51 65 85; }
-html[data-brand="slate"].dark { --brand: 148 163 184; --brand-soft: 30 41 59;    --brand-deep: 100 116 139; }
+html[data-brand="rose"] {
+  --brand-50:  255 241 242;
+  --brand-100: 255 228 230;
+  --brand-200: 254 205 211;
+  --brand-300: 253 164 175;
+  --brand-400: 251 113 133;
+  --brand-500: 244 63 94;
+  --brand-600: 225 29 72;
+  --brand-700: 190 18 60;
+  --brand-800: 159 18 57;
+  --brand-900: 136 19 55;
+  --brand-950: 76 5 25;
+}
+
+html[data-brand="slate"] {
+  --brand-50:  248 250 252;
+  --brand-100: 241 245 249;
+  --brand-200: 226 232 240;
+  --brand-300: 203 213 225;
+  --brand-400: 148 163 184;
+  --brand-500: 100 116 139;
+  --brand-600: 71 85 105;
+  --brand-700: 51 65 85;
+  --brand-800: 30 41 59;
+  --brand-900: 15 23 42;
+  --brand-950: 2 6 23;
+}
 
 /* =================================================================
    DENSITY — escala base via font-size
