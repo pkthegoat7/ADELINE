@@ -14,7 +14,7 @@ async function bootstrap() {
     new FastifyAdapter({
       logger: false,
       trustProxy: true,
-      bodyLimit: 1_048_576, // 1MB — bloqueia payloads gigantes
+      bodyLimit: 12_582_912, // 12MB — comporta documento do hóspede em base64 (~8MB de arquivo)
     }),
   );
 

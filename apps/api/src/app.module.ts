@@ -16,6 +16,8 @@ import { GuestsModule } from './modules/guests/guests.module';
 import { ChannelManagerModule } from './modules/channel-manager/channel-manager.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { SearchModule } from './modules/search/search.module';
+import { WhatsappModule } from './modules/whatsapp/whatsapp.module';
+import { GuestLinksModule } from './modules/guest-links/guest-links.module';
 
 @Module({
   imports: [
@@ -41,6 +43,8 @@ import { SearchModule } from './modules/search/search.module';
     ChannelManagerModule,
     DashboardModule,
     SearchModule,
+    WhatsappModule,
+    GuestLinksModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })

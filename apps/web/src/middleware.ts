@@ -36,8 +36,9 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith('/redefinir-senha');
   const isPublicAsset = pathname.startsWith('/_next') || pathname.startsWith('/favicon');
   const isLanding = pathname === '/';
+  const isPublicForm = pathname.startsWith('/cadastro');
 
-  if (!user && !isAuthPage && !isPublicAsset && !isLanding) {
+  if (!user && !isAuthPage && !isPublicAsset && !isLanding && !isPublicForm) {
     const url = request.nextUrl.clone();
     url.pathname = '/login';
     url.searchParams.set('next', pathname);

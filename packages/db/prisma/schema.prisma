@@ -41,10 +41,12 @@ model Tenant {
   createdAt  DateTime     @default(now()) @map("created_at")
   updatedAt  DateTime     @updatedAt @map("updated_at")
 
-  users           User[]
-  properties      Property[]
-  guests          Guest[]
-  reservations    Reservation[]
+  users                  User[]
+  properties             Property[]
+  guests                 Guest[]
+  reservations           Reservation[]
+  whatsappInstance       WhatsappInstance?
+  guestRegistrationLinks GuestRegistrationLink[]
 
   @@map("tenants")
 }
@@ -246,22 +248,29 @@ enum DocumentType {
 }
 
 model Guest {
-  id           String       @id @default(uuid()) @db.Uuid
-  tenantId     String       @map("tenant_id") @db.Uuid
-  fullName     String       @map("full_name")
-  documentType DocumentType @default(cpf) @map("document_type")
-  document     String?
-  email        String?
-  phone        String?
-  birthDate    DateTime?    @map("birth_date") @db.Date
-  nationality  String?
-  address      Json?
-  notes        String?
-  marketing    Boolean      @default(false)
-  createdAt    DateTime     @default(now()) @map("created_at")
-  updatedAt    DateTime     @updatedAt @map("updated_at")
+  id               String       @id @default(uuid()) @db.Uuid
+  tenantId         String       @map("tenant_id") @db.Uuid
+  fullName         String       @map("full_name")
+  documentType     DocumentType @default(cpf) @map("document_type")
+  document         String?
+  email            String?
+  phone            String?
+  birthDate        DateTime?    @map("birth_date") @db.Date
+  nationality      String?
+  address          Json?
+  notes            String?
+  marketing        Boolean      @default(false)
+  // Documento anexado pelo hóspede via ficha pública (path no Supabase Storage)
+  documentFilePath String?      @map("document_file_path")
+  // Acompanhantes: hóspedes vinculados ao hóspede principal da ficha
+  primaryGuestId   String?      @map("primary_guest_id") @db.Uuid
+  createdAt        DateTime     @default(now()) @map("created_at")
+  updatedAt        DateTime     @updatedAt @map("updated_at")
 
-  tenant            Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant            Tenant                  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  primaryGuest      Guest?                  @relation("GuestCompanions", fields: [primaryGuestId], references: [id], onDelete: SetNull)
+  companions        Guest[]                 @relation("GuestCompanions")
+  registrationLinks GuestRegistrationLink[]
   reservations      Reservation[]
   reservationGuests ReservationGuest[]
 
@@ -269,6 +278,54 @@ model Guest {
   @@index([tenantId, document])
   @@index([tenantId, email])
   @@map("guests")
+}
+
+// ════════════════════════════════════════════════════════════════
+// WHATSAPP (Evolution API) + FICHA DE CADASTRO PÚBLICA
+// ════════════════════════════════════════════════════════════════
+
+enum WhatsappInstanceStatus {
+  disconnected
+  connecting
+  connected
+}
+
+model WhatsappInstance {
+  id           String                 @id @default(uuid()) @db.Uuid
+  tenantId     String                 @unique @map("tenant_id") @db.Uuid
+  instanceName String                 @unique @map("instance_name")
+  status       WhatsappInstanceStatus @default(disconnected)
+  phoneNumber  String?                @map("phone_number")
+  createdAt    DateTime               @default(now()) @map("created_at")
+  updatedAt    DateTime               @updatedAt @map("updated_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@map("whatsapp_instances")
+}
+
+enum RegistrationLinkStatus {
+  pending
+  completed
+  expired
+}
+
+model GuestRegistrationLink {
+  id          String                 @id @default(uuid()) @db.Uuid
+  tenantId    String                 @map("tenant_id") @db.Uuid
+  token       String                 @unique
+  phone       String
+  status      RegistrationLinkStatus @default(pending)
+  guestId     String?                @map("guest_id") @db.Uuid
+  expiresAt   DateTime               @map("expires_at")
+  completedAt DateTime?              @map("completed_at")
+  createdAt   DateTime               @default(now()) @map("created_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  guest  Guest? @relation(fields: [guestId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, status])
+  @@map("guest_registration_links")
 }
 
 enum ReservationStatus {

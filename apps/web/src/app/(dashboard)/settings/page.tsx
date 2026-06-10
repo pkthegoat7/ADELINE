@@ -6,6 +6,7 @@ import { Check, Monitor, Moon, Sun } from 'lucide-react';
 import { toast } from 'sonner';
 import { api } from '@/lib/api';
 import { cn } from '@/lib/cn';
+import { WhatsappSettings } from '@/components/WhatsappSettings';
 import { useTheme, type ThemePref } from '@/lib/theme';
 import {
   BRAND_PRESETS,
@@ -52,6 +53,7 @@ export default function SettingsPage() {
 
       {data && (
         <div className="space-y-4">
+          <WhatsappSettings />
           <AppearanceSection serverAppearance={data.tenant.appearance} />
 
           <section className="surface-card p-5">
