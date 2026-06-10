@@ -21,6 +21,7 @@ import {
   X,
   type LucideIcon,
 } from 'lucide-react';
+import { AdelinaMark } from '@/components/brand/Logo';
 import { LogoutButton } from '@/components/LogoutButton';
 import { CommandPalette } from '@/components/CommandPalette';
 import { ReservationDrawer } from '@/components/ReservationDrawer';
@@ -132,8 +133,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         {/* Logo */}
         <div className="px-5 pt-6 pb-5 border-b border-white/5 relative">
           <Link href="/" className="flex items-center gap-3 group">
-            <div className="relative w-11 h-11 rounded-xl bg-gradient-to-br from-gold-300 via-brand-400 to-brand-700 flex items-center justify-center text-[#0a0a0c] shadow-lg shadow-brand-900/50 group-hover:shadow-gold-400/20 transition-all duration-300 group-hover:scale-[1.04]">
-              <span className="font-serif font-bold text-lg" style={{ fontFeatureSettings: '"dlig"' }}>A</span>
+            <div className="relative w-11 h-11 rounded-xl shadow-lg shadow-brand-900/50 group-hover:shadow-gold-400/20 transition-all duration-300 group-hover:scale-[1.04]">
+              <AdelinaMark className="w-11 h-11" />
               <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-gold-300 shadow-md shadow-gold-500/60 animate-pulse" />
             </div>
             <div className="leading-tight">

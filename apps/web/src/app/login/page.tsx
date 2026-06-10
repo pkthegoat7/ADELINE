@@ -13,6 +13,7 @@ import {
   Shield,
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
+import { AdelinaGlyph, AdelinaMark } from '@/components/brand/Logo';
 
 export default function LoginPage() {
   return (
@@ -158,7 +159,7 @@ function LoginShell({ children, loading }: { children?: React.ReactNode; loading
         <div className="relative">
           <Link href="/" className="inline-flex items-center gap-2.5">
             <span className="w-9 h-9 rounded-xl bg-white/15 backdrop-blur-sm flex items-center justify-center ring-1 ring-white/25">
-              <span className="font-display font-bold text-lg leading-none text-white">A</span>
+              <AdelinaGlyph className="w-6 h-6 text-white" />
             </span>
             <span className="font-display font-bold text-xl tracking-tight">Adelina</span>
           </Link>
@@ -218,9 +219,7 @@ function LoginShell({ children, loading }: { children?: React.ReactNode; loading
         <div className="relative w-full max-w-sm animate-scale-in">
           {/* Logo no mobile (painel esquerdo some) */}
           <div className="flex lg:hidden justify-center mb-6">
-            <span className="w-12 h-12 rounded-xl bg-gradient-to-br from-gold-300 via-brand-400 to-brand-700 flex items-center justify-center text-[#0a0a0c] shadow-md">
-              <span className="font-display font-bold text-xl leading-none">A</span>
-            </span>
+            <AdelinaMark className="w-12 h-12 rounded-xl shadow-md" />
           </div>
 
           <div className="text-center lg:text-left mb-7">

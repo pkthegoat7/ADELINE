@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { AdelinaMark } from '@/components/brand/Logo';
 import {
   ArrowRight,
   BedDouble,
@@ -82,9 +83,7 @@ export default function Home() {
       <header className="fixed top-0 inset-x-0 z-50 glass-thin">
         <nav className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2.5">
-            <span className="w-8 h-8 rounded-lg bg-gradient-to-br from-gold-300 via-brand-400 to-brand-700 flex items-center justify-center text-[#0a0a0c] shadow-md">
-              <span className="font-display font-bold text-base leading-none">A</span>
-            </span>
+            <AdelinaMark className="w-8 h-8 rounded-lg shadow-md" />
             <span className="font-display font-bold text-lg text-ink tracking-tight">
               Adelina
             </span>
@@ -354,9 +353,7 @@ export default function Home() {
       <footer className="relative border-t border-line/60">
         <div className="max-w-6xl mx-auto px-6 py-8 flex flex-col sm:flex-row items-center justify-between gap-3">
           <div className="flex items-center gap-2.5">
-            <span className="w-6 h-6 rounded-md bg-gradient-to-br from-gold-300 via-brand-400 to-brand-700 flex items-center justify-center text-[#0a0a0c]">
-              <span className="font-display font-bold text-xs leading-none">A</span>
-            </span>
+            <AdelinaMark className="w-6 h-6 rounded-md" />
             <span className="font-display font-semibold text-sm text-ink">Adelina</span>
           </div>
           <div className="flex items-center gap-3 text-[10px] text-ink-muted uppercase tracking-[0.22em] font-medium">

@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#f0c46a"/>
+      <stop offset=".5" stop-color="#d18f57"/>
+      <stop offset="1" stop-color="#8a4528"/>
+    </linearGradient>
+    <linearGradient id="s" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff" stop-opacity=".32"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="14" fill="url(#g)"/>
+  <rect width="64" height="32" rx="14" fill="url(#s)"/>
+  <circle cx="32" cy="21.5" r="4.2" fill="#ffd97a"/>
+  <path fill="#2a1709" fill-rule="evenodd" d="M32 11C34.4 11 36.6 12.4 37.6 14.6L51.4 45.8C53.2 49.9 50.2 54.5 45.7 54.5L18.3 54.5C13.8 54.5 10.8 49.9 12.6 45.8L26.4 14.6C27.4 12.4 29.6 11 32 11ZM32 31C36.7 31 40.5 34.8 40.5 39.5L40.5 54.5L23.5 54.5L23.5 39.5C23.5 34.8 27.3 31 32 31ZM34.6 21.5C34.6 20.06 33.44 18.9 32 18.9C30.56 18.9 29.4 20.06 29.4 21.5C29.4 22.94 30.56 24.1 32 24.1C33.44 24.1 34.6 22.94 34.6 21.5Z"/>
+</svg>
