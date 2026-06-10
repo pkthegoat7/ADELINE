@@ -35,8 +35,9 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith('/esqueci-senha') ||
     pathname.startsWith('/redefinir-senha');
   const isPublicAsset = pathname.startsWith('/_next') || pathname.startsWith('/favicon');
+  const isLanding = pathname === '/';
 
-  if (!user && !isAuthPage && !isPublicAsset) {
+  if (!user && !isAuthPage && !isPublicAsset && !isLanding) {
     const url = request.nextUrl.clone();
     url.pathname = '/login';
     url.searchParams.set('next', pathname);
