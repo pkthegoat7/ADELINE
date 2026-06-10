@@ -2,7 +2,7 @@
   "$schema": "https://railway.app/railway.schema.json",
   "build": {
     "builder": "NIXPACKS",
-    "buildCommand": "pnpm install --frozen-lockfile && pnpm --filter @adelina/web build"
+    "buildCommand": "pnpm install --frozen-lockfile --prod=false && pnpm --filter @adelina/web build"
   },
   "deploy": {
     "startCommand": "pnpm --filter @adelina/web exec next start -p ${PORT}",
