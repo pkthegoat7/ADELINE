@@ -14,7 +14,8 @@ export async function api<T = unknown>(
   const res = await fetch(`${BASE}/api${path}`, {
     ...rest,
     headers: {
-      'Content-Type': 'application/json',
+      // Content-Type só quando há corpo: Fastify rejeita JSON anunciado com body vazio
+      ...(rest.body ? { 'Content-Type': 'application/json' } : {}),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...headers,
     },
