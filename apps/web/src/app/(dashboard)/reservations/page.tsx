@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, Pencil, Trash2, Search, Filter, MessageCircle } from 'lucide-react';
+import { Plus, Pencil, Trash2, Search, Filter, MessageCircle, XCircle } from 'lucide-react';
 import { SendRegistrationLinkModal } from '@/components/SendRegistrationLinkModal';
 import { motion } from 'framer-motion';
 import { api } from '@/lib/api';
@@ -96,6 +96,30 @@ export default function ReservationsPage() {
     },
     onError: (err: Error) => toast.error('Erro ao cancelar', err.message),
   });
+
+  const remove = useMutation({
+    mutationFn: (id: string) => api(`/reservations/${id}`, { method: 'DELETE' }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['reservations'] });
+      qc.invalidateQueries({ queryKey: ['calendar'] });
+      qc.invalidateQueries({ queryKey: ['dashboard-summary'] });
+      toast.success('Reserva excluída', 'Removida do histórico e calendário liberado.');
+    },
+    onError: (err: Error) => toast.error('Erro ao excluir', err.message),
+  });
+
+  function confirmDelete(r: Reservation) {
+    if (
+      confirm(
+        `EXCLUIR DEFINITIVAMENTE a reserva ${r.code} de ${r.guest.fullName}?\n\n` +
+          `Ela some do histórico (pagamentos e fichas vinculadas também). ` +
+          `Se quiser só liberar o quarto mantendo o registro, use Cancelar.\n\n` +
+          `Essa ação não pode ser desfeita.`,
+      )
+    ) {
+      remove.mutate(r.id);
+    }
+  }
 
   function startEdit(r: Reservation) {
     setModalState({
@@ -282,9 +306,21 @@ export default function ReservationsPage() {
                             onClick={() => confirmCancel(r)}
                             disabled={isCancelled || cancel.isPending}
                             data-tip={isCancelled ? 'Já cancelada' : 'Cancelar'}
-                            className="p-1.5 text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-md disabled:opacity-30 disabled:cursor-not-allowed active:scale-95 transition-all"
+                            className="p-1.5 text-amber-500 hover:text-amber-700 hover:bg-amber-50 dark:hover:bg-amber-900/30 rounded-md disabled:opacity-30 disabled:cursor-not-allowed active:scale-95 transition-all"
                           >
                             {cancel.isPending && cancel.variables === r.id ? (
+                              <Spinner size={16} />
+                            ) : (
+                              <XCircle className="w-4 h-4" />
+                            )}
+                          </button>
+                          <button
+                            onClick={() => confirmDelete(r)}
+                            disabled={remove.isPending}
+                            data-tip="Excluir definitivamente"
+                            className="p-1.5 text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-md disabled:opacity-30 disabled:cursor-not-allowed active:scale-95 transition-all"
+                          >
+                            {remove.isPending && remove.variables === r.id ? (
                               <Spinner size={16} />
                             ) : (
                               <Trash2 className="w-4 h-4" />

@@ -1,7 +1,21 @@
-import { Body, Controller, Get, Param, Post, Put, Query } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  ForbiddenException,
+  Get,
+  Param,
+  Post,
+  Put,
+  Query,
+} from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { z } from 'zod';
-import { TenantId } from '../../common/decorators/tenant.decorator';
+import {
+  CurrentUser,
+  TenantId,
+  type AuthContext,
+} from '../../common/decorators/tenant.decorator';
 import { ReservationsService } from './reservations.service';
 
 const CreateSchema = z.object({
@@ -69,5 +83,18 @@ export class ReservationsController {
   @Post(':id/check-out')
   checkOut(@TenantId() tenantId: string, @Param('id') id: string) {
     return this.service.checkOut(tenantId, id);
+  }
+
+  /** Exclusão definitiva (some do histórico). Libera o calendário antes. */
+  @Delete(':id')
+  remove(
+    @CurrentUser() user: AuthContext,
+    @TenantId() tenantId: string,
+    @Param('id') id: string,
+  ) {
+    if (user.role !== 'owner' && user.role !== 'manager') {
+      throw new ForbiddenException('Apenas proprietário ou gerente podem excluir reservas.');
+    }
+    return this.service.remove(tenantId, id);
   }
 }

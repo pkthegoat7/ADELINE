@@ -257,6 +257,29 @@ export class ReservationsService {
     return r;
   }
 
+  /** Exclusão definitiva: libera calendário, apaga a reserva (cascade) e avisa os canais. */
+  async remove(tenantId: string, reservationId: string) {
+    const r = await this.prisma.withTenant(tenantId, (tx) =>
+      tx.reservation.findUniqueOrThrow({ where: { id: reservationId } }),
+    );
+
+    await this.availability.releaseReservation(tenantId, reservationId);
+
+    await this.prisma.withTenant(tenantId, (tx) =>
+      tx.reservation.delete({ where: { id: reservationId } }),
+    );
+
+    await this.pushQueue.add('push', {
+      tenantId,
+      propertyId: r.propertyId,
+      excludeChannel: r.channel,
+      reason: 'reservation.deleted',
+      reservationId,
+    });
+
+    return { ok: true, code: r.code };
+  }
+
   async checkIn(tenantId: string, reservationId: string) {
     return this.prisma.withTenant(tenantId, (tx) =>
       tx.reservation.update({
