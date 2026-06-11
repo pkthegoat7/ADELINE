@@ -11,7 +11,6 @@ import {
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
-import { createClient } from '@supabase/supabase-js';
 import { z } from 'zod';
 import {
   CurrentUser,
@@ -19,6 +18,7 @@ import {
   type AuthContext,
 } from '../../common/decorators/tenant.decorator';
 import { PrismaService } from '../../common/prisma/prisma.service';
+import { AuthService } from '../auth/auth.service';
 
 const ROLES = ['owner', 'manager', 'receptionist', 'housekeeper', 'readonly'] as const;
 type Role = (typeof ROLES)[number];
@@ -34,6 +34,8 @@ const UpdateSchema = z.object({
   fullName: z.string().min(1).optional(),
   role: z.enum(ROLES).optional(),
   active: z.boolean().optional(),
+  // Redefinição de senha pelo dono/gerente
+  password: z.string().min(8, 'Senha deve ter no mínimo 8 caracteres').optional(),
 });
 
 /** Papéis que cada papel pode atribuir/gerenciar. */
@@ -47,7 +49,10 @@ function canManageRole(actor: string, target: Role): boolean {
 @ApiBearerAuth()
 @Controller('team')
 export class TeamController {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly auth: AuthService,
+  ) {}
 
   @Get()
   list(@CurrentUser() user: AuthContext, @TenantId() tenantId: string) {
@@ -80,37 +85,10 @@ export class TeamController {
       throw new ForbiddenException(`Seu papel não permite criar usuários "${data.role}".`);
     }
 
-    const supabase = this.supabaseAdmin();
-    const { data: created, error } = await supabase.auth.admin.createUser({
-      email: data.email,
-      password: data.password,
-      email_confirm: true,
-      user_metadata: { full_name: data.fullName },
-    });
-    if (error || !created.user) {
-      const msg = error?.message ?? 'Falha ao criar login';
-      throw new BadRequestException(
-        /already|registered|exists/i.test(msg) ? 'Já existe um login com esse email.' : msg,
-      );
-    }
+    const existing = await this.prisma.user.findUnique({ where: { email: data.email } });
+    if (existing) throw new BadRequestException('Já existe um login com esse email.');
 
-    try {
-      return await this.prisma.user.create({
-        data: {
-          id: created.user.id,
-          tenantId,
-          email: data.email,
-          fullName: data.fullName,
-          role: data.role,
-          active: true,
-        },
-        select: { id: true, email: true, fullName: true, role: true, active: true },
-      });
-    } catch (err) {
-      // Não deixa login órfão no Auth se o insert falhar
-      await supabase.auth.admin.deleteUser(created.user.id).catch(() => undefined);
-      throw new BadRequestException(`Falha ao salvar usuário: ${(err as Error).message}`);
-    }
+    return this.auth.createLocalUser({ tenantId, ...data });
   }
 
   /** Edita papel/nome ou ativa/desativa um membro. */
@@ -137,9 +115,13 @@ export class TeamController {
       throw new ForbiddenException(`Seu papel não permite atribuir "${data.role}".`);
     }
 
+    const { password, ...rest } = data;
     return this.prisma.user.update({
       where: { id },
-      data,
+      data: {
+        ...rest,
+        ...(password ? { passwordHash: await this.auth.hashPassword(password) } : {}),
+      },
       select: { id: true, email: true, fullName: true, role: true, active: true },
     });
   }
@@ -150,11 +132,4 @@ export class TeamController {
     }
   }
 
-  private supabaseAdmin() {
-    return createClient(
-      process.env.SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      { auth: { autoRefreshToken: false, persistSession: false } },
-    );
-  }
 }

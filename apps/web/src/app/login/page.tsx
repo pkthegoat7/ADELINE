@@ -12,8 +12,9 @@ import {
   Plug,
   Shield,
 } from 'lucide-react';
-import { createClient } from '@/lib/supabase/client';
 import { AdelinaGlyph, AdelinaMark } from '@/components/brand/Logo';
+
+const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3333';
 
 export default function LoginPage() {
   return (
@@ -39,16 +40,25 @@ function LoginForm() {
     setError(null);
     setLoading(true);
 
-    const supabase = createClient();
-    const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
-
-    setLoading(false);
-    if (signInError) {
-      setError(translateError(signInError.message));
-      return;
+    try {
+      const res = await fetch(`${API}/api/auth/login`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        const msg = Array.isArray(json.message) ? json.message.join('; ') : json.message;
+        throw new Error(msg ?? 'Falha no login');
+      }
+      router.replace(next as never);
+      router.refresh();
+    } catch (err) {
+      setError(translateError((err as Error).message));
+    } finally {
+      setLoading(false);
     }
-    router.replace(next as never);
-    router.refresh();
   }
 
   return (
@@ -258,13 +268,9 @@ function BrandFeature({ icon, text }: { icon: React.ReactNode; text: string }) {
 }
 
 function translateError(msg: string): string {
-  if (msg.includes('Invalid login credentials')) return 'Email ou senha incorretos.';
-  if (msg.includes('Email not confirmed'))
-    return 'Email ainda não confirmado. Verifique sua caixa de entrada.';
-  if (msg.includes('Too many requests') || msg.includes('rate limit'))
+  if (msg.includes('ThrottlerException') || msg.includes('Too Many'))
     return 'Muitas tentativas. Aguarde alguns minutos.';
-  if (msg.includes('User not found')) return 'Usuário não encontrado.';
-  if (msg.includes('network') || msg.includes('Failed to fetch'))
+  if (msg.includes('Failed to fetch') || msg.includes('NetworkError'))
     return 'Erro de conexão. Verifique sua internet.';
   return msg;
 }

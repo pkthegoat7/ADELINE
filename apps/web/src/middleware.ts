@@ -1,34 +1,22 @@
-import { createServerClient, type CookieOptions } from '@supabase/ssr';
+import { jwtVerify } from 'jose';
 import { NextResponse, type NextRequest } from 'next/server';
 
-type CookieToSet = { name: string; value: string; options?: CookieOptions };
+const AUTH_COOKIE = 'adelina_token';
+
+async function hasValidSession(request: NextRequest): Promise<boolean> {
+  const token = request.cookies.get(AUTH_COOKIE)?.value;
+  if (!token) return false;
+  const secret = process.env.AUTH_JWT_SECRET;
+  if (!secret) return false;
+  try {
+    await jwtVerify(token, new TextEncoder().encode(secret), { issuer: 'adelina-pms' });
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 export async function middleware(request: NextRequest) {
-  let response = NextResponse.next({ request });
-
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return request.cookies.getAll();
-        },
-        setAll(cookiesToSet: CookieToSet[]) {
-          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
-          response = NextResponse.next({ request });
-          cookiesToSet.forEach(({ name, value, options }) =>
-            response.cookies.set(name, value, options),
-          );
-        },
-      },
-    },
-  );
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
   const { pathname } = request.nextUrl;
   const isAuthPage =
     pathname.startsWith('/login') ||
@@ -38,21 +26,23 @@ export async function middleware(request: NextRequest) {
   const isLanding = pathname === '/';
   const isPublicForm = pathname.startsWith('/cadastro');
 
-  if (!user && !isAuthPage && !isPublicAsset && !isLanding && !isPublicForm) {
+  const authed = await hasValidSession(request);
+
+  if (!authed && !isAuthPage && !isPublicAsset && !isLanding && !isPublicForm) {
     const url = request.nextUrl.clone();
     url.pathname = '/login';
     url.searchParams.set('next', pathname);
     return NextResponse.redirect(url);
   }
 
-  if (user && isAuthPage) {
+  if (authed && isAuthPage && !pathname.startsWith('/redefinir-senha')) {
     const url = request.nextUrl.clone();
     url.pathname = '/dashboard';
     url.search = '';
     return NextResponse.redirect(url);
   }
 
-  return response;
+  return NextResponse.next();
 }
 
 export const config = {

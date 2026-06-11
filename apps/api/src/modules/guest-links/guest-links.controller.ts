@@ -6,11 +6,16 @@ import {
   NotFoundException,
   Param,
   Post,
+  Query,
+  Res,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
-import { createClient } from '@supabase/supabase-js';
-import { randomBytes } from 'crypto';
+import { createHmac, randomBytes, timingSafeEqual } from 'crypto';
+import type { FastifyReply } from 'fastify';
+import { createReadStream, existsSync } from 'fs';
+import { mkdir, writeFile } from 'fs/promises';
+import { join } from 'path';
 import { z } from 'zod';
 import { format } from 'date-fns';
 import { TenantId } from '../../common/decorators/tenant.decorator';
@@ -21,6 +26,26 @@ import { WhatsappService } from '../whatsapp/whatsapp.service';
 
 const LINK_TTL_DAYS = 7;
 const MAX_DOC_BASE64_CHARS = 11_000_000; // ~8MB de arquivo
+// Storage próprio: documentos ficam num volume da VPS
+const DOCS_DIR = process.env.GUEST_DOCS_DIR ?? '/data/guest-docs';
+const DOC_URL_TTL_SEC = 3600;
+
+const EXT_MIME: Record<string, string> = {
+  jpg: 'image/jpeg',
+  jpeg: 'image/jpeg',
+  png: 'image/png',
+  webp: 'image/webp',
+  heic: 'image/heic',
+  heif: 'image/heif',
+  pdf: 'application/pdf',
+};
+
+const SEGMENT_RE = /^[a-zA-Z0-9._-]+$/;
+
+function docSignature(relPath: string, exp: number): string {
+  const secret = process.env.AUTH_JWT_SECRET ?? '';
+  return createHmac('sha256', secret).update(`${relPath}|${exp}`).digest('hex').slice(0, 32);
+}
 // Só imagem/PDF: bloqueia HTML/SVG (XSS armazenado via URL assinada)
 const ALLOWED_DOC_MIMES = [
   'image/jpeg',
@@ -133,11 +158,48 @@ export class GuestLinksController {
     if (!guest.documentFilePath) {
       throw new NotFoundException('Hóspede não tem documento anexado.');
     }
-    const { data, error } = this.storage()
-      ? await this.storage()!.storage.from('guest-docs').createSignedUrl(guest.documentFilePath, 3600)
-      : { data: null, error: new Error('Storage não configurado') };
-    if (error || !data) throw new BadRequestException(`Falha ao gerar URL: ${error?.message}`);
-    return { url: data.signedUrl };
+    const base = (process.env.API_BASE_URL ?? 'http://localhost:3333').replace(/\/+$/, '');
+    const exp = Math.floor(Date.now() / 1000) + DOC_URL_TTL_SEC;
+    const sig = docSignature(guest.documentFilePath, exp);
+    return { url: `${base}/api/guest-links/files/${guest.documentFilePath}?exp=${exp}&sig=${sig}` };
+  }
+
+  /** Serve o documento do volume — público mas só com assinatura válida (1h). */
+  @Public()
+  @Get('files/:tenantId/:token/:name')
+  async serveFile(
+    @Param('tenantId') tenantId: string,
+    @Param('token') token: string,
+    @Param('name') name: string,
+    @Query('exp') exp: string,
+    @Query('sig') sig: string,
+    @Res() res: FastifyReply,
+  ) {
+    const relPath = `${tenantId}/${token}/${name}`;
+    const expNum = Number(exp);
+    if (
+      ![tenantId, token, name].every((s) => SEGMENT_RE.test(s)) ||
+      !Number.isFinite(expNum) ||
+      expNum < Date.now() / 1000
+    ) {
+      throw new BadRequestException('Link expirado ou inválido.');
+    }
+    const expected = docSignature(relPath, expNum);
+    const given = String(sig ?? '');
+    if (
+      given.length !== expected.length ||
+      !timingSafeEqual(Buffer.from(given), Buffer.from(expected))
+    ) {
+      throw new BadRequestException('Assinatura inválida.');
+    }
+    const full = join(DOCS_DIR, tenantId, token, name);
+    if (!existsSync(full)) throw new NotFoundException('Arquivo não encontrado.');
+
+    const ext = name.split('.').pop()?.toLowerCase() ?? '';
+    res.header('Content-Type', EXT_MIME[ext] ?? 'application/octet-stream');
+    res.header('Content-Disposition', `inline; filename="${name}"`);
+    res.header('Cache-Control', 'private, max-age=300');
+    return res.send(createReadStream(full));
   }
 
   /** Dados públicos do link (pra ficha carregar nome da pousada e estadia). */
@@ -163,19 +225,20 @@ export class GuestLinksController {
     const link = await this.findValidLink(token);
     const data = SubmitSchema.parse(body);
 
-    // Upload do documento (se anexado) antes da transação
+    // Grava o documento (se anexado) no volume antes da transação
     let documentFilePath: string | null = null;
     if (data.documentFile) {
-      const storage = this.storage();
-      if (!storage) throw new BadRequestException('Armazenamento de documentos indisponível.');
-      const safeName = data.documentFile.name.replace(/[^a-zA-Z0-9._-]/g, '_').slice(-80);
-      const path = `${link.tenantId}/${link.token}/${safeName}`;
+      const safeName =
+        data.documentFile.name.replace(/[^a-zA-Z0-9._-]/g, '_').slice(-80) || 'documento';
+      const dir = join(DOCS_DIR, link.tenantId, link.token);
       const buffer = Buffer.from(data.documentFile.base64.replace(/^data:[^,]+,/, ''), 'base64');
-      const { error } = await storage.storage
-        .from('guest-docs')
-        .upload(path, buffer, { contentType: data.documentFile.mime, upsert: true });
-      if (error) throw new BadRequestException(`Falha no upload do documento: ${error.message}`);
-      documentFilePath = path;
+      try {
+        await mkdir(dir, { recursive: true });
+        await writeFile(join(dir, safeName), buffer);
+      } catch (err) {
+        throw new BadRequestException(`Falha ao salvar documento: ${(err as Error).message}`);
+      }
+      documentFilePath = `${link.tenantId}/${link.token}/${safeName}`;
     }
 
     const result = await this.prisma.$transaction(async (tx) => {
@@ -259,10 +322,4 @@ export class GuestLinksController {
     return link;
   }
 
-  private storage() {
-    if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) return null;
-    return createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, {
-      auth: { autoRefreshToken: false, persistSession: false },
-    });
-  }
 }

@@ -1,131 +1,152 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { Suspense, useState } from 'react';
 import Link from 'next/link';
-import { createClient } from '@/lib/supabase/client';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { Check } from 'lucide-react';
+
+const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3333';
 
 export default function RedefinirSenhaPage() {
+  return (
+    <Suspense
+      fallback={
+        <Shell>
+          <div className="text-sm text-ink-muted py-4">Carregando…</div>
+        </Shell>
+      }
+    >
+      <ResetForm />
+    </Suspense>
+  );
+}
+
+function ResetForm() {
   const router = useRouter();
+  const params = useSearchParams();
+  const token = params.get('token') ?? '';
+
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
-  const [sessionReady, setSessionReady] = useState(false);
-
-  useEffect(() => {
-    // Supabase captura o token do hash da URL automaticamente e cria sessão.
-    // Esperamos o evento PASSWORD_RECOVERY pra habilitar o formulário.
-    const supabase = createClient();
-
-    supabase.auth.getSession().then(({ data }) => {
-      if (data.session) setSessionReady(true);
-    });
-
-    const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'PASSWORD_RECOVERY' || session) setSessionReady(true);
-    });
-
-    return () => sub.subscription.unsubscribe();
-  }, []);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
-
-    if (password.length < 8) {
-      setError('Senha deve ter no mínimo 8 caracteres.');
-      return;
-    }
     if (password !== confirm) {
-      setError('As senhas não coincidem.');
+      setError('As senhas não conferem.');
       return;
     }
-
     setLoading(true);
-    const supabase = createClient();
-    const { error: updateError } = await supabase.auth.updateUser({ password });
-
-    setLoading(false);
-    if (updateError) {
-      setError(updateError.message);
-      return;
+    try {
+      const res = await fetch(`${API}/api/auth/reset-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token, password }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        const msg = Array.isArray(json.message) ? json.message.join('; ') : json.message;
+        throw new Error(msg ?? 'Falha ao redefinir senha');
+      }
+      setDone(true);
+      setTimeout(() => router.replace('/login'), 2500);
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setLoading(false);
     }
-    setDone(true);
-    setTimeout(() => router.replace('/dashboard'), 1500);
+  }
+
+  if (!token) {
+    return (
+      <Shell>
+        <p className="text-sm text-ink-soft">
+          Link inválido — falta o código de redefinição. Solicite um novo em{' '}
+          <Link href="/esqueci-senha" className="underline">
+            esqueci minha senha
+          </Link>
+          .
+        </p>
+      </Shell>
+    );
+  }
+
+  if (done) {
+    return (
+      <Shell>
+        <div className="flex items-center gap-2.5 text-sm bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/40 text-emerald-800 dark:text-emerald-200 rounded-lg px-3 py-2.5">
+          <Check className="w-4 h-4" /> Senha redefinida! Redirecionando pro login…
+        </div>
+      </Shell>
+    );
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-stone-50 p-4">
-      <div className="w-full max-w-sm surface-card p-6 space-y-4">
+    <Shell>
+      <form onSubmit={onSubmit} className="space-y-3">
         <div>
-          <h1 className="text-xl font-semibold text-stone-900">Definir nova senha</h1>
-          <p className="text-sm text-stone-500">Escolha uma senha forte para sua conta.</p>
+          <label
+            className="text-[11px] uppercase tracking-[0.18em] font-semibold text-ink-muted"
+            htmlFor="password"
+          >
+            Nova senha
+          </label>
+          <input
+            id="password"
+            type="password"
+            required
+            minLength={8}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className="input-base mt-1"
+            autoComplete="new-password"
+          />
+        </div>
+        <div>
+          <label
+            className="text-[11px] uppercase tracking-[0.18em] font-semibold text-ink-muted"
+            htmlFor="confirm"
+          >
+            Confirmar nova senha
+          </label>
+          <input
+            id="confirm"
+            type="password"
+            required
+            minLength={8}
+            value={confirm}
+            onChange={(e) => setConfirm(e.target.value)}
+            className="input-base mt-1"
+            autoComplete="new-password"
+          />
         </div>
 
-        {!sessionReady ? (
-          <div className="text-sm text-stone-500 bg-stone-100 rounded-md p-3">
-            Validando link…<br />
-            <span className="text-xs">
-              Se ficar travado, o link pode ter expirado.{' '}
-              <Link href="/esqueci-senha" className="underline">
-                Solicite outro
-              </Link>
-              .
-            </span>
+        {error && (
+          <div className="text-sm text-red-700 dark:text-red-300 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800/40 rounded-lg px-3 py-2.5">
+            {error}
           </div>
-        ) : done ? (
-          <div className="bg-emerald-50 border border-emerald-200 text-emerald-900 text-sm rounded-md p-3">
-            ✓ Senha atualizada com sucesso. Redirecionando…
-          </div>
-        ) : (
-          <form onSubmit={onSubmit} className="space-y-4">
-            <div className="space-y-1">
-              <label className="text-xs font-medium text-stone-700" htmlFor="password">
-                Nova senha
-              </label>
-              <input
-                id="password"
-                type="password"
-                required
-                minLength={8}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-3 py-2 text-sm border border-stone-300 rounded-md"
-              />
-            </div>
-
-            <div className="space-y-1">
-              <label className="text-xs font-medium text-stone-700" htmlFor="confirm">
-                Confirmar nova senha
-              </label>
-              <input
-                id="confirm"
-                type="password"
-                required
-                minLength={8}
-                value={confirm}
-                onChange={(e) => setConfirm(e.target.value)}
-                className="w-full px-3 py-2 text-sm border border-stone-300 rounded-md"
-              />
-            </div>
-
-            {error && (
-              <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded px-3 py-2">
-                {error}
-              </div>
-            )}
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full py-2 bg-stone-900 text-white text-sm font-medium rounded-md hover:bg-stone-800 disabled:opacity-50"
-            >
-              {loading ? 'Atualizando…' : 'Salvar nova senha'}
-            </button>
-          </form>
         )}
+
+        <button type="submit" disabled={loading} className="btn-primary w-full">
+          {loading ? 'Salvando…' : 'Salvar nova senha'}
+        </button>
+      </form>
+    </Shell>
+  );
+}
+
+function Shell({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-surface p-4">
+      <div className="w-full max-w-sm surface-card p-6 space-y-4">
+        <div>
+          <h1 className="text-xl font-semibold text-ink">Criar nova senha</h1>
+          <p className="text-sm text-ink-muted mt-1">Mínimo de 8 caracteres.</p>
+        </div>
+        {children}
       </div>
     </div>
   );

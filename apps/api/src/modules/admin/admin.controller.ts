@@ -10,7 +10,6 @@ import {
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
-import { createClient } from '@supabase/supabase-js';
 import { z } from 'zod';
 import { CurrentUser, type AuthContext } from '../../common/decorators/tenant.decorator';
 import { PrismaService } from '../../common/prisma/prisma.service';
@@ -89,15 +88,7 @@ export class AdminController {
     // Cascade no banco apaga properties/quartos/reservas/hóspedes/users/etc
     await this.prisma.tenant.delete({ where: { id } });
 
-    // Remove os logins do Supabase Auth (best-effort, fora da transação)
-    const supabase = createClient(
-      process.env.SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      { auth: { autoRefreshToken: false, persistSession: false } },
-    );
-    for (const u of tenant.users) {
-      await supabase.auth.admin.deleteUser(u.id).catch(() => undefined);
-    }
+    // users do tenant caem junto pelo cascade do banco
 
     return { ok: true, name: tenant.name };
   }

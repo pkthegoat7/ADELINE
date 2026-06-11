@@ -1,0 +1,177 @@
+import { BadRequestException, Injectable, Logger, UnauthorizedException } from '@nestjs/common';
+import { compare, hash } from 'bcryptjs';
+import { randomBytes, randomUUID } from 'crypto';
+import { SignJWT, jwtVerify, type JWTPayload } from 'jose';
+import { PrismaService } from '../../common/prisma/prisma.service';
+import { publicWebUrl } from '../../common/public-url';
+import { WhatsappService } from '../whatsapp/whatsapp.service';
+
+export const AUTH_COOKIE = 'adelina_token';
+const TOKEN_TTL = '7d';
+const RESET_TTL_MIN = 30;
+
+export interface SessionPayload extends JWTPayload {
+  sub: string;
+  email: string;
+}
+
+function jwtSecret(): Uint8Array {
+  const s = process.env.AUTH_JWT_SECRET;
+  if (!s || s.length < 32) {
+    throw new Error('AUTH_JWT_SECRET ausente ou curto demais (mínimo 32 caracteres).');
+  }
+  return new TextEncoder().encode(s);
+}
+
+@Injectable()
+export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly whatsapp: WhatsappService,
+  ) {}
+
+  hashPassword(plain: string): Promise<string> {
+    return hash(plain, 10);
+  }
+
+  async login(email: string, password: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { email: email.toLowerCase().trim() },
+      include: { tenant: { select: { status: true } } },
+    });
+    // Mesma mensagem pra usuário inexistente e senha errada (evita enumeração)
+    const fail = () => new UnauthorizedException('Email ou senha incorretos.');
+    if (!user || !user.active) throw fail();
+    if (user.tenant.status !== 'active') {
+      throw new UnauthorizedException('Pousada suspensa. Entre em contato com o suporte.');
+    }
+    if (!user.passwordHash) {
+      throw new UnauthorizedException(
+        'Conta sem senha definida. Use "Esqueci minha senha" pra criar uma.',
+      );
+    }
+    if (!(await compare(password, user.passwordHash))) throw fail();
+
+    const token = await this.signToken(user.id, user.email);
+    return {
+      token,
+      user: { id: user.id, email: user.email, fullName: user.fullName, role: user.role },
+    };
+  }
+
+  async signToken(userId: string, email: string): Promise<string> {
+    return new SignJWT({ email })
+      .setProtectedHeader({ alg: 'HS256' })
+      .setSubject(userId)
+      .setIssuer('adelina-pms')
+      .setIssuedAt()
+      .setExpirationTime(TOKEN_TTL)
+      .sign(jwtSecret());
+  }
+
+  async verifyToken(token: string): Promise<SessionPayload> {
+    const { payload } = await jwtVerify(token, jwtSecret(), { issuer: 'adelina-pms' });
+    return payload as SessionPayload;
+  }
+
+  /** Monta o Set-Cookie da sessão (httpOnly; Domain compartilhado web/api). */
+  sessionCookie(token: string | null): string {
+    const domain = process.env.COOKIE_DOMAIN ? `; Domain=${process.env.COOKIE_DOMAIN}` : '';
+    const secure = process.env.NODE_ENV === 'production' ? '; Secure' : '';
+    if (token === null) {
+      return `${AUTH_COOKIE}=; Path=/; Max-Age=0; HttpOnly; SameSite=Lax${domain}${secure}`;
+    }
+    const maxAge = 7 * 24 * 60 * 60;
+    return `${AUTH_COOKIE}=${token}; Path=/; Max-Age=${maxAge}; HttpOnly; SameSite=Lax${domain}${secure}`;
+  }
+
+  /**
+   * "Esqueci minha senha" sem email: o link de redefinição é enviado pro
+   * WhatsApp conectado da pousada (o aparelho fica com o dono/recepção).
+   */
+  async forgotPassword(email: string): Promise<void> {
+    const user = await this.prisma.user.findUnique({
+      where: { email: email.toLowerCase().trim() },
+    });
+    if (!user || !user.active) return; // resposta idêntica, sem enumeração
+
+    const instance = await this.prisma.whatsappInstance.findUnique({
+      where: { tenantId: user.tenantId },
+    });
+    if (!instance?.phoneNumber || instance.status !== 'connected') {
+      this.logger.warn(`forgot-password sem WhatsApp conectado (tenant ${user.tenantId})`);
+      return;
+    }
+
+    const token = randomBytes(24).toString('hex');
+    await this.prisma.passwordResetToken.create({
+      data: {
+        userId: user.id,
+        token,
+        expiresAt: new Date(Date.now() + RESET_TTL_MIN * 60 * 1000),
+      },
+    });
+
+    const url = `${publicWebUrl()}/redefinir-senha?token=${token}`;
+    await this.whatsapp
+      .sendText(
+        user.tenantId,
+        instance.phoneNumber,
+        `🔑 Redefinição de senha solicitada para ${user.email}.\n\nSe foi você (ou alguém da equipe), use o link (válido por ${RESET_TTL_MIN} min):\n${url}\n\nSe não reconhece o pedido, ignore.`,
+      )
+      .catch((err) => this.logger.warn(`reset via whatsapp falhou: ${(err as Error).message}`));
+  }
+
+  async resetPassword(token: string, newPassword: string): Promise<void> {
+    const row = await this.prisma.passwordResetToken.findUnique({
+      where: { token },
+      include: { user: true },
+    });
+    if (!row || row.usedAt || row.expiresAt < new Date()) {
+      throw new BadRequestException('Link inválido ou expirado. Solicite um novo.');
+    }
+    const passwordHash = await this.hashPassword(newPassword);
+    await this.prisma.$transaction([
+      this.prisma.user.update({ where: { id: row.userId }, data: { passwordHash } }),
+      this.prisma.passwordResetToken.update({
+        where: { id: row.id },
+        data: { usedAt: new Date() },
+      }),
+    ]);
+  }
+
+  async changePassword(userId: string, current: string, newPassword: string): Promise<void> {
+    const user = await this.prisma.user.findUniqueOrThrow({ where: { id: userId } });
+    if (!user.passwordHash || !(await compare(current, user.passwordHash))) {
+      throw new BadRequestException('Senha atual incorreta.');
+    }
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { passwordHash: await this.hashPassword(newPassword) },
+    });
+  }
+
+  /** Cria usuário local (substitui o admin.createUser do Supabase). */
+  async createLocalUser(input: {
+    tenantId: string;
+    email: string;
+    password: string;
+    fullName: string;
+    role: 'owner' | 'manager' | 'receptionist' | 'housekeeper' | 'readonly';
+  }) {
+    return this.prisma.user.create({
+      data: {
+        id: randomUUID(),
+        tenantId: input.tenantId,
+        email: input.email.toLowerCase().trim(),
+        fullName: input.fullName,
+        role: input.role,
+        active: true,
+        passwordHash: await this.hashPassword(input.password),
+      },
+      select: { id: true, email: true, fullName: true, role: true, active: true },
+    });
+  }
+}

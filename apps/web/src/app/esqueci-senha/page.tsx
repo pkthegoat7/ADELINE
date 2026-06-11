@@ -2,7 +2,9 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { createClient } from '@/lib/supabase/client';
+import { MessageCircle } from 'lucide-react';
+
+const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3333';
 
 export default function EsqueciSenhaPage() {
   const [email, setEmail] = useState('');
@@ -14,78 +16,84 @@ export default function EsqueciSenhaPage() {
     e.preventDefault();
     setError(null);
     setLoading(true);
-
-    const supabase = createClient();
-    const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/redefinir-senha`,
-    });
-
-    setLoading(false);
-    if (resetError) {
-      setError(resetError.message);
-      return;
+    try {
+      const res = await fetch(`${API}/api/auth/forgot-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}));
+        throw new Error(json.message ?? 'Falha ao solicitar redefinição');
+      }
+      setSent(true);
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setLoading(false);
     }
-    setSent(true);
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-stone-50 p-4">
+    <div className="min-h-screen flex items-center justify-center bg-surface p-4">
       <div className="w-full max-w-sm surface-card p-6 space-y-4">
         <div>
-          <h1 className="text-xl font-semibold text-stone-900">Esqueceu sua senha?</h1>
-          <p className="text-sm text-stone-500">
-            Informe seu email e enviaremos um link pra criar uma nova senha.
+          <h1 className="text-xl font-semibold text-ink">Esqueceu sua senha?</h1>
+          <p className="text-sm text-ink-muted mt-1">
+            Informe seu email. O link pra criar uma nova senha será enviado pro{' '}
+            <strong>WhatsApp da pousada</strong>.
           </p>
         </div>
 
         {sent ? (
           <div className="space-y-3">
-            <div className="bg-emerald-50 border border-emerald-200 text-emerald-900 text-sm rounded-md p-3">
-              ✓ Enviamos um link para <strong>{email}</strong>. Verifique sua caixa de entrada
-              (e a pasta de spam).
+            <div className="flex items-start gap-2.5 text-sm bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/40 text-emerald-800 dark:text-emerald-200 rounded-lg px-3 py-2.5">
+              <MessageCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+              <span>
+                Se o email existir, o link de redefinição chegou no WhatsApp conectado da
+                pousada (válido por 30 minutos).
+              </span>
             </div>
-            <Link
-              href="/login"
-              className="block text-center text-sm text-stone-900 hover:underline font-medium"
-            >
+            <Link href="/login" className="btn-secondary w-full">
               Voltar ao login
             </Link>
           </div>
         ) : (
-          <form onSubmit={onSubmit} className="space-y-4">
-            <div className="space-y-1">
-              <label className="text-xs font-medium text-stone-700" htmlFor="email">
+          <form onSubmit={onSubmit} className="space-y-3">
+            <div>
+              <label
+                className="text-[11px] uppercase tracking-[0.18em] font-semibold text-ink-muted"
+                htmlFor="email"
+              >
                 Email
               </label>
               <input
                 id="email"
                 type="email"
-                value={email}
                 required
+                value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-3 py-2 text-sm border border-stone-300 rounded-md"
+                className="input-base mt-1"
+                autoComplete="email"
               />
             </div>
 
             {error && (
-              <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded px-3 py-2">
+              <div className="text-sm text-red-700 dark:text-red-300 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800/40 rounded-lg px-3 py-2.5">
                 {error}
               </div>
             )}
 
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full py-2 bg-stone-900 text-white text-sm font-medium rounded-md hover:bg-stone-800 disabled:opacity-50"
-            >
-              {loading ? 'Enviando…' : 'Enviar link de recuperação'}
+            <button type="submit" disabled={loading} className="btn-primary w-full">
+              {loading ? 'Enviando…' : 'Enviar link'}
             </button>
 
-            <p className="text-xs text-center text-stone-500">
-              <Link href="/login" className="text-stone-900 hover:underline font-medium">
-                Voltar ao login
-              </Link>
-            </p>
+            <Link
+              href="/login"
+              className="block text-center text-xs text-ink-muted hover:text-ink"
+            >
+              Voltar ao login
+            </Link>
           </form>
         )}
       </div>

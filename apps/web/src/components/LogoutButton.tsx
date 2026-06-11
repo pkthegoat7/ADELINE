@@ -3,7 +3,7 @@
 import { LogOut } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
-import { createClient } from '@/lib/supabase/client';
+import { api } from '@/lib/api';
 import { Spinner } from '@/components/ui/Spinner';
 
 export function LogoutButton() {
@@ -12,8 +12,7 @@ export function LogoutButton() {
 
   async function onLogout() {
     setLoading(true);
-    const supabase = createClient();
-    await supabase.auth.signOut();
+    await api('/auth/logout', { method: 'POST' }).catch(() => undefined);
     router.replace('/login');
     router.refresh();
   }

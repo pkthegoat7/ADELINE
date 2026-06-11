@@ -60,19 +60,36 @@ enum UserRole {
 }
 
 model User {
-  id        String   @id @db.Uuid // = supabase.auth.users.id
-  tenantId  String   @map("tenant_id") @db.Uuid
-  email     String   @unique
-  fullName  String?  @map("full_name")
-  role      UserRole @default(receptionist)
-  active    Boolean  @default(true)
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  id           String   @id @default(uuid()) @db.Uuid
+  tenantId     String   @map("tenant_id") @db.Uuid
+  email        String   @unique
+  fullName     String?  @map("full_name")
+  role         UserRole @default(receptionist)
+  active       Boolean  @default(true)
+  // Auth próprio: hash bcrypt (importado do Supabase na migração)
+  passwordHash String?  @map("password_hash")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
 
-  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant      Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  resetTokens PasswordResetToken[]
 
   @@index([tenantId])
   @@map("users")
+}
+
+model PasswordResetToken {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @map("user_id") @db.Uuid
+  token     String    @unique
+  expiresAt DateTime  @map("expires_at")
+  usedAt    DateTime? @map("used_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("password_reset_tokens")
 }
 
 // ════════════════════════════════════════════════════════════════
