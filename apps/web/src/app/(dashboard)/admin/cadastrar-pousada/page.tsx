@@ -83,7 +83,7 @@ export default function CadastrarPousadaPage() {
   }
 
   if (me.isLoading) {
-    return <div className="p-6 text-stone-500">Verificando permissões…</div>;
+    return <div className="p-6 text-ink-muted">Verificando permissões…</div>;
   }
 
   if (!me.data?.user.isSuperAdmin) {
@@ -111,12 +111,12 @@ export default function CadastrarPousadaPage() {
       <header className="mb-6">
         <Link
           href="/dashboard"
-          className="text-sm text-stone-500 hover:text-stone-900 flex items-center gap-1 mb-2"
+          className="text-sm text-ink-muted hover:text-ink flex items-center gap-1 mb-2"
         >
           <ArrowLeft className="w-3.5 h-3.5" /> Voltar
         </Link>
         <h1 className="text-2xl font-bold">Cadastrar nova pousada</h1>
-        <p className="text-stone-500 text-sm">
+        <p className="text-ink-muted text-sm">
           Cria uma pousada + dono em uma única operação. Apenas super admins veem esta página.
         </p>
       </header>
@@ -140,25 +140,25 @@ export default function CadastrarPousadaPage() {
 
       <form
         onSubmit={onSubmit}
-        className="bg-white border border-stone-200 rounded-lg p-6 space-y-4"
+        className="surface-card p-6 space-y-4"
       >
         <fieldset className="space-y-3">
-          <legend className="text-xs uppercase text-stone-500 font-medium pb-2">Pousada</legend>
+          <legend className="text-xs uppercase text-ink-muted font-medium pb-2">Pousada</legend>
 
           <div>
-            <label className="text-xs font-medium text-stone-700">Nome da pousada</label>
+            <label className="text-xs font-medium text-ink-soft">Nome da pousada</label>
             <input
               type="text"
               required
               value={form.tenantName}
               onChange={(e) => setTenantName(e.target.value)}
-              className="mt-1 w-full px-3 py-2 text-sm border border-stone-300 rounded-md"
+              className="input-base mt-1"
               placeholder="Pousada do Sol"
             />
           </div>
 
           <div>
-            <label className="text-xs font-medium text-stone-700">Identificador (slug)</label>
+            <label className="text-xs font-medium text-ink-soft">Identificador (slug)</label>
             <input
               type="text"
               required
@@ -166,65 +166,65 @@ export default function CadastrarPousadaPage() {
               pattern="[a-z0-9-]+"
               value={form.tenantSlug}
               onChange={(e) => setForm({ ...form, tenantSlug: e.target.value.toLowerCase() })}
-              className="mt-1 w-full px-3 py-2 text-sm border border-stone-300 rounded-md font-mono lowercase"
+              className="input-base mt-1 font-mono lowercase"
               placeholder="pousada-do-sol"
             />
-            <p className="text-xs text-stone-500 mt-0.5">
+            <p className="text-xs text-ink-muted mt-0.5">
               mínimo 3 caracteres; só minúsculas, números e hífens
             </p>
           </div>
 
           <div>
-            <label className="text-xs font-medium text-stone-700">Nome do estabelecimento</label>
+            <label className="text-xs font-medium text-ink-soft">Nome do estabelecimento</label>
             <input
               type="text"
               required
               value={form.propertyName}
               onChange={(e) => setForm({ ...form, propertyName: e.target.value })}
-              className="mt-1 w-full px-3 py-2 text-sm border border-stone-300 rounded-md"
+              className="input-base mt-1"
               placeholder="Sede / Unidade principal"
             />
           </div>
         </fieldset>
 
-        <fieldset className="space-y-3 border-t border-stone-100 pt-4">
-          <legend className="text-xs uppercase text-stone-500 font-medium pb-2">
+        <fieldset className="space-y-3 border-t border-line-soft pt-4">
+          <legend className="text-xs uppercase text-ink-muted font-medium pb-2">
             Dono da pousada (owner)
           </legend>
 
           <div>
-            <label className="text-xs font-medium text-stone-700">Nome completo</label>
+            <label className="text-xs font-medium text-ink-soft">Nome completo</label>
             <input
               type="text"
               required
               value={form.fullName}
               onChange={(e) => setForm({ ...form, fullName: e.target.value })}
-              className="mt-1 w-full px-3 py-2 text-sm border border-stone-300 rounded-md"
+              className="input-base mt-1"
             />
           </div>
 
           <div>
-            <label className="text-xs font-medium text-stone-700">Email</label>
+            <label className="text-xs font-medium text-ink-soft">Email</label>
             <input
               type="email"
               required
               value={form.email}
               onChange={(e) => setForm({ ...form, email: e.target.value })}
-              className="mt-1 w-full px-3 py-2 text-sm border border-stone-300 rounded-md"
+              className="input-base mt-1"
             />
           </div>
 
           <div>
-            <label className="text-xs font-medium text-stone-700">Senha inicial</label>
+            <label className="text-xs font-medium text-ink-soft">Senha inicial</label>
             <input
               type="text"
               required
               minLength={8}
               value={form.password}
               onChange={(e) => setForm({ ...form, password: e.target.value })}
-              className="mt-1 w-full px-3 py-2 text-sm border border-stone-300 rounded-md font-mono"
+              className="input-base mt-1 font-mono"
             />
-            <p className="text-xs text-stone-500 mt-0.5">
+            <p className="text-xs text-ink-muted mt-0.5">
               mínimo 8 caracteres. O dono troca depois pelo "Esqueci senha".
             </p>
           </div>
@@ -239,7 +239,7 @@ export default function CadastrarPousadaPage() {
         <button
           type="submit"
           disabled={loading}
-          className="w-full py-2 bg-stone-900 text-white text-sm font-medium rounded-md hover:bg-stone-800 disabled:opacity-50"
+          className="btn-primary w-full"
         >
           {loading ? 'Criando…' : 'Cadastrar pousada'}
         </button>
