@@ -18,6 +18,7 @@ import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { SearchModule } from './modules/search/search.module';
 import { WhatsappModule } from './modules/whatsapp/whatsapp.module';
 import { GuestLinksModule } from './modules/guest-links/guest-links.module';
+import { TeamModule } from './modules/team/team.module';
 
 @Module({
   imports: [
@@ -45,6 +46,7 @@ import { GuestLinksModule } from './modules/guest-links/guest-links.module';
     SearchModule,
     WhatsappModule,
     GuestLinksModule,
+    TeamModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })

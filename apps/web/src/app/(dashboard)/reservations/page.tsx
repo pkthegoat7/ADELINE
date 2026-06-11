@@ -2,7 +2,8 @@
 
 import { useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, Pencil, Trash2, Search, Filter } from 'lucide-react';
+import { Plus, Pencil, Trash2, Search, Filter, MessageCircle } from 'lucide-react';
+import { SendRegistrationLinkModal } from '@/components/SendRegistrationLinkModal';
 import { motion } from 'framer-motion';
 import { api } from '@/lib/api';
 import { cn } from '@/lib/cn';
@@ -58,6 +59,7 @@ export default function ReservationsPage() {
   >({ mode: 'closed' });
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<StatusFilter>('all');
+  const [fichaFor, setFichaFor] = useState<Reservation | null>(null);
 
   const { data, isLoading } = useQuery({
     queryKey: ['reservations'],
@@ -261,6 +263,14 @@ export default function ReservationsPage() {
                       <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center justify-end gap-0.5">
                           <button
+                            onClick={() => setFichaFor(r)}
+                            disabled={isCancelled}
+                            data-tip="Enviar ficha (WhatsApp)"
+                            className="p-1.5 text-ink-muted hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 rounded-md disabled:opacity-30 disabled:cursor-not-allowed active:scale-95 transition-all"
+                          >
+                            <MessageCircle className="w-4 h-4" />
+                          </button>
+                          <button
                             onClick={() => startEdit(r)}
                             disabled={isCancelled}
                             data-tip="Editar"
@@ -312,6 +322,14 @@ export default function ReservationsPage() {
         editing={modalState.mode === 'edit' ? modalState.editing : undefined}
         open={modalState.mode !== 'closed' && !!propertyId}
         onClose={() => setModalState({ mode: 'closed' })}
+      />
+
+      <SendRegistrationLinkModal
+        open={!!fichaFor}
+        onClose={() => setFichaFor(null)}
+        reservationId={fichaFor?.id}
+        reservationCode={fichaFor?.code}
+        initialPhone={fichaFor?.guest.phone}
       />
     </div>
   );

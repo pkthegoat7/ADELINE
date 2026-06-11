@@ -31,7 +31,7 @@ import { cn } from '@/lib/cn';
 import { useUI } from '@/lib/ui-store';
 
 interface MeResponse {
-  user: { isSuperAdmin?: boolean; email: string };
+  user: { isSuperAdmin?: boolean; email: string; role?: string };
   tenant: { name: string };
 }
 
@@ -61,6 +61,7 @@ const PAGE_TITLES: Record<string, { title: string; subtitle?: string }> = {
   '/rooms': { title: 'Quartos', subtitle: 'Inventário e status' },
   '/guests': { title: 'Hóspedes', subtitle: 'Cadastro e histórico' },
   '/channels': { title: 'Canais', subtitle: 'Airbnb · Booking · iCal' },
+  '/equipe': { title: 'Equipe', subtitle: 'Logins e permissões' },
   '/settings': { title: 'Configurações', subtitle: 'Preferências da pousada' },
 };
 
@@ -74,6 +75,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   });
 
   const pageMeta = PAGE_TITLES[pathname ?? ''] ?? { title: '', subtitle: '' };
+
+  // Equipe: visível só pra proprietário/gerente (a API valida de novo no servidor)
+  const canManageTeam = data?.user.role === 'owner' || data?.user.role === 'manager';
+  const visibleNav = canManageTeam
+    ? [
+        ...navItems.slice(0, -1),
+        { href: '/equipe', label: 'Equipe', icon: ShieldCheck, hint: 'Acessos' } as NavItem,
+        navItems[navItems.length - 1],
+      ]
+    : navItems;
 
   // Fecha o drawer mobile ao trocar de rota
   useEffect(() => {
@@ -166,7 +177,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <div className="px-3 pb-2 text-[10px] uppercase text-zinc-400/50 font-semibold tracking-[0.18em]">
             Operação
           </div>
-          {navItems.map((item) => (
+          {visibleNav.map((item) => (
             <NavLink key={item.href} item={item} active={isActive(pathname, item.href)} />
           ))}
 

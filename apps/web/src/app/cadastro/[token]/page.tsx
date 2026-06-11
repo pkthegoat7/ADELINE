@@ -12,6 +12,7 @@ interface PublicInfo {
   pousada: string;
   phone: string;
   status: string;
+  reservation: { code: string; checkIn: string; checkOut: string } | null;
 }
 
 interface Companion {
@@ -117,6 +118,13 @@ export default function CadastroPage() {
                 {info.pousada}
               </h1>
               <p className="text-sm text-ink-soft mt-1">Ficha de cadastro do hóspede</p>
+              {info.reservation && (
+                <p className="text-xs text-ink-muted mt-2 px-3 py-1.5 rounded-full bg-surface-sunken inline-flex items-center gap-1.5">
+                  Reserva <span className="font-mono font-semibold">{info.reservation.code}</span>
+                  {' · '}
+                  {formatDate(info.reservation.checkIn)} → {formatDate(info.reservation.checkOut)}
+                </p>
+              )}
             </>
           )}
         </div>
@@ -340,6 +348,11 @@ export default function CadastroPage() {
       </div>
     </main>
   );
+}
+
+function formatDate(iso: string): string {
+  const d = new Date(iso);
+  return `${String(d.getUTCDate()).padStart(2, '0')}/${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {

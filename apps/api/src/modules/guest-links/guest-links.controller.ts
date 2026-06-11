@@ -12,8 +12,10 @@ import { Throttle } from '@nestjs/throttler';
 import { createClient } from '@supabase/supabase-js';
 import { randomBytes } from 'crypto';
 import { z } from 'zod';
+import { format } from 'date-fns';
 import { TenantId } from '../../common/decorators/tenant.decorator';
 import { PrismaService } from '../../common/prisma/prisma.service';
+import { publicWebUrl } from '../../common/public-url';
 import { Public } from '../auth/public.decorator';
 import { WhatsappService } from '../whatsapp/whatsapp.service';
 
@@ -29,7 +31,10 @@ const ALLOWED_DOC_MIMES = [
   'application/pdf',
 ];
 
-const CreateLinkSchema = z.object({ phone: z.string().min(8) });
+const CreateLinkSchema = z.object({
+  phone: z.string().min(8),
+  reservationId: z.string().uuid().optional(),
+});
 
 const DocumentTypeEnum = z.enum(['cpf', 'rg', 'passport', 'cnh', 'other']);
 
@@ -59,13 +64,6 @@ const SubmitSchema = z.object({
   companions: z.array(CompanionSchema).max(10).default([]),
 });
 
-function publicWebUrl(): string {
-  return (
-    process.env.PUBLIC_WEB_URL ??
-    process.env.WEB_ORIGIN?.split(',')[0] ??
-    'http://localhost:3000'
-  ).replace(/\/+$/, '');
-}
 
 @ApiTags('guest-links')
 @ApiBearerAuth()
@@ -76,15 +74,24 @@ export class GuestLinksController {
     private readonly whatsapp: WhatsappService,
   ) {}
 
-  /** Cria link de cadastro e tenta enviar via WhatsApp. */
+  /** Cria link de cadastro (opcionalmente vinculado a uma reserva) e envia via WhatsApp. */
   @Post()
   async create(@TenantId() tenantId: string, @Body() body: unknown) {
-    const { phone } = CreateLinkSchema.parse(body);
+    const { phone, reservationId } = CreateLinkSchema.parse(body);
     const token = randomBytes(16).toString('hex');
     const expiresAt = new Date(Date.now() + LINK_TTL_DAYS * 24 * 60 * 60 * 1000);
 
+    // Valida ownership da reserva antes de vincular
+    const reservation = reservationId
+      ? await this.prisma.withTenant(tenantId, (tx) =>
+          tx.reservation.findUniqueOrThrow({ where: { id: reservationId } }),
+        )
+      : null;
+
     const link = await this.prisma.withTenant(tenantId, (tx) =>
-      tx.guestRegistrationLink.create({ data: { tenantId, token, phone, expiresAt } }),
+      tx.guestRegistrationLink.create({
+        data: { tenantId, token, phone, expiresAt, reservationId },
+      }),
     );
 
     const url = `${publicWebUrl()}/cadastro/${link.token}`;
@@ -93,11 +100,10 @@ export class GuestLinksController {
     let whatsappError: string | null = null;
     try {
       const tenant = await this.prisma.tenant.findUniqueOrThrow({ where: { id: tenantId } });
-      await this.whatsapp.sendText(
-        tenantId,
-        phone,
-        `Olá! 👋 Aqui é da ${tenant.name}.\n\nComplete sua ficha de cadastro pelo link abaixo (válido por ${LINK_TTL_DAYS} dias):\n${url}`,
-      );
+      const intro = reservation
+        ? `Olá! 👋 Aqui é da ${tenant.name}.\n\nRecebemos sua reserva ${reservation.code} (check-in ${format(reservation.checkIn, 'dd/MM')}). Pra agilizar sua chegada, complete sua ficha de cadastro:`
+        : `Olá! 👋 Aqui é da ${tenant.name}.\n\nComplete sua ficha de cadastro pelo link abaixo (válido por ${LINK_TTL_DAYS} dias):`;
+      await this.whatsapp.sendText(tenantId, phone, `${intro}\n${url}`);
       sentViaWhatsapp = true;
     } catch (err) {
       whatsappError = (err as Error).message;
@@ -134,13 +140,19 @@ export class GuestLinksController {
     return { url: data.signedUrl };
   }
 
-  /** Dados públicos do link (pra ficha carregar nome da pousada). */
+  /** Dados públicos do link (pra ficha carregar nome da pousada e estadia). */
   @Public()
   @Get('public/:token')
   async publicInfo(@Param('token') token: string) {
     const link = await this.findValidLink(token);
     const tenant = await this.prisma.tenant.findUniqueOrThrow({ where: { id: link.tenantId } });
-    return { pousada: tenant.name, phone: link.phone, status: link.status };
+    const reservation = link.reservationId
+      ? await this.prisma.reservation.findUnique({
+          where: { id: link.reservationId },
+          select: { code: true, checkIn: true, checkOut: true },
+        })
+      : null;
+    return { pousada: tenant.name, phone: link.phone, status: link.status, reservation };
   }
 
   /** Hóspede envia a ficha preenchida (público, sem login). */
@@ -182,17 +194,44 @@ export class GuestLinksController {
         },
       });
 
+      const companions = [];
       for (const c of data.companions) {
-        await tx.guest.create({
+        companions.push(
+          await tx.guest.create({
+            data: {
+              tenantId: link.tenantId,
+              fullName: c.fullName,
+              documentType: c.documentType,
+              document: c.document,
+              birthDate: c.birthDate ? new Date(c.birthDate) : undefined,
+              primaryGuestId: guest.id,
+              notes: `Acompanhante de ${data.fullName}`,
+            },
+          }),
+        );
+      }
+
+      // Ficha vinculada a reserva: hóspedes entram na reserva com FNRH
+      // e o titular substitui o placeholder vindo do canal
+      if (link.reservationId) {
+        const { documentFile: _file, ...fnrhData } = data;
+        await tx.reservationGuest.create({
           data: {
-            tenantId: link.tenantId,
-            fullName: c.fullName,
-            documentType: c.documentType,
-            document: c.document,
-            birthDate: c.birthDate ? new Date(c.birthDate) : undefined,
-            primaryGuestId: guest.id,
-            notes: `Acompanhante de ${data.fullName}`,
+            reservationId: link.reservationId,
+            guestId: guest.id,
+            isPrimary: true,
+            fnrhData,
+            fnrhSignedAt: new Date(),
           },
+        });
+        for (const c of companions) {
+          await tx.reservationGuest.create({
+            data: { reservationId: link.reservationId, guestId: c.id },
+          });
+        }
+        await tx.reservation.update({
+          where: { id: link.reservationId },
+          data: { guestId: guest.id },
         });
       }
 
