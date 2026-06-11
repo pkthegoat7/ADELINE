@@ -6,6 +6,7 @@ import { api } from '@/lib/api';
 import { Plug, RefreshCw, Plus, Trash2, Copy, ChevronDown, ChevronRight } from 'lucide-react';
 import { format } from 'date-fns';
 import { ConnectChannelModal } from '@/components/ConnectChannelModal';
+import { WhatsappSettings } from '@/components/WhatsappSettings';
 import { SkeletonCards } from '@/components/ui/Skeleton';
 import { toast } from '@/lib/toast';
 
@@ -90,6 +91,8 @@ export default function ChannelsPage() {
           </button>
         </div>
       </header>
+
+      <WhatsappSettings />
 
       {isLoading && <SkeletonCards count={2} />}
 

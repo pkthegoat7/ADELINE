@@ -163,7 +163,7 @@ export class WhatsappService {
       tx.whatsappInstance.findUnique({ where: { tenantId } }),
     );
     if (!inst) {
-      throw new BadRequestException('WhatsApp não conectado. Conecte em Configurações.');
+      throw new BadRequestException('WhatsApp não conectado. Conecte na aba Canais.');
     }
     const number = this.normalizePhone(phone);
     try {
