@@ -2,17 +2,174 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useQuery } from '@tanstack/react-query';
-import { ShieldAlert, ArrowLeft } from 'lucide-react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { ShieldAlert, ArrowLeft, Building2, PauseCircle, PlayCircle, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import { api } from '@/lib/api';
+import { cn } from '@/lib/cn';
+import { toast } from '@/lib/toast';
 
 interface MeResponse {
   user: { isSuperAdmin?: boolean };
 }
 
+interface AdminTenant {
+  id: string;
+  name: string;
+  slug: string;
+  plan: string;
+  status: string;
+  createdAt: string;
+  owner: { email: string; fullName: string | null } | null;
+  counts: { users: number; properties: number; guests: number; reservations: number };
+}
+
+function TenantsList() {
+  const qc = useQueryClient();
+  const { data, isLoading } = useQuery({
+    queryKey: ['admin-tenants'],
+    queryFn: () => api<AdminTenant[]>('/admin/tenants'),
+  });
+
+  const patch = useMutation({
+    mutationFn: ({ id, status }: { id: string; status: 'active' | 'suspended' }) =>
+      api(`/admin/tenants/${id}`, { method: 'PATCH', body: JSON.stringify({ status }) }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin-tenants'] });
+      toast.success('Status atualizado');
+    },
+    onError: (err: Error) => toast.error('Não foi possível atualizar', err.message),
+  });
+
+  const remove = useMutation({
+    mutationFn: (id: string) => api(`/admin/tenants/${id}`, { method: 'DELETE' }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin-tenants'] });
+      toast.success('Pousada excluída');
+    },
+    onError: (err: Error) => toast.error('Não foi possível excluir', err.message),
+  });
+
+  function confirmDelete(t: AdminTenant) {
+    const typed = prompt(
+      `EXCLUIR DEFINITIVAMENTE "${t.name}"?\n\n` +
+        `Apaga TUDO: ${t.counts.reservations} reserva(s), ${t.counts.guests} hóspede(s), ` +
+        `quartos e os ${t.counts.users} login(s). Não pode ser desfeito.\n\n` +
+        `Pra confirmar, digite o identificador da pousada: ${t.slug}`,
+    );
+    if (typed === null) return;
+    if (typed.trim() !== t.slug) {
+      toast.error('Identificador não confere', 'Exclusão cancelada.');
+      return;
+    }
+    remove.mutate(t.id);
+  }
+
+  return (
+    <section className="mb-8">
+      <h2 className="font-semibold text-ink flex items-center gap-2 mb-3">
+        <Building2 className="w-4 h-4 text-brand-600" />
+        Pousadas cadastradas
+        {data && <span className="text-xs text-ink-muted font-normal">({data.length})</span>}
+      </h2>
+
+      {isLoading && <div className="text-sm text-ink-muted">Carregando…</div>}
+
+      {data && (
+        <div className="surface-card overflow-hidden">
+          <table className="w-full text-sm">
+            <thead className="bg-surface-sunken/60 border-b border-line text-ink-muted text-[10px] uppercase tracking-[0.18em]">
+              <tr>
+                <th className="text-left p-3 font-semibold">Pousada</th>
+                <th className="text-left p-3 font-semibold">Dono</th>
+                <th className="text-left p-3 font-semibold">Uso</th>
+                <th className="text-left p-3 font-semibold">Status</th>
+                <th className="text-right p-3 font-semibold w-28">Ações</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.map((t, idx) => (
+                <tr
+                  key={t.id}
+                  className={cn(
+                    'border-b border-line-soft last:border-0',
+                    idx % 2 === 1 && 'bg-surface-sunken/20',
+                    t.status !== 'active' && 'opacity-60',
+                  )}
+                >
+                  <td className="p-3">
+                    <div className="font-medium text-ink">{t.name}</div>
+                    <div className="text-xs text-ink-muted font-mono">{t.slug}</div>
+                  </td>
+                  <td className="p-3 text-ink-soft">
+                    <div>{t.owner?.fullName ?? '—'}</div>
+                    <div className="text-xs text-ink-muted">{t.owner?.email}</div>
+                  </td>
+                  <td className="p-3 text-xs text-ink-muted num-tabular">
+                    {t.counts.reservations} reservas · {t.counts.guests} hóspedes ·{' '}
+                    {t.counts.users} logins
+                  </td>
+                  <td className="p-3">
+                    <span
+                      className={cn(
+                        'text-xs px-2 py-0.5 rounded-full font-medium',
+                        t.status === 'active'
+                          ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300'
+                          : 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300',
+                      )}
+                    >
+                      {t.status === 'active' ? 'Ativa' : 'Suspensa'}
+                    </span>
+                  </td>
+                  <td className="p-3" onClick={(e) => e.stopPropagation()}>
+                    <div className="flex items-center justify-end gap-0.5">
+                      <button
+                        onClick={() =>
+                          patch.mutate({
+                            id: t.id,
+                            status: t.status === 'active' ? 'suspended' : 'active',
+                          })
+                        }
+                        disabled={patch.isPending}
+                        data-tip={t.status === 'active' ? 'Suspender (bloqueia logins)' : 'Reativar'}
+                        className="p-1.5 text-ink-muted hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/30 rounded-md active:scale-95 transition-all"
+                      >
+                        {t.status === 'active' ? (
+                          <PauseCircle className="w-4 h-4" />
+                        ) : (
+                          <PlayCircle className="w-4 h-4" />
+                        )}
+                      </button>
+                      <button
+                        onClick={() => confirmDelete(t)}
+                        disabled={remove.isPending}
+                        data-tip="Excluir definitivamente"
+                        className="p-1.5 text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-md active:scale-95 transition-all"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+              {data.length === 0 && (
+                <tr>
+                  <td colSpan={5} className="p-8 text-center text-ink-muted text-sm">
+                    Nenhuma pousada ainda — cadastre a primeira abaixo.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
+  );
+}
+
 export default function CadastrarPousadaPage() {
   const router = useRouter();
+  const qc = useQueryClient();
 
   // Verifica se o user atual é super admin
   const me = useQuery({
@@ -67,6 +224,7 @@ export default function CadastrarPousadaPage() {
         },
       );
       setCreated(result);
+      qc.invalidateQueries({ queryKey: ['admin-tenants'] });
       setForm({
         tenantName: '',
         tenantSlug: '',
@@ -115,11 +273,13 @@ export default function CadastrarPousadaPage() {
         >
           <ArrowLeft className="w-3.5 h-3.5" /> Voltar
         </Link>
-        <h1 className="text-2xl font-bold">Cadastrar nova pousada</h1>
+        <h1 className="text-2xl font-bold">Pousadas</h1>
         <p className="text-ink-muted text-sm">
-          Cria uma pousada + dono em uma única operação. Apenas super admins veem esta página.
+          Gerencie as pousadas do sistema e cadastre novas. Apenas super admins veem esta página.
         </p>
       </header>
+
+      <TenantsList />
 
       {created && (
         <div className="bg-emerald-50 border border-emerald-200 rounded-md p-4 mb-4 space-y-2">
@@ -138,6 +298,7 @@ export default function CadastrarPousadaPage() {
         </div>
       )}
 
+      <h2 className="font-semibold text-ink mb-3">Cadastrar nova pousada</h2>
       <form
         onSubmit={onSubmit}
         className="surface-card p-6 space-y-4"

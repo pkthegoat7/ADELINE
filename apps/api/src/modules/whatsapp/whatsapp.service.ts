@@ -154,6 +154,21 @@ export class WhatsappService {
     return { ok: true };
   }
 
+  /** Remove a instância da Evolution (usado ao excluir uma pousada). */
+  async deleteInstance(tenantId: string) {
+    const inst = await this.prisma.whatsappInstance.findUnique({ where: { tenantId } });
+    if (!inst) return { ok: true };
+    try {
+      await this.evo(`/instance/logout/${inst.instanceName}`, { method: 'DELETE' });
+    } catch {
+      /* já desconectada */
+    }
+    await this.evo(`/instance/delete/${inst.instanceName}`, { method: 'DELETE' }).catch(
+      (err) => this.logger.warn(`delete instance: ${(err as Error).message}`),
+    );
+    return { ok: true };
+  }
+
   /**
    * Envia mensagem de texto. Normaliza telefone BR (DDI 55 implícito).
    * Ponto único de envio — lembretes, links de cadastro e check-in passam por aqui.

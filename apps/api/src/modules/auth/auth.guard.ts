@@ -59,9 +59,19 @@ export class AuthGuard implements CanActivate {
     // Resolve tenant via tabela users (1 user = 1 tenant no MVP)
     const user = await this.prisma.user.findUnique({
       where: { id: payload.sub },
-      select: { id: true, tenantId: true, email: true, role: true, active: true },
+      select: {
+        id: true,
+        tenantId: true,
+        email: true,
+        role: true,
+        active: true,
+        tenant: { select: { status: true } },
+      },
     });
     if (!user || !user.active) throw new UnauthorizedException('User not found or inactive');
+    if (user.tenant.status !== 'active') {
+      throw new UnauthorizedException('Pousada suspensa. Entre em contato com o suporte.');
+    }
 
     (req as any).user = {
       userId: user.id,
