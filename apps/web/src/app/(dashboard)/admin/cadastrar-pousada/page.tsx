@@ -165,7 +165,18 @@ export default function CadastrarPousadaPage() {
               minLength={3}
               pattern="[a-z0-9-]+"
               value={form.tenantSlug}
-              onChange={(e) => setForm({ ...form, tenantSlug: e.target.value.toLowerCase() })}
+              onChange={(e) =>
+                setForm({
+                  ...form,
+                  // Sanitiza enquanto digita: acento some, underline/espaço viram hífen
+                  tenantSlug: e.target.value
+                    .toLowerCase()
+                    .normalize('NFD')
+                    .replace(/[̀-ͯ]/g, '')
+                    .replace(/[_\s]+/g, '-')
+                    .replace(/[^a-z0-9-]/g, ''),
+                })
+              }
               className="input-base mt-1 font-mono lowercase"
               placeholder="pousada-do-sol"
             />
