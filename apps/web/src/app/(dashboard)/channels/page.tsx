@@ -161,7 +161,7 @@ function ChannelCard({
   });
 
   return (
-    <div className="bg-white border border-stone-200 rounded-lg p-5 space-y-3 card-hover">
+    <div className="surface-card p-5 space-y-3 card-hover">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Plug className="w-4 h-4 text-stone-400" />
@@ -243,7 +243,7 @@ function ChannelCard({
                 <input
                   readOnly
                   value={u.url}
-                  className="flex-1 px-2 py-1 text-xs font-mono bg-white border border-stone-300 rounded"
+                  className="flex-1 px-2 py-1 text-xs font-mono bg-surface-sunken border border-line rounded"
                   onFocus={(e) => e.target.select()}
                 />
                 <button

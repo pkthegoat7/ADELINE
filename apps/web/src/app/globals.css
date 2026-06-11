@@ -978,8 +978,10 @@ kbd, .kbd {
    (Componentes legados foram escritos so pro light)
    =================================================================== */
 
-/* Browser nativo respeita o tema (option dropdown, scrollbar nativo, autofill) */
-html { color-scheme: light dark; }
+/* Browser nativo segue o tema ATIVO do app (não o do sistema operacional) —
+   senão dropdowns nativos saem com texto claro em popup branco e vice-versa */
+html { color-scheme: light; }
+html.dark { color-scheme: dark; }
 
 /* Inputs/select/textarea SEM bg-* explicito: usa surface elevated */
 .dark input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([class*="bg-"]),

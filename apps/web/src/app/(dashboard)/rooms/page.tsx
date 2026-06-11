@@ -150,18 +150,18 @@ export default function RoomsPage() {
                   )}
                 </div>
                 <div className="flex flex-col items-end gap-1">
-                  <span className={cn('text-xs px-2 py-0.5 rounded', statusInfo?.color ?? 'bg-stone-100')}>
+                  <span className={cn('text-xs px-2 py-0.5 rounded', statusInfo?.color ?? 'bg-surface-sunken text-ink-soft')}>
                     {statusInfo?.label ?? r.status}
                   </span>
                   {!r.active && (
-                    <span className="text-xs px-2 py-0.5 rounded bg-stone-300 text-stone-700">
+                    <span className="text-xs px-2 py-0.5 rounded bg-surface-sunken text-ink-muted">
                       desativado
                     </span>
                   )}
                 </div>
               </div>
 
-              <div className="text-xs text-stone-500 flex justify-between">
+              <div className="text-xs text-ink-muted flex justify-between">
                 <span>Capacidade: {r.roomType.capacity}</span>
                 <span className="font-mono">
                   {Number(r.roomType.basePrice).toLocaleString('pt-BR', {
@@ -177,7 +177,7 @@ export default function RoomsPage() {
                   updateStatus.mutate({ id: r.id, status: e.target.value as Room['status'] })
                 }
                 disabled={updateStatus.isPending || !r.active}
-                className="w-full text-sm px-2 py-1.5 border border-stone-300 rounded"
+                className="input-base text-sm"
               >
                 {STATUS_OPTIONS.map((opt) => (
                   <option key={opt.value} value={opt.value}>
@@ -186,10 +186,10 @@ export default function RoomsPage() {
                 ))}
               </select>
 
-              <div className="flex gap-1 pt-1 border-t border-stone-100">
+              <div className="flex gap-1 pt-1 border-t border-line-soft">
                 <button
                   onClick={() => startEdit(r)}
-                  className="flex-1 flex items-center justify-center gap-1 text-xs py-1.5 text-stone-600 hover:bg-stone-100 rounded-md active:scale-95"
+                  className="flex-1 flex items-center justify-center gap-1 text-xs py-1.5 text-ink-soft hover:bg-surface-sunken rounded-md active:scale-95"
                 >
                   <Pencil className="w-3 h-3" /> Editar
                 </button>
@@ -212,7 +212,7 @@ export default function RoomsPage() {
       </div>
 
       {!isLoading && visibleRooms.length === 0 && (
-        <div className="bg-white border border-stone-200 rounded-lg p-8 text-center text-stone-400">
+        <div className="surface-card p-8 text-center text-ink-muted">
           {data?.length === 0 ? 'Nenhum quarto cadastrado.' : 'Nenhum quarto ativo.'}
         </div>
       )}

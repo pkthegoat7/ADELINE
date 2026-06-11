@@ -30,7 +30,7 @@ export default function EsqueciSenhaPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-stone-50 p-4">
-      <div className="w-full max-w-sm bg-white border border-stone-200 rounded-lg p-6 shadow-sm space-y-4">
+      <div className="w-full max-w-sm surface-card p-6 space-y-4">
         <div>
           <h1 className="text-xl font-semibold text-stone-900">Esqueceu sua senha?</h1>
           <p className="text-sm text-stone-500">
