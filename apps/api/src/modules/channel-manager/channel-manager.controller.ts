@@ -1,10 +1,23 @@
-import { Body, Controller, Delete, Get, Param, Post, Query } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  ForbiddenException,
+  Get,
+  Param,
+  Post,
+  Query,
+} from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { z } from 'zod';
 import { createHmac } from 'crypto';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
-import { TenantId } from '../../common/decorators/tenant.decorator';
+import {
+  CurrentUser,
+  TenantId,
+  type AuthContext,
+} from '../../common/decorators/tenant.decorator';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { CHANNEL_PULL_QUEUE } from './channel.constants';
 
@@ -22,6 +35,12 @@ const ConnectionSchema = z.object({
     )
     .min(1),
 });
+
+function assertManager(user: AuthContext) {
+  if (user.role !== 'owner' && user.role !== 'manager') {
+    throw new ForbiddenException('Apenas proprietário ou gerente podem gerenciar canais.');
+  }
+}
 
 @ApiTags('channel-manager')
 @ApiBearerAuth()
@@ -46,7 +65,12 @@ export class ChannelManagerController {
   }
 
   @Post()
-  async create(@TenantId() tenantId: string, @Body() body: unknown) {
+  async create(
+    @CurrentUser() user: AuthContext,
+    @TenantId() tenantId: string,
+    @Body() body: unknown,
+  ) {
+    assertManager(user);
     const data = ConnectionSchema.parse(body);
     return this.prisma.withTenant(tenantId, async (tx) => {
       const conn = await tx.channelConnection.create({
@@ -86,7 +110,12 @@ export class ChannelManagerController {
   }
 
   @Delete(':id')
-  async remove(@TenantId() tenantId: string, @Param('id') id: string) {
+  async remove(
+    @CurrentUser() user: AuthContext,
+    @TenantId() tenantId: string,
+    @Param('id') id: string,
+  ) {
+    assertManager(user);
     return this.prisma.withTenant(tenantId, async (tx) => {
       await tx.channelConnection.findUniqueOrThrow({ where: { id } });
       await tx.channelRoomMapping.deleteMany({ where: { connectionId: id } });

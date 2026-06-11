@@ -32,14 +32,16 @@ async function bootstrap() {
     credentials: true,
   });
 
-  // Swagger
-  const config = new DocumentBuilder()
-    .setTitle('Adelina PMS API')
-    .setVersion('0.1.0')
-    .addBearerAuth()
-    .build();
-  const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('api/docs', app, document);
+  // Swagger — em produção só com SWAGGER_ENABLED=true (evita expor o mapa da API)
+  if (process.env.NODE_ENV !== 'production' || process.env.SWAGGER_ENABLED === 'true') {
+    const config = new DocumentBuilder()
+      .setTitle('Adelina PMS API')
+      .setVersion('0.1.0')
+      .addBearerAuth()
+      .build();
+    const document = SwaggerModule.createDocument(app, config);
+    SwaggerModule.setup('api/docs', app, document);
+  }
 
   // Render/Heroku/Fly injetam PORT; local usa API_PORT do .env; fallback 3333.
   const port = Number(process.env.PORT ?? process.env.API_PORT ?? 3333);

@@ -19,6 +19,15 @@ import { WhatsappService } from '../whatsapp/whatsapp.service';
 
 const LINK_TTL_DAYS = 7;
 const MAX_DOC_BASE64_CHARS = 11_000_000; // ~8MB de arquivo
+// Só imagem/PDF: bloqueia HTML/SVG (XSS armazenado via URL assinada)
+const ALLOWED_DOC_MIMES = [
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'image/heic',
+  'image/heif',
+  'application/pdf',
+];
 
 const CreateLinkSchema = z.object({ phone: z.string().min(8) });
 
@@ -42,7 +51,9 @@ const SubmitSchema = z.object({
     .object({
       base64: z.string().max(MAX_DOC_BASE64_CHARS, 'Arquivo muito grande (máx. 8MB)'),
       name: z.string().min(1),
-      mime: z.string().min(3),
+      mime: z
+        .string()
+        .refine((m) => ALLOWED_DOC_MIMES.includes(m), 'Envie foto (JPG/PNG) ou PDF.'),
     })
     .optional(),
   companions: z.array(CompanionSchema).max(10).default([]),
