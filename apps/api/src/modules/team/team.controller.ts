@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Body,
   Controller,
+  Delete,
   ForbiddenException,
   Get,
   NotFoundException,
@@ -124,6 +125,36 @@ export class TeamController {
       },
       select: { id: true, email: true, fullName: true, role: true, active: true },
     });
+  }
+
+  /** Hard delete: remove o usuário definitivamente. Só permitido se já estiver desativado. */
+  @Delete(':id')
+  async remove(
+    @CurrentUser() user: AuthContext,
+    @TenantId() tenantId: string,
+    @Param('id') id: string,
+  ) {
+    this.assertManager(user);
+
+    const target = await this.prisma.user.findFirst({ where: { id, tenantId } });
+    if (!target) throw new NotFoundException('Usuário não encontrado.');
+    if (target.id === user.userId) {
+      throw new BadRequestException('Você não pode excluir a si mesmo.');
+    }
+    if (target.role === 'owner') {
+      throw new BadRequestException('O proprietário não pode ser excluído.');
+    }
+    if (target.active) {
+      throw new BadRequestException(
+        'Desative o usuário antes de excluí-lo definitivamente.',
+      );
+    }
+    if (!canManageRole(user.role, target.role as Role)) {
+      throw new ForbiddenException('Seu papel não permite gerenciar esse usuário.');
+    }
+
+    await this.prisma.user.delete({ where: { id } });
+    return { ok: true };
   }
 
   private assertManager(user: AuthContext) {

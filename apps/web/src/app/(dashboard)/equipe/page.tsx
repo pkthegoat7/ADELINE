@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Eye, EyeOff, Plus, ShieldCheck, UserRound } from 'lucide-react';
+import { Eye, EyeOff, Plus, ShieldCheck, Trash2, UserRound } from 'lucide-react';
 import { api } from '@/lib/api';
 import { cn } from '@/lib/cn';
 import { Modal } from '@/components/ui/Modal';
@@ -57,6 +57,27 @@ export default function EquipePage() {
     },
     onError: (err: Error) => toast.error('Não foi possível atualizar', err.message),
   });
+
+  const remove = useMutation({
+    mutationFn: (id: string) => api(`/team/${id}`, { method: 'DELETE' }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['team'] });
+      toast.success('Usuário excluído', 'Removido definitivamente.');
+    },
+    onError: (err: Error) => toast.error('Não foi possível excluir', err.message),
+  });
+
+  function confirmRemove(m: Member) {
+    if (
+      confirm(
+        `EXCLUIR DEFINITIVAMENTE ${m.fullName ?? m.email}?\n\n` +
+          `O login some do sistema. Essa ação não pode ser desfeita.\n\n` +
+          `Continuar?`,
+      )
+    ) {
+      remove.mutate(m.id);
+    }
+  }
 
   const myId = me?.user.userId;
 
@@ -148,7 +169,7 @@ export default function EquipePage() {
                               className="input-base !w-auto py-1 text-xs"
                             >
                               {ASSIGNABLE_ROLES.map((r) => (
-                                <option key={r.value} value={r.value}>
+                                <option key={r.value} value={r.value} className="bg-surface-elevated text-ink">
                                   {r.label}
                                 </option>
                               ))}
@@ -159,12 +180,26 @@ export default function EquipePage() {
                               className={cn(
                                 'px-2.5 py-1 rounded-md text-xs font-medium transition-colors',
                                 m.active
-                                  ? 'text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30'
+                                  ? 'text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/30'
                                   : 'text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/30',
                               )}
                             >
                               {m.active ? 'Desativar' : 'Reativar'}
                             </button>
+                            {!m.active && (
+                              <button
+                                onClick={() => confirmRemove(m)}
+                                disabled={remove.isPending}
+                                data-tip="Excluir definitivamente"
+                                className="p-1.5 rounded-md text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                              >
+                                {remove.isPending && remove.variables === m.id ? (
+                                  <Spinner size={14} />
+                                ) : (
+                                  <Trash2 className="w-4 h-4" />
+                                )}
+                              </button>
+                            )}
                           </div>
                         )}
                       </td>
@@ -266,7 +301,7 @@ function NewMemberModal({
               type="button"
               onClick={() => setShowPassword((v) => !v)}
               tabIndex={-1}
-              className="absolute right-1 top-1/2 -translate-y-1/2 p-2 rounded-md text-ink-muted hover:text-ink"
+              className="absolute right-1 top-1/2 -translate-y-1/2 p-2 rounded-md text-ink-soft hover:text-ink hover:bg-surface-sunken"
             >
               {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
             </button>
@@ -276,7 +311,7 @@ function NewMemberModal({
         <Field label="Papel">
           <select value={role} onChange={(e) => setRole(e.target.value)} className="input-base">
             {ASSIGNABLE_ROLES.map((r) => (
-              <option key={r.value} value={r.value}>
+              <option key={r.value} value={r.value} className="bg-surface-elevated text-ink">
                 {r.label}
               </option>
             ))}
@@ -306,7 +341,7 @@ function NewMemberModal({
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
-      <label className="text-xs font-medium text-ink-muted uppercase tracking-wider">{label}</label>
+      <label className="text-xs font-semibold text-ink-soft uppercase tracking-wider">{label}</label>
       <div className="mt-1">{children}</div>
     </div>
   );

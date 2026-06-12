@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
 import { api } from '@/lib/api';
@@ -35,6 +35,12 @@ export interface EditingReservation {
   totalAmount: string;
 }
 
+export interface PrefillReservation {
+  roomId?: string;
+  checkIn?: string;
+  checkOut?: string;
+}
+
 const CHANNELS = [
   { value: 'direct', label: 'Direta' },
   { value: 'airbnb', label: 'Airbnb' },
@@ -46,11 +52,13 @@ const CHANNELS = [
 export function NewReservationModal({
   propertyId,
   editing,
+  prefill,
   open,
   onClose,
 }: {
   propertyId: string;
   editing?: EditingReservation;
+  prefill?: PrefillReservation;
   open: boolean;
   onClose: () => void;
 }) {
@@ -63,12 +71,16 @@ export function NewReservationModal({
   const [newGuestName, setNewGuestName] = useState('');
   const [newGuestPhone, setNewGuestPhone] = useState('');
 
-  const [roomId, setRoomId] = useState(editing?.roomId ?? '');
+  const [roomId, setRoomId] = useState(editing?.roomId ?? prefill?.roomId ?? '');
   const [checkIn, setCheckIn] = useState(
-    editing ? format(new Date(editing.checkIn), 'yyyy-MM-dd') : '',
+    editing
+      ? format(new Date(editing.checkIn), 'yyyy-MM-dd')
+      : prefill?.checkIn ?? '',
   );
   const [checkOut, setCheckOut] = useState(
-    editing ? format(new Date(editing.checkOut), 'yyyy-MM-dd') : '',
+    editing
+      ? format(new Date(editing.checkOut), 'yyyy-MM-dd')
+      : prefill?.checkOut ?? '',
   );
   const [channel, setChannel] = useState<typeof CHANNELS[number]['value']>(
     (editing?.channel as typeof CHANNELS[number]['value']) ?? 'direct',
@@ -80,6 +92,15 @@ export function NewReservationModal({
   );
 
   const [error, setError] = useState<string | null>(null);
+
+  // Aplica prefill quando o modal abre num modo "create" (calendário -> nova reserva c/ data+quarto).
+  useEffect(() => {
+    if (!open || isEditing || !prefill) return;
+    if (prefill.roomId) setRoomId(prefill.roomId);
+    if (prefill.checkIn) setCheckIn(prefill.checkIn);
+    if (prefill.checkOut) setCheckOut(prefill.checkOut);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, isEditing, prefill?.roomId, prefill?.checkIn, prefill?.checkOut]);
 
   const rooms = useQuery({
     queryKey: ['rooms', propertyId],

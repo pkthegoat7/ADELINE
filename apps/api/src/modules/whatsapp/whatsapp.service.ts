@@ -90,12 +90,41 @@ export class WhatsappService {
     await this.prisma.withTenant(tenantId, (tx) =>
       tx.whatsappInstance.update({ where: { tenantId }, data: { status: 'connecting' } }),
     );
-    const base64: string | undefined = json.base64 ?? json.qrcode?.base64;
+    const base64: string | undefined =
+      json.base64 ?? json.qrcode?.base64 ?? json.qr?.base64;
     return {
       qrBase64: typeof base64 === 'string' ? base64 : undefined,
       pairingCode: json.pairingCode ?? json.qrcode?.pairingCode ?? undefined,
       code: json.code ?? json.qrcode?.code ?? undefined,
     };
+  }
+
+  /**
+   * Reinicia a instância (logout + delete na Evolution) e gera um QR code novo.
+   * Útil quando a conexão fica presa em "connecting" sem QR válido.
+   */
+  async restart(tenantId: string) {
+    const inst = await this.prisma.withTenant(tenantId, (tx) =>
+      tx.whatsappInstance.findUnique({ where: { tenantId } }),
+    );
+    if (inst) {
+      // Tenta limpar do lado da Evolution (best-effort)
+      try {
+        await this.evo(`/instance/logout/${inst.instanceName}`, { method: 'DELETE' });
+      } catch {
+        /* já desconectada */
+      }
+      try {
+        await this.evo(`/instance/delete/${inst.instanceName}`, { method: 'DELETE' });
+      } catch (err) {
+        this.logger.warn(`restart delete: ${(err as Error).message}`);
+      }
+      // Remove o registro local pra forçar recriação
+      await this.prisma.withTenant(tenantId, (tx) =>
+        tx.whatsappInstance.delete({ where: { tenantId } }),
+      );
+    }
+    return this.connect(tenantId);
   }
 
   /** Estado atual da conexão (consulta a Evolution e sincroniza o registro). */

@@ -62,11 +62,13 @@ export function Timeline({
   to,
   days,
   startDate,
+  onCellClick,
 }: {
   from: string;
   to: string;
   days: number;
   startDate: Date;
+  onCellClick?: (roomId: string, date: Date) => void;
 }) {
   const propertyId = process.env.NEXT_PUBLIC_DEMO_PROPERTY_ID ?? '';
 
@@ -196,6 +198,7 @@ export function Timeline({
                   cell={cell}
                   isWeekendDay={isWeekend(d)}
                   isToday={isSameDay(d, new Date())}
+                  onEmptyClick={onCellClick ? () => onCellClick(room.id, d) : undefined}
                 />
               );
             })}
@@ -218,11 +221,13 @@ function CellView({
   cell,
   isWeekendDay,
   isToday,
+  onEmptyClick,
 }: {
   date: Date;
   cell: CalendarCell | undefined;
   isWeekendDay: boolean;
   isToday: boolean;
+  onEmptyClick?: () => void;
 }) {
   const status = cell?.status ?? 'available';
   const r = cell?.reservation;
@@ -251,20 +256,21 @@ function CellView({
   }
 
   return (
-    <div
+    <button
+      type="button"
+      onClick={onEmptyClick}
       className={cn(
-        'border-r border-line-soft cursor-pointer transition-all relative group/cell',
+        'border-r border-line-soft cursor-pointer transition-all relative group/cell w-full h-full',
         'hover:bg-brand-100/40 dark:hover:bg-brand-900/20',
         isWeekendDay && 'bg-surface-sunken/40',
         isToday && 'bg-brand-50/40 dark:bg-brand-950/30',
       )}
-      title={`Disponível • ${format(date, 'dd/MM')}`}
+      title={`Criar reserva • ${format(date, 'dd/MM')}`}
     >
-      {/* + de hover sutil */}
-      <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover/cell:opacity-100 transition-opacity">
+      <span className="absolute inset-0 flex items-center justify-center opacity-0 group-hover/cell:opacity-100 transition-opacity pointer-events-none">
         <span className="text-brand-500/60 text-lg">+</span>
-      </div>
-    </div>
+      </span>
+    </button>
   );
 }
 

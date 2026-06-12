@@ -20,12 +20,47 @@ interface Room {
   roomType: { id: string; name: string; code: string; capacity: number; basePrice: string };
 }
 
-const STATUS_OPTIONS: Array<{ value: Room['status']; label: string; color: string }> = [
-  { value: 'clean', label: 'Limpo', color: 'bg-emerald-100 text-emerald-700' },
-  { value: 'dirty', label: 'Sujo', color: 'bg-amber-100 text-amber-700' },
-  { value: 'inspected', label: 'Inspecionado', color: 'bg-sky-100 text-sky-700' },
-  { value: 'maintenance', label: 'Manutenção', color: 'bg-orange-100 text-orange-700' },
-  { value: 'out_of_order', label: 'Fora de serviço', color: 'bg-red-100 text-red-700' },
+const STATUS_OPTIONS: Array<{
+  value: Room['status'];
+  label: string;
+  color: string;
+  selectColor: string;
+}> = [
+  {
+    value: 'clean',
+    label: 'Limpo',
+    color: 'bg-emerald-100 text-emerald-700',
+    selectColor:
+      'bg-emerald-50 border-emerald-300 text-emerald-800 dark:bg-emerald-900/30 dark:border-emerald-700/50 dark:text-emerald-200',
+  },
+  {
+    value: 'dirty',
+    label: 'Sujo',
+    color: 'bg-amber-100 text-amber-700',
+    selectColor:
+      'bg-amber-50 border-amber-300 text-amber-800 dark:bg-amber-900/30 dark:border-amber-700/50 dark:text-amber-200',
+  },
+  {
+    value: 'inspected',
+    label: 'Inspecionado',
+    color: 'bg-sky-100 text-sky-700',
+    selectColor:
+      'bg-sky-50 border-sky-300 text-sky-800 dark:bg-sky-900/30 dark:border-sky-700/50 dark:text-sky-200',
+  },
+  {
+    value: 'maintenance',
+    label: 'Manutenção',
+    color: 'bg-orange-100 text-orange-700',
+    selectColor:
+      'bg-orange-50 border-orange-300 text-orange-800 dark:bg-orange-900/30 dark:border-orange-700/50 dark:text-orange-200',
+  },
+  {
+    value: 'out_of_order',
+    label: 'Fora de serviço',
+    color: 'bg-red-100 text-red-700',
+    selectColor:
+      'bg-red-50 border-red-300 text-red-800 dark:bg-red-900/30 dark:border-red-700/50 dark:text-red-200',
+  },
 ];
 
 export default function RoomsPage() {
@@ -62,6 +97,29 @@ export default function RoomsPage() {
     },
     onError: (err: Error) => toast.error('Não foi possível desativar', err.message),
   });
+
+  const deletePermanent = useMutation({
+    mutationFn: (id: string) => api(`/rooms/${id}/permanent`, { method: 'DELETE' }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['rooms'] });
+      qc.invalidateQueries({ queryKey: ['calendar'] });
+      toast.success('Quarto excluído', 'Removido definitivamente.');
+    },
+    onError: (err: Error) => toast.error('Não foi possível excluir', err.message),
+  });
+
+  function confirmDeletePermanent(r: Room) {
+    if (
+      confirm(
+        `EXCLUIR DEFINITIVAMENTE o quarto ${r.code}?\n\n` +
+          `Essa ação remove o quarto e o calendário de disponibilidade dele. ` +
+          `Não pode ser desfeita.\n\n` +
+          `Continuar?`,
+      )
+    ) {
+      deletePermanent.mutate(r.id);
+    }
+  }
 
   function startEdit(r: Room) {
     setModalState({
@@ -177,10 +235,18 @@ export default function RoomsPage() {
                   updateStatus.mutate({ id: r.id, status: e.target.value as Room['status'] })
                 }
                 disabled={updateStatus.isPending || !r.active}
-                className="input-base text-sm"
+                className={cn(
+                  'w-full px-3 py-2 rounded-md text-sm font-medium border outline-none transition-colors',
+                  'focus:ring-2 focus:ring-brand-500/30',
+                  statusInfo?.selectColor ?? 'bg-surface-elevated border-line text-ink',
+                )}
               >
                 {STATUS_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value}>
+                  <option
+                    key={opt.value}
+                    value={opt.value}
+                    className="bg-surface-elevated text-ink"
+                  >
                     {opt.label}
                   </option>
                 ))}
@@ -193,18 +259,33 @@ export default function RoomsPage() {
                 >
                   <Pencil className="w-3 h-3" /> Editar
                 </button>
-                <button
-                  onClick={() => confirmDeactivate(r)}
-                  disabled={!r.active || deactivate.isPending}
-                  className="flex-1 flex items-center justify-center gap-1 text-xs py-1.5 text-red-600 hover:bg-red-50 rounded-md active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed"
-                >
-                  {deactivate.isPending && deactivate.variables === r.id ? (
-                    <Spinner size={12} />
-                  ) : (
-                    <Trash2 className="w-3 h-3" />
-                  )}{' '}
-                  Desativar
-                </button>
+                {r.active ? (
+                  <button
+                    onClick={() => confirmDeactivate(r)}
+                    disabled={deactivate.isPending}
+                    className="flex-1 flex items-center justify-center gap-1 text-xs py-1.5 text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/20 rounded-md active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed"
+                  >
+                    {deactivate.isPending && deactivate.variables === r.id ? (
+                      <Spinner size={12} />
+                    ) : (
+                      <Trash2 className="w-3 h-3" />
+                    )}{' '}
+                    Desativar
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => confirmDeletePermanent(r)}
+                    disabled={deletePermanent.isPending}
+                    className="flex-1 flex items-center justify-center gap-1 text-xs py-1.5 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed"
+                  >
+                    {deletePermanent.isPending && deletePermanent.variables === r.id ? (
+                      <Spinner size={12} />
+                    ) : (
+                      <Trash2 className="w-3 h-3" />
+                    )}{' '}
+                    Excluir
+                  </button>
+                )}
               </div>
             </div>
           );

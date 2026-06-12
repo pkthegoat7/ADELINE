@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { MessageCircle, QrCode, RefreshCw, Send, Unplug } from 'lucide-react';
+import { MessageCircle, QrCode, RefreshCw, RotateCw, Send, Unplug } from 'lucide-react';
 import { api } from '@/lib/api';
 import { toast } from '@/lib/toast';
 
@@ -35,8 +35,24 @@ export function WhatsappSettings() {
     onSuccess: (res) => {
       setQr(res);
       qc.invalidateQueries({ queryKey: ['whatsapp'] });
+      if (!res.qrBase64 && !res.pairingCode && !res.code) {
+        toast.info(
+          'QR não chegou',
+          'Tente "Reiniciar instância" pra limpar o estado da Evolution.',
+        );
+      }
     },
     onError: (err: Error) => toast.error('Erro ao conectar', err.message),
+  });
+
+  const restart = useMutation({
+    mutationFn: () => api<ConnectResponse>('/whatsapp/restart', { method: 'POST' }),
+    onSuccess: (res) => {
+      setQr(res);
+      qc.invalidateQueries({ queryKey: ['whatsapp'] });
+      toast.success('Instância reiniciada', 'Escaneie o QR code que apareceu.');
+    },
+    onError: (err: Error) => toast.error('Erro ao reiniciar', err.message),
   });
 
   const disconnect = useMutation({
@@ -90,22 +106,44 @@ export function WhatsappSettings() {
       {isLoading && <div className="text-sm text-ink-muted">Carregando…</div>}
 
       {data && !data.configured && (
-        <div className="text-sm bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/40 text-amber-800 dark:text-amber-200 rounded-lg px-3 py-2.5">
-          Integração indisponível: o servidor ainda não tem <code className="font-mono">EVOLUTION_API_URL</code> e{' '}
-          <code className="font-mono">EVOLUTION_API_KEY</code> configuradas.
+        <div className="text-sm bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/40 text-amber-800 dark:text-amber-200 rounded-lg px-3 py-2.5 space-y-1.5">
+          <div className="font-medium">Integração indisponível</div>
+          <div>
+            O servidor da API ainda não tem <code className="font-mono">EVOLUTION_API_URL</code> e{' '}
+            <code className="font-mono">EVOLUTION_API_KEY</code> configuradas. Adicione no{' '}
+            <code className="font-mono">.env</code> da API (ou nas variáveis de ambiente do Railway/
+            host) e reinicie o backend.
+          </div>
         </div>
       )}
 
       {data?.configured && !connected && (
         <div className="space-y-4">
-          <button
-            onClick={() => connect.mutate()}
-            disabled={connect.isPending}
-            className="btn-primary"
-          >
-            <QrCode className="w-4 h-4" />
-            {connect.isPending ? 'Gerando QR code…' : qr ? 'Gerar novo QR code' : 'Conectar WhatsApp'}
-          </button>
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={() => connect.mutate()}
+              disabled={connect.isPending || restart.isPending}
+              className="btn-primary"
+            >
+              <QrCode className="w-4 h-4" />
+              {connect.isPending
+                ? 'Gerando QR code…'
+                : qr
+                  ? 'Gerar novo QR code'
+                  : 'Conectar WhatsApp'}
+            </button>
+            {qr && (
+              <button
+                onClick={() => restart.mutate()}
+                disabled={restart.isPending || connect.isPending}
+                className="btn-secondary"
+                title="Apaga e recria a instância na Evolution (use se o QR não funciona)"
+              >
+                <RotateCw className="w-4 h-4" />
+                {restart.isPending ? 'Reiniciando…' : 'Reiniciar instância'}
+              </button>
+            )}
+          </div>
 
           {qr && (
             <div className="flex flex-col sm:flex-row items-center gap-5 p-4 rounded-xl bg-surface-sunken/60">
@@ -116,16 +154,21 @@ export function WhatsappSettings() {
                   alt="QR code do WhatsApp"
                   className="w-52 h-52 rounded-lg bg-white p-2 shadow-sm"
                 />
+              ) : qr.pairingCode || qr.code ? (
+                <div className="text-sm font-mono bg-white dark:bg-zinc-900 rounded-lg p-4 break-all max-w-xs text-ink">
+                  {qr.pairingCode ?? qr.code}
+                </div>
               ) : (
-                <div className="text-sm font-mono bg-white dark:bg-zinc-900 rounded-lg p-4 break-all max-w-xs">
-                  {qr.pairingCode ?? qr.code ?? 'QR indisponível — tente de novo'}
+                <div className="text-sm bg-amber-50 dark:bg-amber-900/30 text-amber-800 dark:text-amber-200 rounded-lg p-4 max-w-xs">
+                  QR não foi devolvido pela Evolution. Use <strong>Reiniciar instância</strong> pra
+                  recriar do zero.
                 </div>
               )}
               <ol className="text-sm text-ink-soft space-y-1.5 list-decimal list-inside">
                 <li>Abra o WhatsApp no celular da pousada</li>
                 <li>Toque em <strong>Configurações → Aparelhos conectados</strong></li>
                 <li>Toque em <strong>Conectar aparelho</strong> e aponte pro QR code</li>
-                <li>Aguarde — o status muda pra “Conectado” sozinho</li>
+                <li>Aguarde — o status muda pra "Conectado" sozinho</li>
               </ol>
             </div>
           )}
@@ -175,12 +218,23 @@ export function WhatsappSettings() {
       )}
 
       {data?.configured && data.state === 'connecting' && !qr && (
-        <button
-          onClick={() => qc.invalidateQueries({ queryKey: ['whatsapp'] })}
-          className="btn-ghost mt-2 text-xs"
-        >
-          <RefreshCw className="w-3.5 h-3.5" /> Atualizar status
-        </button>
+        <div className="flex flex-wrap gap-2 mt-2">
+          <button
+            onClick={() => qc.invalidateQueries({ queryKey: ['whatsapp'] })}
+            className="btn-ghost text-xs"
+          >
+            <RefreshCw className="w-3.5 h-3.5" /> Atualizar status
+          </button>
+          <button
+            onClick={() => restart.mutate()}
+            disabled={restart.isPending}
+            className="btn-ghost text-xs text-amber-600 dark:text-amber-400"
+            title="Limpa o estado da Evolution e gera novo QR"
+          >
+            <RotateCw className="w-3.5 h-3.5" />
+            {restart.isPending ? 'Reiniciando…' : 'Travado? Reiniciar instância'}
+          </button>
+        </div>
       )}
     </section>
   );

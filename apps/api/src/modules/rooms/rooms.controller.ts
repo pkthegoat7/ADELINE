@@ -139,4 +139,34 @@ export class RoomsController {
       return tx.room.update({ where: { id }, data: { active: false }, include: { roomType: true } });
     });
   }
+
+  /**
+   * Hard delete: remove o quarto definitivamente. Só permitido se o quarto
+   * já estiver desativado e não houver vínculos de reserva (histórico).
+   * Apaga o calendar de disponibilidade vinculado.
+   */
+  @Delete('rooms/:id/permanent')
+  async deleteRoomPermanent(@TenantId() tenantId: string, @Param('id') id: string) {
+    return this.prisma.withTenant(tenantId, async (tx) => {
+      const room = await tx.room.findUnique({ where: { id } });
+      if (!room) {
+        throw new BadRequestException('Quarto não encontrado.');
+      }
+      if (room.active) {
+        throw new BadRequestException(
+          'Quarto ainda está ativo. Desative-o antes de excluir definitivamente.',
+        );
+      }
+      const reservationsCount = await tx.reservationRoom.count({ where: { roomId: id } });
+      if (reservationsCount > 0) {
+        throw new BadRequestException(
+          `Quarto tem ${reservationsCount} reserva(s) no histórico. Não dá pra excluir sem perder esse registro — mantenha-o desativado.`,
+        );
+      }
+      // Limpa disponibilidade e remove o quarto.
+      await tx.availabilityCalendar.deleteMany({ where: { roomId: id } });
+      await tx.room.delete({ where: { id } });
+      return { ok: true };
+    });
+  }
 }

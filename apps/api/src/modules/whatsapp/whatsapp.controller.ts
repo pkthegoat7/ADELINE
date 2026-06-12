@@ -39,6 +39,12 @@ export class WhatsappController {
     return this.whatsapp.disconnect(tenantId);
   }
 
+  @Post('restart')
+  restart(@CurrentUser() user: AuthContext, @TenantId() tenantId: string) {
+    assertManager(user);
+    return this.whatsapp.restart(tenantId);
+  }
+
   @Post('test')
   async test(
     @CurrentUser() user: AuthContext,
