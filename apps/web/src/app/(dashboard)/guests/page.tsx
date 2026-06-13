@@ -2,11 +2,12 @@
 
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { MessageCircle, Plus, Search } from 'lucide-react';
+import { MessageCircle, Plus, Search, Trash2 } from 'lucide-react';
 import { SendRegistrationLinkModal } from '@/components/SendRegistrationLinkModal';
 import { api } from '@/lib/api';
 import { cn } from '@/lib/cn';
 import { Modal } from '@/components/ui/Modal';
+import { Select } from '@/components/ui/Select';
 import { SkeletonTable } from '@/components/ui/Skeleton';
 import { Spinner } from '@/components/ui/Spinner';
 import { toast } from '@/lib/toast';
@@ -31,6 +32,27 @@ export default function GuestsPage() {
     queryKey: ['guests', search],
     queryFn: () => api<Guest[]>(`/guests${search ? `?q=${encodeURIComponent(search)}` : ''}`),
   });
+
+  const remove = useMutation({
+    mutationFn: (id: string) => api(`/guests/${id}`, { method: 'DELETE' }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['guests'] });
+      toast.success('Hóspede excluído');
+    },
+    onError: (err: Error) => toast.error('Não foi possível excluir', err.message),
+  });
+
+  function confirmRemove(g: Guest) {
+    if (
+      confirm(
+        `EXCLUIR DEFINITIVAMENTE ${g.fullName}?\n\n` +
+          `O cadastro some do sistema. Se houver reservas vinculadas, a exclusão será bloqueada.\n\n` +
+          `Essa ação não pode ser desfeita.`,
+      )
+    ) {
+      remove.mutate(g.id);
+    }
+  }
 
   return (
     <div className="p-4 md:p-6 lg:p-8 space-y-5 max-w-[1400px]">
@@ -67,51 +89,68 @@ export default function GuestsPage() {
       </div>
 
       {isLoading ? (
-        <SkeletonTable rows={5} cols={5} />
+        <SkeletonTable rows={5} cols={6} />
       ) : (
-        <div className="surface-card overflow-hidden shadow-soft">
-          <table className="w-full text-sm">
-            <thead className="bg-surface-sunken/60 border-b border-line text-ink-muted text-[10px] uppercase tracking-[0.18em]">
-              <tr>
-                <th className="text-left p-3 font-semibold">Nome</th>
-                <th className="text-left p-3 font-semibold">Documento</th>
-                <th className="text-left p-3 font-semibold">Email</th>
-                <th className="text-left p-3 font-semibold">Telefone</th>
-                <th className="text-left p-3 font-semibold">Nacionalidade</th>
-              </tr>
-            </thead>
-            <tbody>
-              {data?.map((g, idx) => (
-                <tr
-                  key={g.id}
-                  className={cn(
-                    'border-b border-line-soft last:border-0 hover:bg-brand-50/40 dark:hover:bg-brand-900/10 transition-colors',
-                    idx % 2 === 1 && 'bg-surface-sunken/20',
-                  )}
-                >
-                  <td className="p-3 font-medium text-ink">{g.fullName}</td>
-                  <td className="p-3 text-ink-soft">
-                    {g.document ? `${g.documentType.toUpperCase()}: ${g.document}` : '—'}
-                  </td>
-                  <td className="p-3 text-ink-soft">{g.email ?? '—'}</td>
-                  <td className="p-3 text-ink-soft">{g.phone ?? '—'}</td>
-                  <td className="p-3 text-ink-soft">{g.nationality ?? '—'}</td>
-                </tr>
-              ))}
-              {data?.length === 0 && (
+        <div className="surface-card shadow-soft overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-surface-sunken/60 border-b border-line text-ink-muted text-[10px] uppercase tracking-[0.18em]">
                 <tr>
-                  <td colSpan={5} className="p-12 text-center text-ink-muted">
-                    <div className="inline-flex flex-col items-center gap-3">
-                      <div className="w-12 h-12 rounded-full bg-surface-sunken flex items-center justify-center">
-                        <Search className="w-5 h-5 text-ink-muted" />
-                      </div>
-                      Nenhum hóspede encontrado.
-                    </div>
-                  </td>
+                  <th className="text-left p-3 font-semibold">Nome</th>
+                  <th className="text-left p-3 font-semibold">Documento</th>
+                  <th className="text-left p-3 font-semibold">Email</th>
+                  <th className="text-left p-3 font-semibold">Telefone</th>
+                  <th className="text-left p-3 font-semibold">Nacionalidade</th>
+                  <th className="text-right p-3 font-semibold w-16">Ações</th>
                 </tr>
-              )}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {data?.map((g, idx) => (
+                  <tr
+                    key={g.id}
+                    className={cn(
+                      'border-b border-line-soft last:border-0 hover:bg-brand-50/40 dark:hover:bg-brand-900/10 transition-colors',
+                      idx % 2 === 1 && 'bg-surface-sunken/20',
+                    )}
+                  >
+                    <td className="p-3 font-medium text-ink">{g.fullName}</td>
+                    <td className="p-3 text-ink-soft">
+                      {g.document ? `${g.documentType.toUpperCase()}: ${g.document}` : '—'}
+                    </td>
+                    <td className="p-3 text-ink-soft">{g.email ?? '—'}</td>
+                    <td className="p-3 text-ink-soft">{g.phone ?? '—'}</td>
+                    <td className="p-3 text-ink-soft">{g.nationality ?? '—'}</td>
+                    <td className="p-3 text-right">
+                      <button
+                        onClick={() => confirmRemove(g)}
+                        disabled={remove.isPending}
+                        data-tip="Excluir hóspede"
+                        className="p-1.5 rounded-md text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                      >
+                        {remove.isPending && remove.variables === g.id ? (
+                          <Spinner size={14} />
+                        ) : (
+                          <Trash2 className="w-4 h-4" />
+                        )}
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+                {data?.length === 0 && (
+                  <tr>
+                    <td colSpan={6} className="p-12 text-center text-ink-muted">
+                      <div className="inline-flex flex-col items-center gap-3">
+                        <div className="w-12 h-12 rounded-full bg-surface-sunken flex items-center justify-center">
+                          <Search className="w-5 h-5 text-ink-muted" />
+                        </div>
+                        Nenhum hóspede encontrado.
+                      </div>
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 
@@ -186,23 +225,24 @@ function NewGuestModal({
             required
             value={fullName}
             onChange={(e) => setFullName(e.target.value)}
-            className={INPUT}
+            className="input-base"
           />
         </Field>
 
         <div className="grid grid-cols-3 gap-2">
           <Field label="Tipo">
-            <select
+            <Select
               value={documentType}
-              onChange={(e) => setDocumentType(e.target.value as typeof documentType)}
-              className={INPUT}
-            >
-              <option value="cpf">CPF</option>
-              <option value="rg">RG</option>
-              <option value="passport">Passaporte</option>
-              <option value="cnh">CNH</option>
-              <option value="other">Outro</option>
-            </select>
+              onChange={(v) => setDocumentType(v as typeof documentType)}
+              options={[
+                { value: 'cpf', label: 'CPF' },
+                { value: 'rg', label: 'RG' },
+                { value: 'passport', label: 'Passaporte' },
+                { value: 'cnh', label: 'CNH' },
+                { value: 'other', label: 'Outro' },
+              ]}
+              className="w-full"
+            />
           </Field>
           <div className="col-span-2">
             <Field label="Documento">
@@ -210,7 +250,7 @@ function NewGuestModal({
                 type="text"
                 value={document}
                 onChange={(e) => setDocument(e.target.value)}
-                className={INPUT}
+                className="input-base"
               />
             </Field>
           </div>
@@ -221,7 +261,7 @@ function NewGuestModal({
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className={INPUT}
+            className="input-base"
           />
         </Field>
 
@@ -230,7 +270,7 @@ function NewGuestModal({
             type="tel"
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
-            className={INPUT}
+            className="input-base"
           />
         </Field>
 
@@ -240,29 +280,21 @@ function NewGuestModal({
             value={nationality}
             onChange={(e) => setNationality(e.target.value)}
             placeholder="BR, US, AR…"
-            className={INPUT}
+            className="input-base"
           />
         </Field>
 
         {error && (
-          <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-md px-3 py-2">
+          <div className="text-sm text-red-600 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900 rounded-md px-3 py-2">
             {error}
           </div>
         )}
 
-        <div className="flex justify-end gap-2 pt-3 border-t border-stone-100 -mx-5 px-5 mt-4">
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-4 py-2 text-sm text-stone-700 hover:bg-stone-100 rounded-md active:scale-95"
-          >
+        <div className="flex justify-end gap-2 pt-4 border-t border-line-soft -mx-5 px-5 mt-4">
+          <button type="button" onClick={onClose} className="btn-ghost">
             Cancelar
           </button>
-          <button
-            type="submit"
-            disabled={create.isPending}
-            className="px-4 py-2 text-sm bg-stone-900 text-white rounded-md hover:bg-stone-800 active:scale-95 disabled:opacity-50 inline-flex items-center gap-2"
-          >
+          <button type="submit" disabled={create.isPending} className="btn-primary">
             {create.isPending && <Spinner size={14} />}
             {create.isPending ? 'Salvando…' : 'Criar hóspede'}
           </button>
@@ -272,15 +304,10 @@ function NewGuestModal({
   );
 }
 
-const INPUT =
-  'w-full px-3 py-2 text-sm border border-stone-300 rounded-md focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 outline-none';
-
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
-      <label className="text-xs font-medium text-stone-700 uppercase tracking-wider">
-        {label}
-      </label>
+      <label className="text-xs font-semibold text-ink-soft uppercase tracking-wider">{label}</label>
       <div className="mt-1">{children}</div>
     </div>
   );
