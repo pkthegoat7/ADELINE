@@ -3,8 +3,11 @@
 import { useEffect, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
+import { Check, Phone, UserRound } from 'lucide-react';
 import { api } from '@/lib/api';
+import { cn } from '@/lib/cn';
 import { Modal } from '@/components/ui/Modal';
+import { Select } from '@/components/ui/Select';
 import { Spinner } from '@/components/ui/Spinner';
 import { toast } from '@/lib/toast';
 
@@ -93,7 +96,6 @@ export function NewReservationModal({
 
   const [error, setError] = useState<string | null>(null);
 
-  // Aplica prefill quando o modal abre num modo "create" (calendário -> nova reserva c/ data+quarto).
   useEffect(() => {
     if (!open || isEditing || !prefill) return;
     if (prefill.roomId) setRoomId(prefill.roomId);
@@ -163,6 +165,13 @@ export function NewReservationModal({
     onError: (err: Error) => setError(err.message),
   });
 
+  const roomOptions = (rooms.data ?? []).map((r) => ({
+    value: r.id,
+    label: `${r.code} — ${r.roomType.name}`,
+  }));
+
+  const selectedGuest = guests.data?.find((g) => g.id === selectedGuestId);
+
   return (
     <Modal open={open} onClose={onClose} title={isEditing ? 'Editar reserva' : 'Nova reserva'} size="xl">
       <form
@@ -186,124 +195,130 @@ export function NewReservationModal({
 
           {guestMode === 'new' ? (
             <div className="space-y-2">
-              <Input
+              <input
                 type="text"
                 placeholder="Nome completo"
                 value={newGuestName}
                 onChange={(e) => setNewGuestName(e.target.value)}
+                className="input-base"
               />
-              <Input
+              <input
                 type="tel"
                 placeholder="Telefone (opcional)"
                 value={newGuestPhone}
                 onChange={(e) => setNewGuestPhone(e.target.value)}
+                className="input-base"
               />
             </div>
           ) : (
             <div className="space-y-2">
-              <Input
+              <input
                 type="text"
                 placeholder="Buscar por nome, documento, email…"
                 value={guestSearch}
                 onChange={(e) => setGuestSearch(e.target.value)}
+                className="input-base"
               />
-              <Select
-                value={selectedGuestId}
-                onChange={(e) => setSelectedGuestId(e.target.value)}
-                size={Math.min(5, (guests.data?.length ?? 0) + 1)}
-              >
-                <option value="">Selecione…</option>
-                {guests.data?.map((g) => (
-                  <option key={g.id} value={g.id}>
-                    {g.fullName} {g.phone ? `— ${g.phone}` : ''}
-                  </option>
-                ))}
-              </Select>
+              <GuestList
+                guests={guests.data}
+                isLoading={guests.isLoading}
+                selectedId={selectedGuestId}
+                onSelect={setSelectedGuestId}
+              />
+              {selectedGuest && (
+                <div className="text-xs text-ink-muted px-1">
+                  Selecionado: <span className="font-medium text-ink">{selectedGuest.fullName}</span>
+                </div>
+              )}
             </div>
           )}
         </Field>
 
+        {/* Quarto */}
         <Field label="Quarto">
-          <Select value={roomId} onChange={(e) => setRoomId(e.target.value)}>
-            <option value="">Selecione…</option>
-            {rooms.data?.map((r) => (
-              <option key={r.id} value={r.id}>
-                {r.code} — {r.roomType.name}
-              </option>
-            ))}
-          </Select>
+          <Select
+            value={roomId}
+            onChange={setRoomId}
+            options={roomOptions}
+            placeholder={rooms.isLoading ? 'Carregando…' : 'Selecione o quarto'}
+            className="w-full"
+          />
         </Field>
 
-        <div className="grid grid-cols-2 gap-3">
+        {/* Datas */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <Field label="Check-in">
-            <Input type="date" value={checkIn} onChange={(e) => setCheckIn(e.target.value)} />
+            <input
+              type="date"
+              value={checkIn}
+              onChange={(e) => setCheckIn(e.target.value)}
+              className="input-base"
+            />
           </Field>
           <Field label="Check-out">
-            <Input type="date" value={checkOut} onChange={(e) => setCheckOut(e.target.value)} />
+            <input
+              type="date"
+              value={checkOut}
+              onChange={(e) => setCheckOut(e.target.value)}
+              className="input-base"
+            />
           </Field>
         </div>
 
-        <div className="grid grid-cols-3 gap-3">
+        {/* Adultos / Crianças / Canal */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
           <Field label="Adultos">
-            <Input
+            <input
               type="number"
               min={1}
               value={adults}
               onChange={(e) => setAdults(Number(e.target.value))}
+              className="input-base"
             />
           </Field>
           <Field label="Crianças">
-            <Input
+            <input
               type="number"
               min={0}
               value={children}
               onChange={(e) => setChildren(Number(e.target.value))}
+              className="input-base"
             />
           </Field>
           <Field label="Canal">
             <Select
               value={channel}
-              onChange={(e) => setChannel(e.target.value as typeof CHANNELS[number]['value'])}
-            >
-              {CHANNELS.map((c) => (
-                <option key={c.value} value={c.value}>
-                  {c.label}
-                </option>
-              ))}
-            </Select>
+              onChange={(v) => setChannel(v as typeof CHANNELS[number]['value'])}
+              options={CHANNELS.map((c) => ({ value: c.value, label: c.label }))}
+              className="w-full"
+            />
           </Field>
         </div>
 
+        {/* Valor */}
         <Field label="Valor total (R$)">
-          <Input
+          <input
             type="number"
             step="0.01"
             min="0"
             placeholder="0,00"
             value={totalAmount}
             onChange={(e) => setTotalAmount(e.target.value)}
+            className="input-base"
           />
         </Field>
 
         {error && (
-          <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-md px-3 py-2">
+          <div className="text-sm text-red-600 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900 rounded-md px-3 py-2">
             {error}
           </div>
         )}
 
-        <div className="flex justify-end gap-2 pt-2 border-t border-stone-100 -mx-5 px-5 mt-4 pt-4">
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-4 py-2 text-sm text-stone-700 hover:bg-stone-100 rounded-md active:scale-95"
-          >
+        <div className="flex justify-end gap-2 pt-4 border-t border-line-soft -mx-5 px-5 mt-4">
+          <button type="button" onClick={onClose} className="btn-ghost">
             Cancelar
           </button>
-          <button
-            type="submit"
-            disabled={submit.isPending}
-            className="px-4 py-2 text-sm bg-stone-900 text-white rounded-md hover:bg-stone-800 active:scale-95 disabled:opacity-50 inline-flex items-center gap-2"
-          >
+          <button type="submit" disabled={submit.isPending} className="btn-primary">
             {submit.isPending && <Spinner size={14} />}
             {submit.isPending
               ? isEditing
@@ -319,46 +334,87 @@ export function NewReservationModal({
   );
 }
 
+function GuestList({
+  guests,
+  isLoading,
+  selectedId,
+  onSelect,
+}: {
+  guests: Guest[] | undefined;
+  isLoading: boolean;
+  selectedId: string;
+  onSelect: (id: string) => void;
+}) {
+  if (isLoading) {
+    return (
+      <div className="rounded-lg border border-line bg-surface-elevated p-4 text-sm text-ink-muted text-center">
+        Carregando…
+      </div>
+    );
+  }
+  if (!guests || guests.length === 0) {
+    return (
+      <div className="rounded-lg border border-line bg-surface-elevated p-4 text-sm text-ink-muted text-center">
+        Nenhum hóspede encontrado. Tente outra busca ou crie um novo.
+      </div>
+    );
+  }
+  return (
+    <ul className="rounded-lg border border-line bg-surface-elevated max-h-60 overflow-y-auto scrollbar-thin divide-y divide-line-soft">
+      {guests.map((g) => {
+        const selected = g.id === selectedId;
+        return (
+          <li key={g.id}>
+            <button
+              type="button"
+              onClick={() => onSelect(g.id)}
+              className={cn(
+                'w-full flex items-center gap-3 px-3 py-2.5 text-left transition-colors',
+                selected
+                  ? 'bg-brand-50 dark:bg-brand-900/30'
+                  : 'hover:bg-surface-sunken',
+              )}
+            >
+              <span
+                className={cn(
+                  'w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0',
+                  selected
+                    ? 'bg-brand-200 text-brand-800 dark:bg-brand-700/50 dark:text-brand-200'
+                    : 'bg-surface-sunken text-ink-muted',
+                )}
+              >
+                <UserRound className="w-4 h-4" />
+              </span>
+              <div className="min-w-0 flex-1">
+                <div className="text-sm font-medium text-ink truncate">{g.fullName}</div>
+                {(g.phone || g.email) && (
+                  <div className="text-xs text-ink-muted truncate flex items-center gap-1.5">
+                    {g.phone && (
+                      <>
+                        <Phone className="w-3 h-3 flex-shrink-0" />
+                        <span>{g.phone}</span>
+                      </>
+                    )}
+                    {g.phone && g.email && <span className="text-ink-muted/50">·</span>}
+                    {g.email && <span className="truncate">{g.email}</span>}
+                  </div>
+                )}
+              </div>
+              {selected && <Check className="w-4 h-4 text-brand-600 flex-shrink-0" />}
+            </button>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
-      <label className="text-xs font-medium text-stone-700 uppercase tracking-wider">
-        {label}
-      </label>
+      <label className="text-xs font-semibold text-ink-soft uppercase tracking-wider">{label}</label>
       <div className="mt-1">{children}</div>
     </div>
-  );
-}
-
-function Input(props: React.InputHTMLAttributes<HTMLInputElement>) {
-  return (
-    <input
-      {...props}
-      className="w-full px-3 py-2 text-sm border border-stone-300 rounded-md focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 outline-none"
-    />
-  );
-}
-
-function Select({
-  children,
-  size,
-  value,
-  onChange,
-}: {
-  children: React.ReactNode;
-  size?: number;
-  value: string;
-  onChange: React.ChangeEventHandler<HTMLSelectElement>;
-}) {
-  return (
-    <select
-      value={value}
-      onChange={onChange}
-      size={size}
-      className="w-full px-3 py-2 text-sm border border-stone-300 rounded-md focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 outline-none"
-    >
-      {children}
-    </select>
   );
 }
 
@@ -375,11 +431,12 @@ function TabPill({
     <button
       type="button"
       onClick={onClick}
-      className={`px-3 py-1 text-xs font-medium rounded-md transition ${
+      className={cn(
+        'px-3 py-1 text-xs font-medium rounded-md transition-colors',
         active
-          ? 'bg-stone-900 text-white shadow-sm'
-          : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
-      }`}
+          ? 'bg-brand-600 text-white shadow-sm'
+          : 'bg-surface-sunken text-ink-soft hover:bg-surface-sunken/70 hover:text-ink',
+      )}
     >
       {children}
     </button>
