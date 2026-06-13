@@ -146,14 +146,14 @@ export default function RoomsPage() {
   const inactiveCount = data?.filter((r) => !r.active).length ?? 0;
 
   return (
-    <div className="p-6 lg:p-8 space-y-5 max-w-[1600px]">
+    <div className="p-4 md:p-6 lg:p-8 space-y-5 max-w-[1600px]">
       <header className="flex items-end justify-between flex-wrap gap-3">
         <div>
           <div className="flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-ink-muted mb-1">
             <span className="ornament">◆</span>
             <span>Inventário</span>
           </div>
-          <h2 className="font-serif text-3xl tracking-serif text-ink">Quartos</h2>
+          <h2 className="font-serif text-2xl sm:text-3xl tracking-serif text-ink">Quartos</h2>
           <p className="text-sm text-ink-muted mt-1 num-tabular">
             {visibleRooms.length} {showInactive ? 'total' : 'ativos'}
             {!showInactive && inactiveCount > 0 && (

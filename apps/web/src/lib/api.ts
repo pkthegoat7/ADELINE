@@ -18,7 +18,15 @@ export async function api<T = unknown>(
   });
   if (!res.ok) {
     const text = await res.text();
-    throw new Error(`API ${res.status}: ${text}`);
+    let msg = text;
+    try {
+      const json = JSON.parse(text);
+      const m = json?.message ?? json?.error;
+      if (m) msg = Array.isArray(m) ? m.join('; ') : String(m);
+    } catch {
+      /* não-JSON: usa o texto cru */
+    }
+    throw new Error(msg || `API ${res.status}`);
   }
   return res.json() as Promise<T>;
 }

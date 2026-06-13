@@ -71,14 +71,14 @@ export default function ChannelsPage() {
   }
 
   return (
-    <div className="p-6 lg:p-8 space-y-5 max-w-[1400px]">
+    <div className="p-4 md:p-6 lg:p-8 space-y-5 max-w-[1400px]">
       <header className="flex items-end justify-between flex-wrap gap-3">
         <div>
           <div className="flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-ink-muted mb-1">
             <span className="ornament">◆</span>
             <span>Integrações</span>
           </div>
-          <h2 className="font-serif text-3xl tracking-serif text-ink">Canais conectados</h2>
+          <h2 className="font-serif text-2xl sm:text-3xl tracking-serif text-ink">Canais conectados</h2>
           <p className="text-sm text-ink-muted mt-1">Channel manager bidirecional via iCal.</p>
         </div>
         <div className="flex items-center gap-2">

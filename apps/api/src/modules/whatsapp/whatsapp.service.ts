@@ -25,18 +25,69 @@ export class WhatsappService {
   private async evo(path: string, init: RequestInit = {}): Promise<EvolutionJson> {
     if (!this.configured) {
       throw new ServiceUnavailableException(
-        'Integração WhatsApp não configurada. Defina EVOLUTION_API_URL e EVOLUTION_API_KEY.',
+        'Integração WhatsApp não configurada. Defina EVOLUTION_API_URL e EVOLUTION_API_KEY no .env da API e reinicie o backend.',
       );
     }
-    const base = process.env.EVOLUTION_API_URL!.replace(/\/+$/, '');
-    const res = await fetch(`${base}${path}`, {
-      ...init,
-      headers: {
-        apikey: process.env.EVOLUTION_API_KEY!,
-        'Content-Type': 'application/json',
-        ...(init.headers ?? {}),
-      },
-    });
+
+    const rawUrl = process.env.EVOLUTION_API_URL!;
+    let base: string;
+    try {
+      // valida a URL antes de tentar fetch — evita "Failed to parse URL" virando 500
+      base = new URL(rawUrl).toString().replace(/\/+$/, '');
+    } catch {
+      throw new ServiceUnavailableException(
+        `EVOLUTION_API_URL inválida: "${rawUrl}". Use formato https://host[:porta] (sem aspas).`,
+      );
+    }
+
+    const method = init.method ?? 'GET';
+    const ctrl = new AbortController();
+    const timeoutId = setTimeout(() => ctrl.abort(), 15_000);
+
+    let res: Response;
+    try {
+      res = await fetch(`${base}${path}`, {
+        ...init,
+        signal: ctrl.signal,
+        headers: {
+          apikey: process.env.EVOLUTION_API_KEY!,
+          'Content-Type': 'application/json',
+          ...(init.headers ?? {}),
+        },
+      });
+    } catch (err) {
+      const e = err as Error & { cause?: { code?: string } };
+      const code = e.cause?.code ?? '';
+      this.logger.error(
+        `Evolution fetch falhou em ${method} ${path}: ${e.name} ${code} ${e.message}`,
+      );
+      if (e.name === 'AbortError') {
+        throw new ServiceUnavailableException(
+          `Evolution API não respondeu em 15s (${base}). Verifique se o servidor está no ar.`,
+        );
+      }
+      if (code === 'ENOTFOUND' || code === 'EAI_AGAIN') {
+        throw new ServiceUnavailableException(
+          `Não foi possível resolver o host da Evolution API (${base}). Confira EVOLUTION_API_URL.`,
+        );
+      }
+      if (code === 'ECONNREFUSED' || code === 'ECONNRESET') {
+        throw new ServiceUnavailableException(
+          `Conexão recusada pela Evolution API (${base}). O serviço está rodando e a porta certa?`,
+        );
+      }
+      if (code === 'CERT_HAS_EXPIRED' || code === 'UNABLE_TO_VERIFY_LEAF_SIGNATURE') {
+        throw new ServiceUnavailableException(
+          `Erro de certificado TLS conectando na Evolution (${base}): ${code}.`,
+        );
+      }
+      throw new ServiceUnavailableException(
+        `Falha ao conectar na Evolution API (${base}): ${e.message}`,
+      );
+    } finally {
+      clearTimeout(timeoutId);
+    }
+
     const text = await res.text();
     let json: EvolutionJson = null;
     try {
@@ -46,8 +97,13 @@ export class WhatsappService {
     }
     if (!res.ok) {
       this.logger.warn(
-        `Evolution ${init.method ?? 'GET'} ${path} -> ${res.status}: ${text.slice(0, 300)}`,
+        `Evolution ${method} ${path} -> ${res.status}: ${text.slice(0, 300)}`,
       );
+      if (res.status === 401 || res.status === 403) {
+        throw new ServiceUnavailableException(
+          `Evolution rejeitou a EVOLUTION_API_KEY (HTTP ${res.status}). Confira a chave.`,
+        );
+      }
       const msg =
         (json as any)?.response?.message ??
         (json as any)?.message ??

@@ -127,7 +127,7 @@ export class TeamController {
     });
   }
 
-  /** Hard delete: remove o usuário definitivamente. Só permitido se já estiver desativado. */
+  /** Hard delete: remove o usuário definitivamente. Revoga o acesso na hora. */
   @Delete(':id')
   async remove(
     @CurrentUser() user: AuthContext,
@@ -143,11 +143,6 @@ export class TeamController {
     }
     if (target.role === 'owner') {
       throw new BadRequestException('O proprietário não pode ser excluído.');
-    }
-    if (target.active) {
-      throw new BadRequestException(
-        'Desative o usuário antes de excluí-lo definitivamente.',
-      );
     }
     if (!canManageRole(user.role, target.role as Role)) {
       throw new ForbiddenException('Seu papel não permite gerenciar esse usuário.');

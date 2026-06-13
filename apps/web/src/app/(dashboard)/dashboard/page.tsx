@@ -92,7 +92,7 @@ export default function DashboardPage() {
     : 0;
 
   return (
-    <div className="p-6 lg:p-8 space-y-6 max-w-[1600px]">
+    <div className="p-4 md:p-6 lg:p-8 space-y-6 max-w-[1600px]">
       {/* Header ornamentado */}
       <motion.header
         initial={{ opacity: 0, y: 8 }}
@@ -105,7 +105,7 @@ export default function DashboardPage() {
             <span className="ornament">◆</span>
             <span>Hoje</span>
           </div>
-          <h2 className="font-serif text-3xl tracking-serif text-ink">
+          <h2 className="font-serif text-2xl sm:text-3xl tracking-serif text-ink">
             {todayLabel.charAt(0).toUpperCase() + todayLabel.slice(1)}
           </h2>
         </div>

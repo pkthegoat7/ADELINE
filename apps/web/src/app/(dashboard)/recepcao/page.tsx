@@ -107,14 +107,14 @@ export default function RecepcaoPage() {
   const pendingCheckouts = data?.checkOuts.filter((r) => r.status === 'checked_in').length ?? 0;
 
   return (
-    <div className="p-6 lg:p-8 space-y-5 max-w-[1400px]">
+    <div className="p-4 md:p-6 lg:p-8 space-y-5 max-w-[1400px]">
       <header className="flex items-end justify-between flex-wrap gap-3">
         <div>
           <div className="flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-ink-muted mb-1">
             <span className="ornament">◆</span>
             <span>{isToday ? 'Hoje' : 'Operação'}</span>
           </div>
-          <h2 className="font-serif text-3xl tracking-serif text-ink capitalize">{dateLabel}</h2>
+          <h2 className="font-serif text-2xl sm:text-3xl tracking-serif text-ink capitalize">{dateLabel}</h2>
         </div>
         <div className="inline-flex items-center gap-1 rounded-lg border border-line bg-surface-elevated p-0.5">
           <button
