@@ -56,10 +56,17 @@ export class WhatsappService {
         },
       });
     } catch (err) {
-      const e = err as Error & { cause?: { code?: string } };
-      const code = e.cause?.code ?? '';
+      // undici embrulha o erro real em err.cause — "fetch failed" é só wrapper
+      const e = err as Error & {
+        cause?: { code?: string; message?: string; name?: string; errno?: number };
+      };
+      const cause = e.cause;
+      const code = cause?.code ?? '';
+      const causeMsg = cause?.message ?? '';
+      const causeName = cause?.name ?? '';
+      const detail = [code, causeName, causeMsg].filter(Boolean).join(' · ');
       this.logger.error(
-        `Evolution fetch falhou em ${method} ${path}: ${e.name} ${code} ${e.message}`,
+        `Evolution fetch falhou em ${method} ${path}: ${e.name} ${e.message} | cause: ${detail || '(sem detalhes)'}`,
       );
       if (e.name === 'AbortError') {
         throw new ServiceUnavailableException(
@@ -68,7 +75,7 @@ export class WhatsappService {
       }
       if (code === 'ENOTFOUND' || code === 'EAI_AGAIN') {
         throw new ServiceUnavailableException(
-          `Não foi possível resolver o host da Evolution API (${base}). Confira EVOLUTION_API_URL.`,
+          `DNS não resolveu o host da Evolution API (${base}). Confira EVOLUTION_API_URL.`,
         );
       }
       if (code === 'ECONNREFUSED' || code === 'ECONNRESET') {
@@ -76,13 +83,24 @@ export class WhatsappService {
           `Conexão recusada pela Evolution API (${base}). O serviço está rodando e a porta certa?`,
         );
       }
-      if (code === 'CERT_HAS_EXPIRED' || code === 'UNABLE_TO_VERIFY_LEAF_SIGNATURE') {
+      if (code === 'ETIMEDOUT' || code === 'UND_ERR_CONNECT_TIMEOUT') {
         throw new ServiceUnavailableException(
-          `Erro de certificado TLS conectando na Evolution (${base}): ${code}.`,
+          `Timeout conectando na Evolution API (${base}). Possíveis causas: firewall, proxy ou IPv6 mal-configurado.`,
+        );
+      }
+      if (
+        code === 'CERT_HAS_EXPIRED' ||
+        code === 'UNABLE_TO_VERIFY_LEAF_SIGNATURE' ||
+        code === 'DEPTH_ZERO_SELF_SIGNED_CERT' ||
+        code === 'SELF_SIGNED_CERT_IN_CHAIN' ||
+        code === 'ERR_TLS_CERT_ALTNAME_INVALID'
+      ) {
+        throw new ServiceUnavailableException(
+          `Erro de certificado TLS conectando na Evolution (${base}): ${code}. ${causeMsg}`,
         );
       }
       throw new ServiceUnavailableException(
-        `Falha ao conectar na Evolution API (${base}): ${e.message}`,
+        `Falha ao conectar na Evolution API (${base}): ${detail || e.message}`,
       );
     } finally {
       clearTimeout(timeoutId);
