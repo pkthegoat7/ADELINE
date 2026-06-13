@@ -25,8 +25,9 @@ import { AdminModule } from './modules/admin/admin.module';
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     ThrottlerModule.forRoot([
-      // Padrão: 100 req/min por IP em qualquer endpoint
-      { name: 'default', ttl: 60_000, limit: 100 },
+      // Padrão: 300 req/min por IP — telas como dashboard/calendar abrem várias
+      // queries em paralelo; 100 estourava só ao logar com várias abas abertas
+      { name: 'default', ttl: 60_000, limit: 300 },
       // Rigoroso: 5 req/min — usado em endpoints sensíveis via @Throttle
       { name: 'strict', ttl: 60_000, limit: 5 },
     ]),

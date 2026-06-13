@@ -1,5 +1,6 @@
 import { Controller, Get, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { SkipThrottle } from '@nestjs/throttler';
 import {
   addDays,
   eachDayOfInterval,
@@ -14,6 +15,7 @@ import { PrismaService } from '../../common/prisma/prisma.service';
 
 @ApiTags('dashboard')
 @ApiBearerAuth()
+@SkipThrottle()
 @Controller('dashboard')
 export class DashboardController {
   constructor(private readonly prisma: PrismaService) {}
