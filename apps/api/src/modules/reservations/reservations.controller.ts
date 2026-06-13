@@ -18,24 +18,31 @@ import {
 } from '../../common/decorators/tenant.decorator';
 import { ReservationsService } from './reservations.service';
 
-const CreateSchema = z.object({
-  propertyId: z.string().uuid(),
-  guestId: z.string().uuid(),
-  roomId: z.string().uuid(),
-  channel: z
-    .enum(['internal', 'direct', 'airbnb', 'booking', 'expedia', 'vrbo', 'despegar', 'walk_in'])
-    .default('direct'),
-  channelReservationId: z.string().optional(),
-  checkIn: z.string(), // YYYY-MM-DD
-  checkOut: z.string(),
-  adults: z.number().int().positive().default(1),
-  children: z.number().int().nonnegative().default(0),
-  totalAmount: z.number().positive(),
-  commissionAmount: z.number().nonnegative().optional(),
-  notes: z.string().optional(),
-  specialRequests: z.string().optional(),
-  source: z.string().optional(),
-});
+const dateString = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Data deve estar no formato YYYY-MM-DD');
+
+const CreateSchema = z
+  .object({
+    propertyId: z.string().uuid(),
+    guestId: z.string().uuid(),
+    roomId: z.string().uuid(),
+    channel: z
+      .enum(['internal', 'direct', 'airbnb', 'booking', 'expedia', 'vrbo', 'despegar', 'walk_in'])
+      .default('direct'),
+    channelReservationId: z.string().optional(),
+    checkIn: dateString,
+    checkOut: dateString,
+    adults: z.number().int().positive().default(1),
+    children: z.number().int().nonnegative().default(0),
+    totalAmount: z.number().positive(),
+    commissionAmount: z.number().nonnegative().optional(),
+    notes: z.string().optional(),
+    specialRequests: z.string().optional(),
+    source: z.string().optional(),
+  })
+  .refine((d) => d.checkOut > d.checkIn, {
+    message: 'A data de check-out precisa ser depois do check-in.',
+    path: ['checkOut'],
+  });
 
 @ApiTags('reservations')
 @ApiBearerAuth()

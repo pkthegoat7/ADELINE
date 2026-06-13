@@ -1,4 +1,4 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { AvailabilityService } from '../availability/availability.service';
 import { differenceInCalendarDays, format } from 'date-fns';
@@ -44,7 +44,12 @@ export class ReservationsService {
   async create(input: CreateReservationInput) {
     const checkIn = new Date(input.checkIn);
     const checkOut = new Date(input.checkOut);
-    if (checkOut <= checkIn) throw new Error('checkOut must be after checkIn');
+    if (Number.isNaN(checkIn.getTime()) || Number.isNaN(checkOut.getTime())) {
+      throw new BadRequestException('Datas de check-in/check-out inválidas.');
+    }
+    if (checkOut <= checkIn) {
+      throw new BadRequestException('A data de check-out precisa ser depois do check-in.');
+    }
 
     const channel: ChannelSource = input.channel ?? 'direct';
     const commission = input.commissionAmount ?? 0;
@@ -73,7 +78,7 @@ export class ReservationsService {
         select: { id: true, roomTypeId: true, propertyId: true },
       });
       if (room.propertyId !== input.propertyId) {
-        throw new Error('roomId does not belong to propertyId');
+        throw new BadRequestException('O quarto selecionado não pertence à propriedade informada.');
       }
 
       const nights = differenceInCalendarDays(checkOut, checkIn);
@@ -156,7 +161,12 @@ export class ReservationsService {
   ) {
     const checkIn = new Date(input.checkIn);
     const checkOut = new Date(input.checkOut);
-    if (checkOut <= checkIn) throw new Error('checkOut must be after checkIn');
+    if (Number.isNaN(checkIn.getTime()) || Number.isNaN(checkOut.getTime())) {
+      throw new BadRequestException('Datas de check-in/check-out inválidas.');
+    }
+    if (checkOut <= checkIn) {
+      throw new BadRequestException('A data de check-out precisa ser depois do check-in.');
+    }
 
     const existing = await this.prisma.withTenant(tenantId, (tx) =>
       tx.reservation.findUniqueOrThrow({ where: { id: reservationId } }),
@@ -176,7 +186,7 @@ export class ReservationsService {
         select: { id: true, roomTypeId: true, propertyId: true },
       });
       if (room.propertyId !== input.propertyId) {
-        throw new Error('roomId does not belong to propertyId');
+        throw new BadRequestException('O quarto selecionado não pertence à propriedade informada.');
       }
 
       await tx.reservationRoom.deleteMany({ where: { reservationId } });

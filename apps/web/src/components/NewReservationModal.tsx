@@ -135,6 +135,7 @@ export function NewReservationModal({
       if (!guestId) throw new Error('Selecione um hóspede');
       if (!roomId) throw new Error('Selecione um quarto');
       if (!checkIn || !checkOut) throw new Error('Datas obrigatórias');
+      if (checkOut <= checkIn) throw new Error('A data de check-out precisa ser depois do check-in.');
       if (!totalAmount || Number(totalAmount) <= 0) throw new Error('Valor total inválido');
 
       const payload = {
@@ -251,7 +252,12 @@ export function NewReservationModal({
             <input
               type="date"
               value={checkIn}
-              onChange={(e) => setCheckIn(e.target.value)}
+              onChange={(e) => {
+                const v = e.target.value;
+                setCheckIn(v);
+                // Se o checkout ficou anterior ou igual ao novo checkin, reseta
+                if (checkOut && v && checkOut <= v) setCheckOut('');
+              }}
               className="input-base"
             />
           </Field>
@@ -259,9 +265,15 @@ export function NewReservationModal({
             <input
               type="date"
               value={checkOut}
+              min={checkIn || undefined}
               onChange={(e) => setCheckOut(e.target.value)}
               className="input-base"
             />
+            {checkIn && checkOut && checkOut <= checkIn && (
+              <p className="text-[11px] text-red-600 dark:text-red-400 mt-1">
+                Check-out deve ser depois do check-in.
+              </p>
+            )}
           </Field>
         </div>
 
