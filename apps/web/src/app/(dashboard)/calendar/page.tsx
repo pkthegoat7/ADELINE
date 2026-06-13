@@ -1,11 +1,12 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { addDays, format, startOfDay, subDays } from 'date-fns';
+import { addDays, differenceInDays, format, isSameDay, startOfDay, subDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { ChevronLeft, ChevronRight, Plus, CalendarDays } from 'lucide-react';
+import { CalendarCheck, ChevronLeft, ChevronRight, Plus, CalendarDays } from 'lucide-react';
 import { Timeline } from '@/components/calendar/Timeline';
 import { NewReservationModal, type PrefillReservation } from '@/components/NewReservationModal';
+import { cn } from '@/lib/cn';
 
 export default function CalendarPage() {
   const propertyId = process.env.NEXT_PUBLIC_DEMO_PROPERTY_ID ?? '';
@@ -18,6 +19,11 @@ export default function CalendarPage() {
 
   const from = format(anchor, 'yyyy-MM-dd');
   const to = format(addDays(anchor, days), 'yyyy-MM-dd');
+
+  const today = startOfDay(new Date());
+  const isOnToday = isSameDay(anchor, today);
+  const daysFromToday = differenceInDays(anchor, today);
+  const farFromToday = Math.abs(daysFromToday) > 30;
 
   // Fecha o popover de data ao clicar fora
   useEffect(() => {
@@ -50,9 +56,25 @@ export default function CalendarPage() {
             <span className="ornament">◆</span>
             <span>Período</span>
           </div>
-          <h2 className="font-serif text-2xl sm:text-3xl tracking-serif text-ink capitalize">
-            {format(anchor, "MMMM 'de' yyyy", { locale: ptBR })}
-          </h2>
+          <div className="flex items-center gap-2 flex-wrap">
+            <h2 className="font-serif text-2xl sm:text-3xl tracking-serif text-ink capitalize">
+              {format(anchor, "MMMM 'de' yyyy", { locale: ptBR })}
+            </h2>
+            {!isOnToday && farFromToday && (
+              <span
+                className={cn(
+                  'inline-flex items-center gap-1 text-[10px] uppercase tracking-wider font-semibold px-2 py-0.5 rounded-full',
+                  daysFromToday > 0
+                    ? 'bg-sky-100 text-sky-700 dark:bg-sky-900/40 dark:text-sky-300'
+                    : 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300',
+                )}
+              >
+                {daysFromToday > 0
+                  ? `+${daysFromToday}d no futuro`
+                  : `${Math.abs(daysFromToday)}d no passado`}
+              </span>
+            )}
+          </div>
           <p className="text-sm text-ink-muted mt-1 num-tabular">
             {format(anchor, "dd 'de' MMM", { locale: ptBR })} —{' '}
             {format(addDays(anchor, days - 1), "dd 'de' MMM", { locale: ptBR })}
@@ -76,6 +98,22 @@ export default function CalendarPage() {
             ))}
           </div>
 
+          {/* Botão Hoje destacado quando longe */}
+          {!isOnToday && (
+            <button
+              onClick={() => setAnchor(today)}
+              className={cn(
+                'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors',
+                'bg-brand-50 dark:bg-brand-900/30 text-brand-700 dark:text-brand-200',
+                'border-brand-200 dark:border-brand-800 hover:bg-brand-100 dark:hover:bg-brand-900/50',
+              )}
+              data-tip="Voltar para hoje"
+            >
+              <CalendarCheck className="w-3.5 h-3.5" />
+              Hoje
+            </button>
+          )}
+
           {/* Navegação */}
           <div className="inline-flex items-center gap-1 rounded-lg border border-line bg-surface-elevated p-0.5">
             <button
@@ -93,7 +131,7 @@ export default function CalendarPage() {
                 data-tip="Pular para data"
               >
                 <CalendarDays className="w-3.5 h-3.5" />
-                Hoje
+                Pular
               </button>
               {datePickerOpen && (
                 <div className="absolute right-0 mt-2 z-30 surface-card shadow-lg p-3 w-64 space-y-2 animate-scale-in">

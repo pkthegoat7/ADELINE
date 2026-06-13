@@ -1,6 +1,6 @@
 'use client';
 
-import { useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { addDays, format, isSameDay, isWeekend } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useMemo } from 'react';
@@ -72,11 +72,13 @@ export function Timeline({
 }) {
   const propertyId = process.env.NEXT_PUBLIC_DEMO_PROPERTY_ID ?? '';
 
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading, isFetching, error } = useQuery({
     queryKey: ['calendar', propertyId, from, to],
     queryFn: () =>
       api<CalendarPayload>(`/availability/calendar?propertyId=${propertyId}&from=${from}&to=${to}`),
     enabled: !!propertyId,
+    // Mantém o calendario anterior visivel durante o refetch (evita "sumir" ao navegar rapido)
+    placeholderData: keepPreviousData,
   });
 
   const dateColumns = useMemo(
@@ -89,7 +91,11 @@ export function Timeline({
     if (!data) return map;
     for (const c of data.cells) {
       if (!map.has(c.roomId)) map.set(c.roomId, new Map());
-      map.get(c.roomId)!.set(format(new Date(c.date), 'yyyy-MM-dd'), c);
+      // c.date vem como ISO UTC (DATE no Prisma vira "2026-06-05T00:00:00.000Z")
+      // Se parsearmos com new Date() em fuso UTC-3, vira o dia anterior. Pegamos os 10
+      // primeiros chars direto (YYYY-MM-DD) pra preservar a data calendárica do servidor.
+      const dateKey = typeof c.date === 'string' ? c.date.slice(0, 10) : format(new Date(c.date), 'yyyy-MM-dd');
+      map.get(c.roomId)!.set(dateKey, c);
     }
     return map;
   }, [data]);
@@ -101,6 +107,7 @@ export function Timeline({
       </div>
     );
   }
+  // isLoading=true só no primeiro carregamento; com placeholderData, refetch usa isFetching
   if (isLoading) {
     return (
       <div className="surface-card p-8">
@@ -112,7 +119,13 @@ export function Timeline({
       </div>
     );
   }
-  if (error) return <div className="text-red-600">Erro ao carregar calendário.</div>;
+  if (error) {
+    return (
+      <div className="surface-card p-6 text-sm text-red-600 dark:text-red-400 border-red-200 dark:border-red-900">
+        Erro ao carregar calendário: {(error as Error).message}
+      </div>
+    );
+  }
   if (!data) return null;
 
   const colWidth = days === 30 ? 64 : days === 14 ? 88 : 130;
@@ -122,7 +135,10 @@ export function Timeline({
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
-      className="surface-card overflow-x-auto scrollbar-thin shadow-soft"
+      className={cn(
+        'surface-card overflow-x-auto scrollbar-thin shadow-soft relative transition-opacity',
+        isFetching && 'opacity-70',
+      )}
     >
       <div style={{ minWidth: 240 + days * colWidth }}>
         {/* Header */}
