@@ -47,6 +47,7 @@ model Tenant {
   reservations           Reservation[]
   whatsappInstance       WhatsappInstance?
   guestRegistrationLinks GuestRegistrationLink[]
+  messageTemplates       MessageTemplate[]
 
   @@map("tenants")
 }
@@ -319,6 +320,35 @@ model WhatsappInstance {
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@map("whatsapp_instances")
+}
+
+/// Tipos de mensagem WhatsApp customizáveis pela tela de Configurações.
+/// `_scheduled` indica que o template tem `hourBrt` configurável (cron diário).
+enum MessageTemplateType {
+  checkin_tomorrow      // 1. lembrete de check-in (agendado)
+  post_checkout         // 2. agradecimento pós-checkout (agendado)
+  pending_registration  // 3. cobrança de ficha pendente (agendado)
+  registration_link     // 4. envio do link de cadastro (manual)
+  password_reset        // 5. link de redefinição de senha (manual)
+}
+
+/// Override por tenant das mensagens WhatsApp. Sem registro = usa o default hardcoded.
+model MessageTemplate {
+  id        String              @id @default(uuid()) @db.Uuid
+  tenantId  String              @map("tenant_id") @db.Uuid
+  type      MessageTemplateType
+  body      String              @db.Text
+  enabled   Boolean             @default(true)
+  // Hora local BRT (0-23). Apenas para tipos agendados; ignorado nos manuais.
+  hourBrt   Int?                @map("hour_brt")
+  createdAt DateTime            @default(now()) @map("created_at")
+  updatedAt DateTime            @updatedAt @map("updated_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, type])
+  @@index([tenantId])
+  @@map("message_templates")
 }
 
 enum RegistrationLinkStatus {

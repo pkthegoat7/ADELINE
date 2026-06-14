@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Check, Monitor, Moon, Sun } from 'lucide-react';
 import { toast } from 'sonner';
+import { MessageTemplatesSection } from '@/components/MessageTemplatesSection';
 import { api } from '@/lib/api';
 import { cn } from '@/lib/cn';
 import { useTheme, type ThemePref } from '@/lib/theme';
@@ -78,9 +79,11 @@ export default function SettingsPage() {
             </dl>
           </section>
 
+          <MessageTemplatesSection />
+
           <section className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-sm text-amber-900">
-            <strong>Em construção:</strong> edição de dados, gerenciamento de usuários, integrações
-            de pagamento (Pix/Stripe), WhatsApp e notificações virão nas próximas iterações.
+            <strong>Em construção:</strong> edição de dados, gerenciamento de usuários e integrações
+            de pagamento (Pix/Stripe) virão nas próximas iterações.
           </section>
         </div>
       )}

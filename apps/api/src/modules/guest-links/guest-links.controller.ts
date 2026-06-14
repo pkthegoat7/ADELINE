@@ -22,6 +22,7 @@ import { TenantId } from '../../common/decorators/tenant.decorator';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { publicWebUrl } from '../../common/public-url';
 import { Public } from '../auth/public.decorator';
+import { MessageTemplatesService } from '../whatsapp/message-templates.service';
 import { WhatsappService } from '../whatsapp/whatsapp.service';
 
 const LINK_TTL_DAYS = 7;
@@ -97,6 +98,7 @@ export class GuestLinksController {
   constructor(
     private readonly prisma: PrismaService,
     private readonly whatsapp: WhatsappService,
+    private readonly templates: MessageTemplatesService,
   ) {}
 
   /** Cria link de cadastro (opcionalmente vinculado a uma reserva) e envia via WhatsApp. */
@@ -125,11 +127,21 @@ export class GuestLinksController {
     let whatsappError: string | null = null;
     try {
       const tenant = await this.prisma.tenant.findUniqueOrThrow({ where: { id: tenantId } });
-      const intro = reservation
-        ? `Olá! 👋 Aqui é da ${tenant.name}.\n\nRecebemos sua reserva ${reservation.code} (check-in ${format(reservation.checkIn, 'dd/MM')}). Pra agilizar sua chegada, complete sua ficha de cadastro:`
-        : `Olá! 👋 Aqui é da ${tenant.name}.\n\nComplete sua ficha de cadastro pelo link abaixo (válido por ${LINK_TTL_DAYS} dias):`;
-      await this.whatsapp.sendText(tenantId, phone, `${intro}\n${url}`);
-      sentViaWhatsapp = true;
+      const introReserva = reservation
+        ? `Recebemos sua reserva ${reservation.code} (check-in ${format(reservation.checkIn, 'dd/MM')}). Pra agilizar sua chegada, `
+        : '';
+      const msg = await this.templates.render(tenantId, 'registration_link', {
+        pousada: tenant.name,
+        intro_reserva: introReserva,
+        dias: LINK_TTL_DAYS,
+        link: url,
+      });
+      if (msg) {
+        await this.whatsapp.sendText(tenantId, phone, msg);
+        sentViaWhatsapp = true;
+      } else {
+        whatsappError = 'Envio automático desativado nas configurações.';
+      }
     } catch (err) {
       whatsappError = (err as Error).message;
     }

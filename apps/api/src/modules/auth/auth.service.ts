@@ -4,6 +4,7 @@ import { randomBytes, randomUUID } from 'crypto';
 import { SignJWT, jwtVerify, type JWTPayload } from 'jose';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { publicWebUrl } from '../../common/public-url';
+import { MessageTemplatesService } from '../whatsapp/message-templates.service';
 import { WhatsappService } from '../whatsapp/whatsapp.service';
 
 export const AUTH_COOKIE = 'adelina_token';
@@ -30,6 +31,7 @@ export class AuthService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly whatsapp: WhatsappService,
+    private readonly templates: MessageTemplatesService,
   ) {}
 
   hashPassword(plain: string): Promise<string> {
@@ -115,12 +117,17 @@ export class AuthService {
     });
 
     const url = `${publicWebUrl()}/redefinir-senha?token=${token}`;
+    const msg = await this.templates.render(user.tenantId, 'password_reset', {
+      email: user.email,
+      minutos: RESET_TTL_MIN,
+      link: url,
+    });
+    if (!msg) {
+      this.logger.warn(`reset password desativado nas configurações (tenant ${user.tenantId})`);
+      return;
+    }
     await this.whatsapp
-      .sendText(
-        user.tenantId,
-        instance.phoneNumber,
-        `🔑 Redefinição de senha solicitada para ${user.email}.\n\nSe foi você (ou alguém da equipe), use o link (válido por ${RESET_TTL_MIN} min):\n${url}\n\nSe não reconhece o pedido, ignore.`,
-      )
+      .sendText(user.tenantId, instance.phoneNumber, msg)
       .catch((err) => this.logger.warn(`reset via whatsapp falhou: ${(err as Error).message}`));
   }
 
