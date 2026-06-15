@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { Suspense, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { AdelinaMark } from '@/components/brand/Logo';
 import { api } from '@/lib/api';
@@ -18,7 +18,21 @@ const FormSchema = z.object({
   path: ['confirmPassword'],
 });
 
-export default function CheckoutSucesso() {
+export default function CheckoutSucessoPage() {
+  return (
+    <Suspense
+      fallback={
+        <main className="min-h-screen flex items-center justify-center bg-surface">
+          <Loader2 className="w-6 h-6 animate-spin text-ink-muted" />
+        </main>
+      }
+    >
+      <CheckoutSucesso />
+    </Suspense>
+  );
+}
+
+function CheckoutSucesso() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const preapprovalId = searchParams.get('preapproval_id');
