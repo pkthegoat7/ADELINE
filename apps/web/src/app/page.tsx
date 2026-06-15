@@ -1,9 +1,14 @@
+'use client';
+
+import { useState } from 'react';
 import Link from 'next/link';
 import { AdelinaMark } from '@/components/brand/Logo';
+import { api } from '@/lib/api';
 import {
   ArrowRight,
   BedDouble,
   CalendarRange,
+  Check,
   ClipboardCheck,
   Plug,
   Shield,
@@ -60,6 +65,22 @@ const MOCK_ROOMS: {
 ];
 
 export default function Home() {
+  const [loading, setLoading] = useState(false);
+
+  async function handleSubscribe() {
+    if (loading) return;
+    setLoading(true);
+    try {
+      const { initPoint } = await api<{ initPoint: string }>('/subscriptions/create-preapproval', {
+        method: 'POST',
+      });
+      window.location.href = initPoint;
+    } catch {
+      alert('Erro ao iniciar checkout. Tente novamente.');
+      setLoading(false);
+    }
+  }
+
   return (
     <main className="relative min-h-screen overflow-hidden">
       {/* Ornamentos de fundo */}
@@ -91,6 +112,7 @@ export default function Home() {
           <div className="hidden sm:flex items-center gap-7 text-sm font-medium text-ink-soft">
             <a href="#recursos" className="hover:text-ink">Recursos</a>
             <a href="#como-funciona" className="hover:text-ink">Como funciona</a>
+            <a href="#preco" className="hover:text-ink">Preço</a>
           </div>
           <Link href="/login" className="btn-primary px-4 py-2 text-sm">
             Entrar
@@ -314,6 +336,60 @@ export default function Home() {
         </div>
       </section>
 
+      {/* ───────────────────────── Preço ───────────────────────── */}
+      <section id="preco" className="relative max-w-6xl mx-auto px-6 py-20">
+        <div className="text-center mb-12">
+          <div className="eyebrow flex items-center justify-center gap-2 mb-3">
+            <span className="ornament">◆</span>
+            <span>Preço</span>
+            <span className="ornament">◆</span>
+          </div>
+          <h2 className="font-display text-3xl sm:text-4xl font-bold text-ink tracking-tight">
+            Plano único, sem surpresas
+          </h2>
+          <p className="text-ink-soft mt-3 max-w-lg mx-auto">
+            Tudo incluso num só valor. Sem limites de quartos, sem taxa por reserva.
+          </p>
+        </div>
+
+        <div className="max-w-md mx-auto">
+          <div className="surface-card glow-border p-8 text-center">
+            <div className="font-display font-bold text-lg text-ink mb-1">Adelina PMS</div>
+            <div className="flex items-baseline justify-center gap-1 mb-6">
+              <span className="font-display text-5xl font-bold text-ink">R$ 249</span>
+              <span className="text-ink-muted text-sm">/mês</span>
+            </div>
+
+            <ul className="space-y-3 text-left text-sm text-ink mb-8">
+              {[
+                'Calendário unificado',
+                'Canais bidirecionais (Airbnb + Booking)',
+                'Anti-overbooking automático',
+                'Gestão de hóspedes',
+                'Equipe ilimitada',
+                'Suporte por WhatsApp',
+              ].map((item) => (
+                <li key={item} className="flex items-start gap-2.5">
+                  <Check className="w-4 h-4 text-emerald-500 mt-0.5 flex-shrink-0" />
+                  {item}
+                </li>
+              ))}
+            </ul>
+
+            <button
+              onClick={handleSubscribe}
+              disabled={loading}
+              className="btn-primary w-full px-7 py-3 text-sm group disabled:opacity-60"
+            >
+              {loading ? 'Redirecionando…' : 'Assinar agora'}
+              {!loading && (
+                <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
+              )}
+            </button>
+          </div>
+        </div>
+      </section>
+
       {/* ───────────────────────── CTA final ───────────────────────── */}
       <section className="relative max-w-6xl mx-auto px-6 pb-20">
         <div className="relative overflow-hidden rounded-2xl glow-border">
@@ -337,13 +413,14 @@ export default function Home() {
               Entre no sistema e veja a disponibilidade da sua pousada em tempo real.
             </p>
             <div className="flex justify-center mt-8">
-              <Link
-                href="/login"
-                className="inline-flex items-center gap-2 px-7 py-3 rounded-lg bg-white text-brand-800 text-sm font-semibold shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all"
+              <button
+                onClick={handleSubscribe}
+                disabled={loading}
+                className="inline-flex items-center gap-2 px-7 py-3 rounded-lg bg-white text-brand-800 text-sm font-semibold shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all disabled:opacity-60"
               >
-                Entrar no sistema
-                <ArrowRight className="w-4 h-4" />
-              </Link>
+                {loading ? 'Redirecionando…' : 'Assinar agora'}
+                {!loading && <ArrowRight className="w-4 h-4" />}
+              </button>
             </div>
           </div>
         </div>
