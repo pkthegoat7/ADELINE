@@ -20,6 +20,7 @@ import { WhatsappModule } from './modules/whatsapp/whatsapp.module';
 import { GuestLinksModule } from './modules/guest-links/guest-links.module';
 import { TeamModule } from './modules/team/team.module';
 import { AdminModule } from './modules/admin/admin.module';
+import { SubscriptionsModule } from './modules/subscriptions/subscriptions.module';
 
 @Module({
   imports: [
@@ -50,6 +51,7 @@ import { AdminModule } from './modules/admin/admin.module';
     GuestLinksModule,
     TeamModule,
     AdminModule,
+    SubscriptionsModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })
