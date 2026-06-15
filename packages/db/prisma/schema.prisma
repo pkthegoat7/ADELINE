@@ -31,6 +31,13 @@ enum TenantStatus {
   cancelled
 }
 
+enum SubscriptionStatus {
+  pending
+  active
+  past_due
+  cancelled
+}
+
 model Tenant {
   id         String       @id @default(uuid()) @db.Uuid
   name       String
@@ -48,8 +55,26 @@ model Tenant {
   whatsappInstance       WhatsappInstance?
   guestRegistrationLinks GuestRegistrationLink[]
   messageTemplates       MessageTemplate[]
+  subscription           Subscription?
 
   @@map("tenants")
+}
+
+model Subscription {
+  id                 String             @id @default(uuid()) @db.Uuid
+  tenantId           String             @unique @map("tenant_id") @db.Uuid
+  mpPreapprovalId    String             @unique @map("mp_preapproval_id")
+  status             SubscriptionStatus @default(pending)
+  planAmount         Decimal            @db.Decimal(10, 2) @map("plan_amount")
+  currentPeriodStart DateTime           @map("current_period_start")
+  currentPeriodEnd   DateTime           @map("current_period_end")
+  mpPayerEmail       String             @map("mp_payer_email")
+  createdAt          DateTime           @default(now()) @map("created_at")
+  updatedAt          DateTime           @updatedAt @map("updated_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@map("subscriptions")
 }
 
 enum UserRole {
