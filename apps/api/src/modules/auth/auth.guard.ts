@@ -58,6 +58,25 @@ export class AuthGuard implements CanActivate {
       throw new UnauthorizedException('Pousada suspensa. Entre em contato com o suporte.');
     }
 
+    // Super admins bypass subscription check
+    const superEmails = (process.env.SUPER_ADMIN_EMAILS ?? '')
+      .split(',')
+      .map((s) => s.trim().toLowerCase())
+      .filter(Boolean);
+    const isSuperAdmin = superEmails.includes(user.email.toLowerCase());
+
+    if (!isSuperAdmin) {
+      const subscription = await this.prisma.subscription.findUnique({
+        where: { tenantId: user.tenantId },
+        select: { status: true, currentPeriodEnd: true },
+      });
+      // Tenants without subscription that were created before the subscription system
+      // are allowed through (grandfathered). Only block if subscription exists and is cancelled.
+      if (subscription?.status === 'cancelled') {
+        throw new UnauthorizedException('Assinatura cancelada. Renove para continuar usando o sistema.');
+      }
+    }
+
     (req as any).user = {
       userId: user.id,
       tenantId: user.tenantId,
