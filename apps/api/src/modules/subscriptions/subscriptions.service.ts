@@ -1,15 +1,8 @@
 import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { MercadoPagoConfig, PreApproval } from 'mercadopago';
-import { randomUUID } from 'crypto';
 import { addMonths } from 'date-fns';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { AuthService } from '../auth/auth.service';
-
-function mpClient(): MercadoPagoConfig {
-  const token = process.env.MP_ACCESS_TOKEN;
-  if (!token) throw new Error('MP_ACCESS_TOKEN não configurado');
-  return new MercadoPagoConfig({ accessToken: token });
-}
 
 @Injectable()
 export class SubscriptionsService {
@@ -20,8 +13,21 @@ export class SubscriptionsService {
     private readonly auth: AuthService,
   ) {}
 
+  private async mpClient(): Promise<MercadoPagoConfig> {
+    const setting = await this.prisma.systemSetting.findUnique({
+      where: { key: 'mp_access_token' },
+    });
+    const token = setting?.value || process.env.MP_ACCESS_TOKEN;
+    if (!token) {
+      throw new BadRequestException(
+        'Mercado Pago não configurado. Peça ao administrador para configurar o token nas configurações do sistema.',
+      );
+    }
+    return new MercadoPagoConfig({ accessToken: token });
+  }
+
   async createPreapproval(backUrl: string): Promise<{ initPoint: string }> {
-    const preapproval = new PreApproval(mpClient());
+    const preapproval = new PreApproval(await this.mpClient());
     const now = new Date();
 
     const result = await preapproval.create({
@@ -50,7 +56,7 @@ export class SubscriptionsService {
   async handleWebhook(type: string, dataId: string): Promise<void> {
     if (type !== 'subscription_preapproval') return;
 
-    const preapproval = new PreApproval(mpClient());
+    const preapproval = new PreApproval(await this.mpClient());
     const mp = await preapproval.get({ id: dataId });
     if (!mp.id) return;
 
@@ -100,7 +106,7 @@ export class SubscriptionsService {
     password: string;
     propertyName: string;
   }): Promise<{ token: string }> {
-    const preapproval = new PreApproval(mpClient());
+    const preapproval = new PreApproval(await this.mpClient());
     const mp = await preapproval.get({ id: input.preapprovalId });
 
     if (!mp.id || mp.status !== 'authorized') {

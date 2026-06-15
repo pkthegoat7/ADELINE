@@ -7,6 +7,7 @@ import {
   Get,
   Param,
   Patch,
+  Put,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
@@ -92,6 +93,42 @@ export class AdminController {
 
     return { ok: true, name: tenant.name };
   }
+
+  // ─── System Settings (Mercado Pago, etc.) ──────────────────
+
+  private static ALLOWED_SETTINGS = ['mp_access_token'] as const;
+  private static MASKED_SETTINGS = new Set(['mp_access_token']);
+
+  @Get('settings')
+  async getSettings(@CurrentUser() user: AuthContext) {
+    this.assertSuperAdmin(user);
+    const rows = await this.prisma.systemSetting.findMany();
+    return rows.map((r) => ({
+      key: r.key,
+      value: AdminController.MASKED_SETTINGS.has(r.key)
+        ? r.value.slice(0, 8) + '••••••••'
+        : r.value,
+      updatedAt: r.updatedAt,
+    }));
+  }
+
+  @Put('settings')
+  async upsertSetting(@CurrentUser() user: AuthContext, @Body() body: unknown) {
+    this.assertSuperAdmin(user);
+    const schema = z.object({
+      key: z.enum(AdminController.ALLOWED_SETTINGS),
+      value: z.string().min(1, 'Valor obrigatório'),
+    });
+    const { key, value } = schema.parse(body);
+    await this.prisma.systemSetting.upsert({
+      where: { key },
+      create: { key, value },
+      update: { value },
+    });
+    return { ok: true, key };
+  }
+
+  // ─── Helpers ──────────────────────────────────────────────
 
   private assertSuperAdmin(user: AuthContext) {
     if (!isSuperAdmin(user.email)) {

@@ -748,6 +748,18 @@ model SyncLog {
 }
 
 // ════════════════════════════════════════════════════════════════
+// CONFIGURAÇÕES DO SISTEMA (super admin)
+// ════════════════════════════════════════════════════════════════
+
+model SystemSetting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("system_settings")
+}
+
+// ════════════════════════════════════════════════════════════════
 // PRECIFICAÇÃO DINÂMICA (regras)
 // ════════════════════════════════════════════════════════════════
 

@@ -198,6 +198,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 active={isActive(pathname, '/admin/cadastrar-pousada')}
                 accent
               />
+              <NavLink
+                item={{
+                  href: '/admin/configuracoes',
+                  label: 'Configurações sistema',
+                  icon: Settings,
+                }}
+                active={isActive(pathname, '/admin/configuracoes')}
+                accent
+              />
             </>
           )}
         </nav>
