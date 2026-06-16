@@ -232,19 +232,48 @@ function PlanoSection() {
           </div>
 
           <div>
-            <label htmlFor="plan-frequency" className="block text-sm font-medium text-ink mb-1">
-              Ciclo de cobrança
-            </label>
-            <select
-              id="plan-frequency"
-              value={frequency}
-              onChange={(e) => setFrequency(e.target.value)}
-              className="input-base w-full"
-            >
-              <option value="1">Mensal</option>
-              <option value="3">Trimestral</option>
-              <option value="12">Anual</option>
-            </select>
+            <span className="block text-sm font-medium text-ink mb-1">Ciclo de cobrança</span>
+            <div role="radiogroup" aria-label="Ciclo de cobrança" className="grid grid-cols-3 gap-2">
+              {[
+                { value: '1', label: 'Mensal', hint: 'todo mês' },
+                { value: '3', label: 'Trimestral', hint: 'a cada 3 meses' },
+                { value: '12', label: 'Anual', hint: 'a cada 12 meses' },
+              ].map((opt) => {
+                const active = frequency === opt.value;
+                return (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    role="radio"
+                    aria-checked={active}
+                    onClick={() => setFrequency(opt.value)}
+                    className={`flex flex-col items-center justify-center rounded-xl border px-2 py-3 text-center transition ${
+                      active
+                        ? 'border-brand-500 bg-brand-50 dark:bg-brand-900/20 ring-2 ring-brand-500/30'
+                        : 'border-line bg-surface hover:border-brand-400 hover:bg-surface-sunken'
+                    }`}
+                  >
+                    <span
+                      className={`text-sm font-semibold ${active ? 'text-brand-700 dark:text-brand-300' : 'text-ink'}`}
+                    >
+                      {opt.label}
+                    </span>
+                    <span className="text-[11px] text-ink-muted mt-0.5">{opt.hint}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 rounded-lg bg-surface-sunken px-3 py-2.5 text-sm text-ink-soft">
+            <Tag className="w-4 h-4 text-brand-500 flex-shrink-0" />
+            <span>
+              Plano atual:{' '}
+              <strong className="text-ink">
+                {amount.trim() ? `R$ ${amount.trim()}` : '—'}
+              </strong>{' '}
+              {frequency === '1' ? 'por mês' : frequency === '3' ? 'a cada 3 meses' : 'por ano'}
+            </span>
           </div>
 
           <button
