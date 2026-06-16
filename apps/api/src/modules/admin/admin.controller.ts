@@ -96,7 +96,12 @@ export class AdminController {
 
   // ─── System Settings (Mercado Pago, etc.) ──────────────────
 
-  private static ALLOWED_SETTINGS = ['mp_access_token'] as const;
+  private static ALLOWED_SETTINGS = [
+    'mp_access_token',
+    'mp_plan_amount',
+    'mp_plan_reason',
+    'mp_plan_frequency_months',
+  ] as const;
   private static MASKED_SETTINGS = new Set(['mp_access_token']);
 
   @Get('settings')
@@ -120,6 +125,20 @@ export class AdminController {
       value: z.string().min(1, 'Valor obrigatório'),
     });
     const { key, value } = schema.parse(body);
+
+    if (key === 'mp_plan_amount') {
+      const n = Number(value);
+      if (!Number.isFinite(n) || n <= 0) {
+        throw new BadRequestException('Preço deve ser um número maior que zero.');
+      }
+    }
+    if (key === 'mp_plan_frequency_months' && !['1', '3', '12'].includes(value)) {
+      throw new BadRequestException('Ciclo inválido. Use 1, 3 ou 12 meses.');
+    }
+    if (key === 'mp_plan_reason' && value.length > 255) {
+      throw new BadRequestException('Descrição muito longa (máx. 255 caracteres).');
+    }
+
     await this.prisma.systemSetting.upsert({
       where: { key },
       create: { key, value },
