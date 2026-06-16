@@ -26,17 +26,40 @@ export class SubscriptionsService {
     return new MercadoPagoConfig({ accessToken: token });
   }
 
+  private async getPlanConfig(): Promise<{
+    amount: number;
+    reason: string;
+    frequencyMonths: number;
+  }> {
+    const rows = await this.prisma.systemSetting.findMany({
+      where: {
+        key: { in: ['mp_plan_amount', 'mp_plan_reason', 'mp_plan_frequency_months'] },
+      },
+    });
+    const map = new Map(rows.map((r) => [r.key, r.value]));
+
+    const amount = Number(map.get('mp_plan_amount'));
+    const frequencyMonths = Number(map.get('mp_plan_frequency_months'));
+
+    return {
+      amount: Number.isFinite(amount) && amount > 0 ? amount : 249,
+      reason: map.get('mp_plan_reason') || 'Adelina PMS — Assinatura Mensal',
+      frequencyMonths: [1, 3, 12].includes(frequencyMonths) ? frequencyMonths : 1,
+    };
+  }
+
   async createPreapproval(backUrl: string): Promise<{ initPoint: string }> {
     const preapproval = new PreApproval(await this.mpClient());
+    const plan = await this.getPlanConfig();
     const now = new Date();
 
     const result = await preapproval.create({
       body: {
-        reason: 'Adelina PMS — Assinatura Mensal',
+        reason: plan.reason,
         auto_recurring: {
-          frequency: 1,
+          frequency: plan.frequencyMonths,
           frequency_type: 'months',
-          transaction_amount: 249,
+          transaction_amount: plan.amount,
           currency_id: 'BRL',
           start_date: now.toISOString(),
           end_date: addMonths(now, 120).toISOString(),
@@ -76,6 +99,7 @@ export class SubscriptionsService {
     };
     const newStatus = statusMap[mp.status ?? ''] ?? sub.status;
 
+    const plan = await this.getPlanConfig();
     await this.prisma.subscription.update({
       where: { id: sub.id },
       data: {
@@ -84,7 +108,7 @@ export class SubscriptionsService {
           ? {}
           : {
               currentPeriodStart: new Date(),
-              currentPeriodEnd: addMonths(new Date(), 1),
+              currentPeriodEnd: addMonths(new Date(), plan.frequencyMonths),
             }),
       },
     });
@@ -141,6 +165,7 @@ export class SubscriptionsService {
     const finalSlug = existingSlug ? `${slug}-${Date.now().toString(36)}` : slug;
 
     const passwordHash = await this.auth.hashPassword(input.password);
+    const plan = await this.getPlanConfig();
     const now = new Date();
 
     const result = await this.prisma.$transaction(async (tx) => {
@@ -180,9 +205,9 @@ export class SubscriptionsService {
           tenantId: tenant.id,
           mpPreapprovalId: mp.id!,
           status: 'active',
-          planAmount: 249,
+          planAmount: plan.amount,
           currentPeriodStart: now,
-          currentPeriodEnd: addMonths(now, 1),
+          currentPeriodEnd: addMonths(now, plan.frequencyMonths),
           mpPayerEmail: mp.payer_email ?? input.email,
         },
       });
