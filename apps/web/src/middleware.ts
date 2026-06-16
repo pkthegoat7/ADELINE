@@ -24,7 +24,10 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith('/redefinir-senha');
   const isPublicAsset = pathname.startsWith('/_next') || pathname.startsWith('/favicon');
   const isLanding = pathname === '/';
-  const isPublicForm = pathname.startsWith('/cadastro');
+  const isPublicForm =
+    pathname.startsWith('/cadastro') ||
+    pathname.startsWith('/checkout') ||
+    pathname.startsWith('/assinatura-necessaria');
 
   const authed = await hasValidSession(request);
 
