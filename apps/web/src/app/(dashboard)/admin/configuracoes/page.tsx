@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ShieldAlert, Save, Eye, EyeOff, CreditCard } from 'lucide-react';
+import { ShieldAlert, Save, Eye, EyeOff, CreditCard, Tag } from 'lucide-react';
 import Link from 'next/link';
 import { api } from '@/lib/api';
 import { toast } from '@/lib/toast';
@@ -45,6 +45,7 @@ export default function AdminConfiguracoes() {
       </div>
 
       <MercadoPagoSection />
+      <PlanoSection />
     </div>
   );
 }
@@ -134,6 +135,125 @@ function MercadoPagoSection() {
           >
             <Save className="w-4 h-4" />
             {save.isPending ? 'Salvando…' : 'Salvar token'}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function PlanoSection() {
+  const qc = useQueryClient();
+  const [amount, setAmount] = useState('');
+  const [reason, setReason] = useState('');
+  const [frequency, setFrequency] = useState('1');
+  const [loaded, setLoaded] = useState(false);
+
+  const { data: settings, isLoading } = useQuery({
+    queryKey: ['admin-settings'],
+    queryFn: () => api<SystemSetting[]>('/admin/settings'),
+  });
+
+  // Preenche os campos com os valores salvos na primeira carga
+  if (settings && !loaded) {
+    setAmount(settings.find((s) => s.key === 'mp_plan_amount')?.value ?? '');
+    setReason(settings.find((s) => s.key === 'mp_plan_reason')?.value ?? '');
+    setFrequency(settings.find((s) => s.key === 'mp_plan_frequency_months')?.value ?? '1');
+    setLoaded(true);
+  }
+
+  const save = useMutation({
+    mutationFn: async () => {
+      await api('/admin/settings', {
+        method: 'PUT',
+        body: JSON.stringify({ key: 'mp_plan_amount', value: amount.trim() }),
+      });
+      await api('/admin/settings', {
+        method: 'PUT',
+        body: JSON.stringify({ key: 'mp_plan_reason', value: reason.trim() }),
+      });
+      await api('/admin/settings', {
+        method: 'PUT',
+        body: JSON.stringify({ key: 'mp_plan_frequency_months', value: frequency }),
+      });
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin-settings'] });
+      toast.success('Plano de assinatura salvo com sucesso');
+    },
+    onError: (err: Error) => toast.error('Erro ao salvar', err.message),
+  });
+
+  return (
+    <div className="surface-card p-6">
+      <div className="flex items-center gap-3 mb-4">
+        <span className="w-10 h-10 rounded-xl flex items-center justify-center bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400">
+          <Tag className="w-5 h-5" />
+        </span>
+        <div>
+          <h3 className="font-semibold text-ink">Plano de assinatura</h3>
+          <p className="text-xs text-ink-muted">Preço, descrição e ciclo do checkout</p>
+        </div>
+      </div>
+
+      {isLoading ? (
+        <div className="text-sm text-ink-muted">Carregando…</div>
+      ) : (
+        <div className="space-y-4">
+          <div>
+            <label htmlFor="plan-amount" className="block text-sm font-medium text-ink mb-1">
+              Valor (R$)
+            </label>
+            <input
+              id="plan-amount"
+              type="number"
+              min="1"
+              step="0.01"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              className="input-base w-full"
+              placeholder="249.00"
+            />
+          </div>
+
+          <div>
+            <label htmlFor="plan-reason" className="block text-sm font-medium text-ink mb-1">
+              Descrição (aparece no checkout do Mercado Pago)
+            </label>
+            <input
+              id="plan-reason"
+              type="text"
+              maxLength={255}
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              className="input-base w-full"
+              placeholder="Adelina PMS — Assinatura Mensal"
+            />
+          </div>
+
+          <div>
+            <label htmlFor="plan-frequency" className="block text-sm font-medium text-ink mb-1">
+              Ciclo de cobrança
+            </label>
+            <select
+              id="plan-frequency"
+              value={frequency}
+              onChange={(e) => setFrequency(e.target.value)}
+              className="input-base w-full"
+            >
+              <option value="1">Mensal</option>
+              <option value="3">Trimestral</option>
+              <option value="12">Anual</option>
+            </select>
+          </div>
+
+          <button
+            onClick={() => save.mutate()}
+            disabled={!amount.trim() || !reason.trim() || save.isPending}
+            className="btn-primary px-5 py-2 text-sm disabled:opacity-50"
+          >
+            <Save className="w-4 h-4" />
+            {save.isPending ? 'Salvando…' : 'Salvar plano'}
           </button>
         </div>
       )}
