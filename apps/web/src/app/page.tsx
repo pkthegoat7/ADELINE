@@ -68,7 +68,6 @@ interface PublicPlan {
   amount: number;
   compareAmount: number | null;
   promoLabel: string | null;
-  frequencyMonths: number;
 }
 
 function formatBRL(n: number): string {
@@ -88,8 +87,7 @@ export default function Home() {
       .catch(() => setPlan(null));
   }, []);
 
-  const cycleSuffix =
-    plan?.frequencyMonths === 12 ? '/ano' : plan?.frequencyMonths === 3 ? '/trimestre' : '/mês';
+  const cycleSuffix = '/mês';
 
   async function handleSubscribe() {
     if (loading) return;

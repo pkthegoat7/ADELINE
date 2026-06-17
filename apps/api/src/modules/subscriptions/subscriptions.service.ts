@@ -33,18 +33,18 @@ export class SubscriptionsService {
   }> {
     const rows = await this.prisma.systemSetting.findMany({
       where: {
-        key: { in: ['mp_plan_amount', 'mp_plan_reason', 'mp_plan_frequency_months'] },
+        key: { in: ['mp_plan_amount', 'mp_plan_reason'] },
       },
     });
     const map = new Map(rows.map((r) => [r.key, r.value]));
 
     const amount = Number(map.get('mp_plan_amount'));
-    const frequencyMonths = Number(map.get('mp_plan_frequency_months'));
 
     return {
       amount: Number.isFinite(amount) && amount > 0 ? amount : 249,
       reason: map.get('mp_plan_reason') || 'Adelina PMS — Assinatura Mensal',
-      frequencyMonths: [1, 3, 12].includes(frequencyMonths) ? frequencyMonths : 1,
+      // Plano único: mensal com cobrança recorrente (não configurável).
+      frequencyMonths: 1,
     };
   }
 

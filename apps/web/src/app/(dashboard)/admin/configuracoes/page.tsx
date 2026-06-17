@@ -175,7 +175,6 @@ function PlanoSection() {
   const qc = useQueryClient();
   const [amount, setAmount] = useState('');
   const [reason, setReason] = useState('');
-  const [frequency, setFrequency] = useState('1');
   const [compareAmount, setCompareAmount] = useState('');
   const [promoLabel, setPromoLabel] = useState('');
   const [loaded, setLoaded] = useState(false);
@@ -189,7 +188,6 @@ function PlanoSection() {
   if (settings && !loaded) {
     setAmount(settings.find((s) => s.key === 'mp_plan_amount')?.value ?? '');
     setReason(settings.find((s) => s.key === 'mp_plan_reason')?.value ?? '');
-    setFrequency(settings.find((s) => s.key === 'mp_plan_frequency_months')?.value ?? '1');
     setCompareAmount(settings.find((s) => s.key === 'mp_plan_compare_amount')?.value ?? '');
     setPromoLabel(settings.find((s) => s.key === 'mp_plan_promo_label')?.value ?? '');
     setLoaded(true);
@@ -210,7 +208,6 @@ function PlanoSection() {
 
       await put('mp_plan_amount', amount.trim());
       await put('mp_plan_reason', reason.trim());
-      await put('mp_plan_frequency_months', frequency);
 
       await (compareAmount.trim()
         ? put('mp_plan_compare_amount', compareAmount.trim())
@@ -275,35 +272,9 @@ function PlanoSection() {
 
           <div>
             <span className="block text-sm font-medium text-ink mb-1">Ciclo de cobrança</span>
-            <div role="radiogroup" aria-label="Ciclo de cobrança" className="grid grid-cols-3 gap-2">
-              {[
-                { value: '1', label: 'Mensal', hint: 'todo mês' },
-                { value: '3', label: 'Trimestral', hint: 'a cada 3 meses' },
-                { value: '12', label: 'Anual', hint: 'a cada 12 meses' },
-              ].map((opt) => {
-                const active = frequency === opt.value;
-                return (
-                  <button
-                    key={opt.value}
-                    type="button"
-                    role="radio"
-                    aria-checked={active}
-                    onClick={() => setFrequency(opt.value)}
-                    className={`flex flex-col items-center justify-center rounded-xl border px-2 py-3 text-center transition ${
-                      active
-                        ? 'border-brand-500 bg-brand-50 dark:bg-brand-900/20 ring-2 ring-brand-500/30'
-                        : 'border-line bg-surface hover:border-brand-400 hover:bg-surface-sunken'
-                    }`}
-                  >
-                    <span
-                      className={`text-sm font-semibold ${active ? 'text-brand-700 dark:text-brand-300' : 'text-ink'}`}
-                    >
-                      {opt.label}
-                    </span>
-                    <span className="text-[11px] text-ink-muted mt-0.5">{opt.hint}</span>
-                  </button>
-                );
-              })}
+            <div className="flex items-center gap-2 rounded-xl border border-line bg-surface-sunken px-3 py-3 text-sm">
+              <span className="font-semibold text-ink">Mensal</span>
+              <span className="text-ink-muted">— cobrança recorrente todo mês</span>
             </div>
           </div>
 
@@ -366,7 +337,7 @@ function PlanoSection() {
               <strong className="text-ink">
                 {amount.trim() ? `R$ ${amount.trim()}` : '—'}
               </strong>{' '}
-              {frequency === '1' ? 'por mês' : frequency === '3' ? 'a cada 3 meses' : 'por ano'}
+              por mês
               {promoActive && (
                 <span className="ml-2 inline-flex items-center rounded-full bg-brand-50 dark:bg-brand-900/20 text-brand-700 dark:text-brand-300 px-2 py-0.5 text-[11px] font-medium">
                   {promoLabel.trim() || 'Oferta por tempo limitado'}
