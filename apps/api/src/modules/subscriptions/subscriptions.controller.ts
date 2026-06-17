@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, Res } from '@nestjs/common';
+import { Body, Controller, ForbiddenException, Get, Post, Res } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import type { FastifyReply } from 'fastify';
@@ -64,5 +64,15 @@ export class SubscriptionsController {
   async status(@CurrentUser() user: AuthContext) {
     const sub = await this.subscriptions.getStatus(user.tenantId);
     return sub ?? { status: null };
+  }
+
+  /** O dono cancela a própria assinatura: para de cobrar, mantém acesso até o fim do período pago. */
+  @Throttle({ strict: { limit: 5, ttl: 60_000 } })
+  @Post('cancel')
+  async cancel(@CurrentUser() user: AuthContext) {
+    if (user.role !== 'owner') {
+      throw new ForbiddenException('Apenas o dono da pousada pode cancelar a assinatura.');
+    }
+    return this.subscriptions.cancelOwnSubscription(user.tenantId);
   }
 }

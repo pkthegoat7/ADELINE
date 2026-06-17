@@ -1,4 +1,5 @@
 import { BadRequestException, Injectable, Logger } from '@nestjs/common';
+import { Cron } from '@nestjs/schedule';
 import { MercadoPagoConfig, PreApproval, PreApprovalPlan } from 'mercadopago';
 import { addMonths } from 'date-fns';
 import { PrismaService } from '../../common/prisma/prisma.service';
@@ -188,10 +189,12 @@ export class SubscriptionsService {
       },
     });
 
-    if (newStatus === 'cancelled' || newStatus === 'past_due') {
+    // Cancelamento NÃO bloqueia na hora: o acesso vale até o fim do período já pago
+    // (o job diário `suspendExpiredCancelled` suspende no vencimento). past_due mantém ativo.
+    if (newStatus === 'past_due') {
       await this.prisma.tenant.update({
         where: { id: sub.tenantId },
-        data: { status: newStatus === 'cancelled' ? 'suspended' : 'active' },
+        data: { status: 'active' },
       });
     }
 
@@ -292,6 +295,78 @@ export class SubscriptionsService {
 
     const token = await this.auth.signToken(result.user.id, result.user.email);
     return { token };
+  }
+
+  /**
+   * Cancela DEFINITIVAMENTE a cobrança recorrente da pousada no Mercado Pago e
+   * marca a assinatura local como cancelada. Usado quando o admin bloqueia o acesso.
+   * Sem assinatura ou já cancelada → no-op. Falha no MP propaga erro (o chamador
+   * NÃO deve bloquear o acesso sem antes confirmar que a cobrança parou).
+   */
+  async cancelForTenant(tenantId: string): Promise<{ cancelled: boolean }> {
+    const sub = await this.prisma.subscription.findUnique({ where: { tenantId } });
+    if (!sub) return { cancelled: false };
+    if (sub.status === 'cancelled') return { cancelled: true };
+
+    try {
+      const preapproval = new PreApproval(await this.mpClient());
+      await preapproval.update({ id: sub.mpPreapprovalId, body: { status: 'cancelled' } });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      this.logger.error(`Falha ao cancelar preapproval ${sub.mpPreapprovalId} no MP: ${message}`);
+      throw new BadRequestException(
+        'Não foi possível cancelar a cobrança no Mercado Pago. O acesso não foi bloqueado para não deixar o cliente sendo cobrado sem acesso. Tente novamente em instantes.',
+      );
+    }
+
+    await this.prisma.subscription.update({
+      where: { id: sub.id },
+      data: { status: 'cancelled' },
+    });
+    this.logger.log(`Assinatura ${sub.id} cancelada no MP por bloqueio manual do admin`);
+    return { cancelled: true };
+  }
+
+  /**
+   * O próprio dono cancela a assinatura nas configurações. Para de cobrar imediatamente,
+   * mas mantém o acesso até o fim do período já pago (o job diário bloqueia no vencimento).
+   */
+  async cancelOwnSubscription(
+    tenantId: string,
+  ): Promise<{ ok: true; accessUntil: Date | null }> {
+    const sub = await this.prisma.subscription.findUnique({
+      where: { tenantId },
+      select: { status: true, currentPeriodEnd: true },
+    });
+    if (!sub) {
+      throw new BadRequestException('Você não tem uma assinatura para cancelar.');
+    }
+    if (sub.status !== 'cancelled') {
+      await this.cancelForTenant(tenantId);
+    }
+    return { ok: true, accessUntil: sub.currentPeriodEnd };
+  }
+
+  /** Diariamente às 04:00 BRT: bloqueia pousadas cuja assinatura foi cancelada e o período pago já venceu. */
+  @Cron('0 4 * * *', { timeZone: 'America/Sao_Paulo' })
+  async suspendExpiredCancelled(): Promise<void> {
+    const now = new Date();
+    const expired = await this.prisma.subscription.findMany({
+      where: {
+        status: 'cancelled',
+        currentPeriodEnd: { lt: now },
+        tenant: { status: 'active' },
+      },
+      select: { tenantId: true },
+    });
+    if (expired.length === 0) return;
+    await this.prisma.tenant.updateMany({
+      where: { id: { in: expired.map((s) => s.tenantId) } },
+      data: { status: 'suspended' },
+    });
+    this.logger.log(
+      `Bloqueadas ${expired.length} pousada(s) com assinatura cancelada e período vencido`,
+    );
   }
 
   async getStatus(tenantId: string) {

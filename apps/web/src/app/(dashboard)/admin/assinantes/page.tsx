@@ -273,12 +273,18 @@ export default function AssinantesPage() {
                         <td className="p-3">
                           <div className="flex items-center justify-end">
                             <button
-                              onClick={() =>
-                                patch.mutate({
-                                  id: s.id,
-                                  status: s.tenantStatus === 'active' ? 'suspended' : 'active',
-                                })
-                              }
+                              onClick={() => {
+                                const blocking = s.tenantStatus === 'active';
+                                if (
+                                  blocking &&
+                                  !window.confirm(
+                                    `Bloquear "${s.name}"?\n\nIsto CANCELA a cobrança recorrente no Mercado Pago (definitivo) e bloqueia o acesso. ` +
+                                      `Para voltar a cobrar, o cliente precisará assinar novamente.`,
+                                  )
+                                )
+                                  return;
+                                patch.mutate({ id: s.id, status: blocking ? 'suspended' : 'active' });
+                              }}
                               disabled={patch.isPending || s.isSelf}
                               data-tip={
                                 s.isSelf

@@ -16,6 +16,7 @@ import { CurrentUser, type AuthContext } from '../../common/decorators/tenant.de
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { isSuperAdmin } from '../auth/auth.controller';
 import { WhatsappService } from '../whatsapp/whatsapp.service';
+import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 
 const StatusSchema = z.object({ status: z.enum(['active', 'suspended']) });
 
@@ -27,6 +28,7 @@ export class AdminController {
   constructor(
     private readonly prisma: PrismaService,
     private readonly whatsapp: WhatsappService,
+    private readonly subscriptions: SubscriptionsService,
   ) {}
 
   @Get('tenants')
@@ -130,6 +132,11 @@ export class AdminController {
     const { status } = StatusSchema.parse(body);
     if (id === user.tenantId && status === 'suspended') {
       throw new BadRequestException('Você não pode suspender a sua própria pousada.');
+    }
+    // Bloquear acesso cancela DEFINITIVAMENTE a cobrança recorrente no Mercado Pago.
+    // Se o cancelamento no MP falhar, propaga o erro e NÃO bloqueia (evita cobrar sem acesso).
+    if (status === 'suspended') {
+      await this.subscriptions.cancelForTenant(id);
     }
     return this.prisma.tenant.update({
       where: { id },

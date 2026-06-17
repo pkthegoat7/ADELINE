@@ -124,12 +124,18 @@ function TenantsList() {
                   <td className="p-3" onClick={(e) => e.stopPropagation()}>
                     <div className="flex items-center justify-end gap-0.5">
                       <button
-                        onClick={() =>
-                          patch.mutate({
-                            id: t.id,
-                            status: t.status === 'active' ? 'suspended' : 'active',
-                          })
-                        }
+                        onClick={() => {
+                          const blocking = t.status === 'active';
+                          if (
+                            blocking &&
+                            !window.confirm(
+                              `Suspender "${t.name}"?\n\nIsto CANCELA a cobrança recorrente no Mercado Pago (definitivo) e bloqueia os logins. ` +
+                                `Para voltar a cobrar, o cliente precisará assinar novamente.`,
+                            )
+                          )
+                            return;
+                          patch.mutate({ id: t.id, status: blocking ? 'suspended' : 'active' });
+                        }}
                         disabled={patch.isPending}
                         data-tip={t.status === 'active' ? 'Suspender (bloqueia logins)' : 'Reativar'}
                         className="p-1.5 text-ink-muted hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/30 rounded-md active:scale-95 transition-all"

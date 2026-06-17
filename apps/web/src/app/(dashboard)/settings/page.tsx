@@ -1,8 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { Check, Monitor, Moon, Sun } from 'lucide-react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Check, Monitor, Moon, Sun, CreditCard, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 import { MessageTemplatesSection } from '@/components/MessageTemplatesSection';
 import { api } from '@/lib/api';
@@ -69,6 +69,8 @@ export default function SettingsPage() {
               <InfoRow label="ID interno" value={data.tenant.id} mono />
             </dl>
           </section>
+
+          {data.user.role === 'owner' && <SubscriptionSection />}
 
           <section className="surface-card p-5">
             <h2 className="font-semibold text-ink mb-3">Sua conta</h2>
@@ -283,6 +285,132 @@ function AppearanceSection({ serverAppearance }: { serverAppearance: unknown }) 
           {update.isPending ? 'Salvando…' : 'Salvar'}
         </button>
       </div>
+    </section>
+  );
+}
+
+/* ============================================================
+   ASSINATURA
+   ============================================================ */
+
+interface SubStatusResponse {
+  status: 'active' | 'past_due' | 'cancelled' | 'pending' | null;
+  currentPeriodEnd?: string;
+  planAmount?: string | number;
+}
+
+const SUB_STATUS_LABEL: Record<string, string> = {
+  active: 'Ativa',
+  past_due: 'Pagamento atrasado',
+  cancelled: 'Cancelada',
+  pending: 'Pendente',
+};
+
+function SubscriptionSection() {
+  const qc = useQueryClient();
+  const { data, isLoading } = useQuery({
+    queryKey: ['subscription-status'],
+    queryFn: () => api<SubStatusResponse>('/subscriptions/status'),
+  });
+
+  const cancel = useMutation({
+    mutationFn: () =>
+      api<{ ok: boolean; accessUntil: string | null }>('/subscriptions/cancel', {
+        method: 'POST',
+      }),
+    onSuccess: (res) => {
+      qc.invalidateQueries({ queryKey: ['subscription-status'] });
+      const until = res.accessUntil ? new Date(res.accessUntil).toLocaleDateString('pt-BR') : null;
+      toast.success(
+        until ? `Assinatura cancelada. Seu acesso continua até ${until}.` : 'Assinatura cancelada.',
+      );
+    },
+    onError: (err: Error) => toast.error(err.message || 'Falha ao cancelar'),
+  });
+
+  const fmt = (iso?: string) =>
+    iso
+      ? new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })
+      : '—';
+
+  const amount =
+    data?.planAmount != null
+      ? Number(data.planAmount).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+      : null;
+
+  const canCancel =
+    data?.status === 'active' || data?.status === 'past_due' || data?.status === 'pending';
+
+  function onCancel() {
+    const until = data?.currentPeriodEnd
+      ? new Date(data.currentPeriodEnd).toLocaleDateString('pt-BR')
+      : null;
+    if (
+      !window.confirm(
+        `Cancelar a assinatura da pousada?\n\n` +
+          `A cobrança recorrente para imediatamente. ` +
+          (until
+            ? `Seu acesso continua até ${until} (fim do período já pago).`
+            : 'Seu acesso será encerrado ao fim do período pago.') +
+          `\n\nPara voltar a usar depois, será preciso assinar novamente.`,
+      )
+    )
+      return;
+    cancel.mutate();
+  }
+
+  return (
+    <section className="surface-card p-5">
+      <h2 className="font-semibold text-ink mb-3 flex items-center gap-2">
+        <CreditCard className="w-4 h-4 text-brand-600" /> Assinatura
+      </h2>
+
+      {isLoading && <div className="text-sm text-ink-muted">Carregando…</div>}
+
+      {data && !isLoading && (
+        <>
+          {data.status === null ? (
+            <p className="text-sm text-ink-muted">
+              Nenhuma assinatura encontrada para esta pousada.
+            </p>
+          ) : (
+            <dl className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+              <InfoRow label="Plano" value={amount ? `${amount}/mês` : '—'} />
+              <InfoRow label="Situação" value={SUB_STATUS_LABEL[data.status] ?? data.status} />
+              <InfoRow
+                label={data.status === 'cancelled' ? 'Acesso até' : 'Próxima cobrança'}
+                value={fmt(data.currentPeriodEnd)}
+              />
+            </dl>
+          )}
+
+          {data.status === 'cancelled' && (
+            <div className="mt-3 flex items-start gap-2 text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-3 dark:bg-amber-900/20 dark:text-amber-300 dark:border-amber-800/40">
+              <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+              <span>
+                Assinatura cancelada — a cobrança não será renovada. O acesso fica disponível até{' '}
+                {fmt(data.currentPeriodEnd)}.
+              </span>
+            </div>
+          )}
+
+          {canCancel && (
+            <div className="mt-4 pt-4 border-t border-line-soft flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <p className="text-xs text-ink-muted">
+                Ao cancelar, a cobrança para na hora e o acesso continua até o fim do período já
+                pago.
+              </p>
+              <button
+                onClick={onCancel}
+                disabled={cancel.isPending}
+                className="text-sm px-4 py-2 rounded-[var(--radius-control)] border border-red-300 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors disabled:opacity-60 whitespace-nowrap"
+              >
+                {cancel.isPending ? 'Cancelando…' : 'Cancelar assinatura'}
+              </button>
+            </div>
+          )}
+        </>
+      )}
     </section>
   );
 }
