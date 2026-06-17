@@ -14,6 +14,7 @@ import {
   Settings,
   ListChecks,
   ShieldCheck,
+  Wallet,
   ClipboardList,
   Search,
   ChevronRight,
@@ -189,6 +190,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <div className="px-3 text-[10px] uppercase text-gold-300/60 font-semibold tracking-[0.18em] pb-1.5">
                 Super admin
               </div>
+              <NavLink
+                item={{
+                  href: '/admin/assinantes',
+                  label: 'Assinantes',
+                  icon: Wallet,
+                }}
+                active={isActive(pathname, '/admin/assinantes')}
+                accent
+              />
               <NavLink
                 item={{
                   href: '/admin/cadastrar-pousada',

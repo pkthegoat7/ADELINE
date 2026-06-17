@@ -51,6 +51,74 @@ export class AdminController {
     }));
   }
 
+  /** Dashboard de assinantes: tenants + assinatura MP + faturamento. Só super admin. */
+  @Get('subscribers')
+  async listSubscribers(@CurrentUser() user: AuthContext) {
+    this.assertSuperAdmin(user);
+    const tenants = await this.prisma.tenant.findMany({
+      orderBy: { createdAt: 'asc' },
+      include: {
+        users: { where: { role: 'owner' }, select: { email: true, fullName: true }, take: 1 },
+        subscription: {
+          select: {
+            status: true,
+            planAmount: true,
+            currentPeriodStart: true,
+            currentPeriodEnd: true,
+            mpPayerEmail: true,
+            updatedAt: true,
+          },
+        },
+      },
+    });
+
+    const subscribers = tenants.map((t) => ({
+      id: t.id,
+      name: t.name,
+      slug: t.slug,
+      tenantStatus: t.status, // active | suspended — controla o login
+      isSelf: t.id === user.tenantId,
+      owner: t.users[0] ?? null,
+      createdAt: t.createdAt,
+      subscription: t.subscription
+        ? {
+            status: t.subscription.status, // pending | active | past_due | cancelled
+            amount: Number(t.subscription.planAmount),
+            currentPeriodStart: t.subscription.currentPeriodStart,
+            currentPeriodEnd: t.subscription.currentPeriodEnd,
+            payerEmail: t.subscription.mpPayerEmail,
+            updatedAt: t.subscription.updatedAt,
+          }
+        : null,
+    }));
+
+    const sumBy = (status: string) =>
+      subscribers
+        .filter((s) => s.subscription?.status === status)
+        .reduce((acc, s) => acc + (s.subscription?.amount ?? 0), 0);
+
+    const countBy = (status: string) =>
+      subscribers.filter((s) => s.subscription?.status === status).length;
+
+    return {
+      subscribers,
+      // Plano é mensal recorrente, então MRR = soma das assinaturas ativas.
+      revenue: {
+        mrr: sumBy('active'),
+        lostMrr: sumBy('cancelled'),
+        pendingMrr: sumBy('pending') + sumBy('past_due'),
+      },
+      counts: {
+        total: subscribers.length,
+        active: countBy('active'),
+        pastDue: countBy('past_due'),
+        cancelled: countBy('cancelled'),
+        pending: countBy('pending'),
+        noSubscription: subscribers.filter((s) => !s.subscription).length,
+      },
+    };
+  }
+
   /** Suspende (bloqueia logins) ou reativa uma pousada. */
   @Patch('tenants/:id')
   async updateTenant(
