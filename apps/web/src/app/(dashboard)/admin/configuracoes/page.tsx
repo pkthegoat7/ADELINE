@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ShieldAlert, Save, Eye, EyeOff, CreditCard, Tag } from 'lucide-react';
+import { ShieldAlert, Save, Eye, EyeOff, CreditCard, Tag, Trash2, Percent } from 'lucide-react';
 import Link from 'next/link';
 import { api } from '@/lib/api';
 import { toast } from '@/lib/toast';
@@ -71,9 +71,20 @@ function MercadoPagoSection() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['admin-settings'] });
       setToken('');
-      toast.success('Token do Mercado Pago salvo com sucesso');
+      toast.success('Token salvo. O plano será recriado na sua conta no próximo checkout.');
     },
     onError: (err: Error) => toast.error('Erro ao salvar', err.message),
+  });
+
+  const remove = useMutation({
+    mutationFn: () =>
+      api('/admin/settings/mp_access_token', { method: 'DELETE' }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin-settings'] });
+      setToken('');
+      toast.success('Token removido. O checkout fica desativado até você cadastrar um novo.');
+    },
+    onError: (err: Error) => toast.error('Erro ao remover', err.message),
   });
 
   return (
@@ -93,11 +104,29 @@ function MercadoPagoSection() {
       ) : (
         <div className="space-y-4">
           {currentToken && (
-            <div className="text-sm">
-              <span className="text-ink-muted">Token atual: </span>
-              <code className="text-ink bg-surface-sunken px-2 py-0.5 rounded text-xs">
-                {currentToken.value}
-              </code>
+            <div className="flex items-center justify-between gap-3 flex-wrap">
+              <div className="text-sm">
+                <span className="text-ink-muted">Token atual: </span>
+                <code className="text-ink bg-surface-sunken px-2 py-0.5 rounded text-xs">
+                  {currentToken.value}
+                </code>
+              </div>
+              <button
+                onClick={() => {
+                  if (
+                    confirm(
+                      'Remover o token do Mercado Pago? O checkout fica desativado até você cadastrar um novo, e o plano atual será recriado na próxima assinatura.',
+                    )
+                  ) {
+                    remove.mutate();
+                  }
+                }}
+                disabled={remove.isPending}
+                className="btn-ghost text-xs text-danger hover:text-danger disabled:opacity-50"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                {remove.isPending ? 'Removendo…' : 'Remover token'}
+              </button>
             </div>
           )}
 
@@ -147,6 +176,8 @@ function PlanoSection() {
   const [amount, setAmount] = useState('');
   const [reason, setReason] = useState('');
   const [frequency, setFrequency] = useState('1');
+  const [compareAmount, setCompareAmount] = useState('');
+  const [promoLabel, setPromoLabel] = useState('');
   const [loaded, setLoaded] = useState(false);
 
   const { data: settings, isLoading } = useQuery({
@@ -159,23 +190,34 @@ function PlanoSection() {
     setAmount(settings.find((s) => s.key === 'mp_plan_amount')?.value ?? '');
     setReason(settings.find((s) => s.key === 'mp_plan_reason')?.value ?? '');
     setFrequency(settings.find((s) => s.key === 'mp_plan_frequency_months')?.value ?? '1');
+    setCompareAmount(settings.find((s) => s.key === 'mp_plan_compare_amount')?.value ?? '');
+    setPromoLabel(settings.find((s) => s.key === 'mp_plan_promo_label')?.value ?? '');
     setLoaded(true);
   }
 
+  // Promo só vale se o "de" for maior que o preço atual.
+  const compareNum = Number(compareAmount);
+  const amountNum = Number(amount);
+  const promoActive =
+    Number.isFinite(compareNum) && Number.isFinite(amountNum) && compareNum > amountNum;
+
   const save = useMutation({
     mutationFn: async () => {
-      await api('/admin/settings', {
-        method: 'PUT',
-        body: JSON.stringify({ key: 'mp_plan_amount', value: amount.trim() }),
-      });
-      await api('/admin/settings', {
-        method: 'PUT',
-        body: JSON.stringify({ key: 'mp_plan_reason', value: reason.trim() }),
-      });
-      await api('/admin/settings', {
-        method: 'PUT',
-        body: JSON.stringify({ key: 'mp_plan_frequency_months', value: frequency }),
-      });
+      // Salva/remove uma config; remove (DELETE) quando o valor está vazio.
+      const put = (key: string, value: string) =>
+        api('/admin/settings', { method: 'PUT', body: JSON.stringify({ key, value }) });
+      const del = (key: string) => api(`/admin/settings/${key}`, { method: 'DELETE' });
+
+      await put('mp_plan_amount', amount.trim());
+      await put('mp_plan_reason', reason.trim());
+      await put('mp_plan_frequency_months', frequency);
+
+      await (compareAmount.trim()
+        ? put('mp_plan_compare_amount', compareAmount.trim())
+        : del('mp_plan_compare_amount'));
+      await (promoLabel.trim()
+        ? put('mp_plan_promo_label', promoLabel.trim())
+        : del('mp_plan_promo_label'));
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['admin-settings'] });
@@ -265,14 +307,71 @@ function PlanoSection() {
             </div>
           </div>
 
+          {/* ── Promoção (opcional) ───────────────────────────────── */}
+          <div className="rounded-xl border border-dashed border-line p-4 space-y-3">
+            <div className="flex items-center gap-2">
+              <Percent className="w-4 h-4 text-brand-500" />
+              <span className="text-sm font-medium text-ink">Promoção na landing (opcional)</span>
+            </div>
+            <p className="text-xs text-ink-muted -mt-1">
+              Preencha o preço cheio (&ldquo;de&rdquo;) para a landing mostrar o desconto. O
+              cliente continua pagando o <strong>Valor</strong> acima. Deixe vazio para tirar a
+              promoção.
+            </p>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label htmlFor="plan-compare" className="block text-xs font-medium text-ink mb-1">
+                  Preço cheio &ldquo;de&rdquo; (R$)
+                </label>
+                <input
+                  id="plan-compare"
+                  type="number"
+                  min="1"
+                  step="0.01"
+                  value={compareAmount}
+                  onChange={(e) => setCompareAmount(e.target.value)}
+                  className="input-base w-full"
+                  placeholder="349.00"
+                />
+              </div>
+              <div>
+                <label htmlFor="plan-promo-label" className="block text-xs font-medium text-ink mb-1">
+                  Selo da promoção
+                </label>
+                <input
+                  id="plan-promo-label"
+                  type="text"
+                  maxLength={40}
+                  value={promoLabel}
+                  onChange={(e) => setPromoLabel(e.target.value)}
+                  className="input-base w-full"
+                  placeholder="Oferta de lançamento"
+                />
+              </div>
+            </div>
+            {compareAmount.trim() && !promoActive && (
+              <p className="text-xs text-warn">
+                O preço &ldquo;de&rdquo; precisa ser maior que o Valor para a promoção aparecer.
+              </p>
+            )}
+          </div>
+
           <div className="flex items-center gap-2 rounded-lg bg-surface-sunken px-3 py-2.5 text-sm text-ink-soft">
             <Tag className="w-4 h-4 text-brand-500 flex-shrink-0" />
             <span>
               Plano atual:{' '}
+              {promoActive && (
+                <span className="text-ink-muted line-through mr-1">R$ {compareAmount.trim()}</span>
+              )}
               <strong className="text-ink">
                 {amount.trim() ? `R$ ${amount.trim()}` : '—'}
               </strong>{' '}
               {frequency === '1' ? 'por mês' : frequency === '3' ? 'a cada 3 meses' : 'por ano'}
+              {promoActive && (
+                <span className="ml-2 inline-flex items-center rounded-full bg-brand-50 dark:bg-brand-900/20 text-brand-700 dark:text-brand-300 px-2 py-0.5 text-[11px] font-medium">
+                  {promoLabel.trim() || 'Oferta por tempo limitado'}
+                </span>
+              )}
             </span>
           </div>
 

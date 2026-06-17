@@ -56,6 +56,8 @@ const config: Config = {
         'ink-muted': 'rgb(var(--ink-muted) / <alpha-value>)',
         line: 'rgb(var(--line) / <alpha-value>)',
         'line-soft': 'rgb(var(--line-soft) / <alpha-value>)',
+        danger: 'rgb(var(--danger) / <alpha-value>)',
+        warn: 'rgb(var(--warn) / <alpha-value>)',
       },
       fontFamily: {
         sans: ['var(--font-inter)', 'ui-sans-serif', 'system-ui', '-apple-system', 'Segoe UI', 'Roboto', 'sans-serif'],

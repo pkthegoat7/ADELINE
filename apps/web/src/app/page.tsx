@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { AdelinaMark } from '@/components/brand/Logo';
 import { api } from '@/lib/api';
@@ -64,8 +64,32 @@ const MOCK_ROOMS: {
   },
 ];
 
+interface PublicPlan {
+  amount: number;
+  compareAmount: number | null;
+  promoLabel: string | null;
+  frequencyMonths: number;
+}
+
+function formatBRL(n: number): string {
+  return n.toLocaleString('pt-BR', {
+    minimumFractionDigits: Number.isInteger(n) ? 0 : 2,
+    maximumFractionDigits: 2,
+  });
+}
+
 export default function Home() {
   const [loading, setLoading] = useState(false);
+  const [plan, setPlan] = useState<PublicPlan | null>(null);
+
+  useEffect(() => {
+    api<PublicPlan>('/subscriptions/plan')
+      .then(setPlan)
+      .catch(() => setPlan(null));
+  }, []);
+
+  const cycleSuffix =
+    plan?.frequencyMonths === 12 ? '/ano' : plan?.frequencyMonths === 3 ? '/trimestre' : '/mês';
 
   async function handleSubscribe() {
     if (loading) return;
@@ -355,9 +379,32 @@ export default function Home() {
         <div className="max-w-md mx-auto">
           <div className="surface-card glow-border p-8 text-center">
             <div className="font-display font-bold text-lg text-ink mb-1">Adelina PMS</div>
-            <div className="flex items-baseline justify-center gap-1 mb-6">
-              <span className="font-display text-5xl font-bold text-ink">R$ 249</span>
-              <span className="text-ink-muted text-sm">/mês</span>
+            <div className="mb-6">
+              {plan ? (
+                <>
+                  {plan.compareAmount && (
+                    <div className="flex items-center justify-center gap-2 mb-1.5 animate-fade-in">
+                      <span className="text-ink-muted line-through text-lg">
+                        R$ {formatBRL(plan.compareAmount)}
+                      </span>
+                      {plan.promoLabel && (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-gradient-brand text-white px-2.5 py-0.5 text-xs font-semibold shadow-soft">
+                          <Sparkles className="w-3 h-3" />
+                          {plan.promoLabel}
+                        </span>
+                      )}
+                    </div>
+                  )}
+                  <div className="flex items-baseline justify-center gap-1">
+                    <span className="font-display text-5xl font-bold text-ink">
+                      R$ {formatBRL(plan.amount)}
+                    </span>
+                    <span className="text-ink-muted text-sm">{cycleSuffix}</span>
+                  </div>
+                </>
+              ) : (
+                <div className="h-12 w-36 mx-auto rounded-lg bg-surface-sunken animate-pulse" />
+              )}
             </div>
 
             <ul className="space-y-3 text-left text-sm text-ink mb-8">
