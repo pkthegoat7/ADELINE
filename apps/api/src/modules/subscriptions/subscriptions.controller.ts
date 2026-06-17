@@ -25,6 +25,12 @@ export class SubscriptionsController {
   ) {}
 
   @Public()
+  @Get('plan')
+  async plan() {
+    return this.subscriptions.getPublicPlan();
+  }
+
+  @Public()
   @Throttle({ strict: { limit: 5, ttl: 60_000 } })
   @Post('create-preapproval')
   async createPreapproval() {

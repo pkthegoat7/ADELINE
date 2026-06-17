@@ -101,8 +101,19 @@ export class AdminController {
     'mp_plan_amount',
     'mp_plan_reason',
     'mp_plan_frequency_months',
+    'mp_plan_compare_amount',
+    'mp_plan_promo_label',
   ] as const;
   private static MASKED_SETTINGS = new Set(['mp_access_token']);
+  // Configs que o super-admin pode remover (limpar). As demais só são sobrescritas.
+  private static DELETABLE_SETTINGS = new Set([
+    'mp_access_token',
+    'mp_plan_compare_amount',
+    'mp_plan_promo_label',
+  ]);
+  // Plano MP cacheado — vive na conta do token atual. Ao trocar/remover o token
+  // (conta MP possivelmente diferente), esse cache TEM que ser invalidado.
+  private static CACHED_PLAN_KEYS = ['mp_plan_id', 'mp_plan_init_point', 'mp_plan_fingerprint'];
 
   @Get('settings')
   async getSettings(@CurrentUser() user: AuthContext) {
@@ -126,7 +137,7 @@ export class AdminController {
     });
     const { key, value } = schema.parse(body);
 
-    if (key === 'mp_plan_amount') {
+    if (key === 'mp_plan_amount' || key === 'mp_plan_compare_amount') {
       const n = Number(value);
       if (!Number.isFinite(n) || n <= 0) {
         throw new BadRequestException('Preço deve ser um número maior que zero.');
@@ -138,12 +149,37 @@ export class AdminController {
     if (key === 'mp_plan_reason' && value.length > 255) {
       throw new BadRequestException('Descrição muito longa (máx. 255 caracteres).');
     }
+    if (key === 'mp_plan_promo_label' && value.length > 40) {
+      throw new BadRequestException('Selo da promoção muito longo (máx. 40 caracteres).');
+    }
 
     await this.prisma.systemSetting.upsert({
       where: { key },
       create: { key, value },
       update: { value },
     });
+
+    // Trocar o token pode significar uma conta MP diferente: invalida o plano
+    // cacheado para que um novo seja criado na conta certa no próximo checkout.
+    if (key === 'mp_access_token') {
+      await this.prisma.systemSetting.deleteMany({
+        where: { key: { in: AdminController.CACHED_PLAN_KEYS } },
+      });
+    }
+
+    return { ok: true, key };
+  }
+
+  @Delete('settings/:key')
+  async deleteSetting(@CurrentUser() user: AuthContext, @Param('key') key: string) {
+    this.assertSuperAdmin(user);
+    if (!AdminController.DELETABLE_SETTINGS.has(key)) {
+      throw new BadRequestException('Essa configuração não pode ser removida.');
+    }
+    // Remover o token também limpa o plano MP cacheado (vinculado à conta antiga).
+    const keys =
+      key === 'mp_access_token' ? [key, ...AdminController.CACHED_PLAN_KEYS] : [key];
+    await this.prisma.systemSetting.deleteMany({ where: { key: { in: keys } } });
     return { ok: true, key };
   }
 

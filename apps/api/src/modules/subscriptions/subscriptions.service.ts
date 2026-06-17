@@ -1,5 +1,5 @@
 import { BadRequestException, Injectable, Logger } from '@nestjs/common';
-import { MercadoPagoConfig, PreApproval } from 'mercadopago';
+import { MercadoPagoConfig, PreApproval, PreApprovalPlan } from 'mercadopago';
 import { addMonths } from 'date-fns';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { AuthService } from '../auth/auth.service';
@@ -48,32 +48,107 @@ export class SubscriptionsService {
     };
   }
 
-  async createPreapproval(backUrl: string): Promise<{ initPoint: string }> {
-    const preapproval = new PreApproval(await this.mpClient());
+  /** Dados públicos do plano para a landing page (NUNCA inclui token). */
+  async getPublicPlan(): Promise<{
+    amount: number;
+    compareAmount: number | null;
+    promoLabel: string | null;
+    frequencyMonths: number;
+  }> {
     const plan = await this.getPlanConfig();
-    const now = new Date();
+    const rows = await this.prisma.systemSetting.findMany({
+      where: { key: { in: ['mp_plan_compare_amount', 'mp_plan_promo_label'] } },
+    });
+    const map = new Map(rows.map((r) => [r.key, r.value]));
 
-    const result = await preapproval.create({
-      body: {
-        reason: plan.reason,
-        auto_recurring: {
-          frequency: plan.frequencyMonths,
-          frequency_type: 'months',
-          transaction_amount: plan.amount,
-          currency_id: 'BRL',
-          start_date: now.toISOString(),
-          end_date: addMonths(now, 120).toISOString(),
-        },
-        back_url: backUrl,
-        status: 'pending',
-      },
+    const compareRaw = Number(map.get('mp_plan_compare_amount'));
+    // Só é promoção se o preço "de" for válido e MAIOR que o preço atual.
+    const compareAmount =
+      Number.isFinite(compareRaw) && compareRaw > plan.amount ? compareRaw : null;
+    const label = map.get('mp_plan_promo_label')?.trim();
+
+    return {
+      amount: plan.amount,
+      compareAmount,
+      promoLabel: compareAmount ? label || 'Oferta por tempo limitado' : null,
+      frequencyMonths: plan.frequencyMonths,
+    };
+  }
+
+  async createPreapproval(backUrl: string): Promise<{ initPoint: string }> {
+    const plan = await this.getPlanConfig();
+
+    // O MP exige o email do pagador para criar uma preapproval avulsa, e nesse
+    // ponto o assinante ainda é anônimo (o cadastro só acontece em `activate`,
+    // após o pagamento). Por isso usamos um PLANO de assinatura: o MP hospeda a
+    // página de checkout e coleta o email/cartão do cliente. Reaproveitamos o
+    // plano já criado enquanto a configuração (preço/ciclo/descrição) não muda —
+    // se o admin alterar o plano, criamos um novo na próxima assinatura.
+    const fingerprint = JSON.stringify({
+      amount: plan.amount,
+      reason: plan.reason,
+      frequencyMonths: plan.frequencyMonths,
+      backUrl,
     });
 
-    if (!result.init_point) {
-      throw new BadRequestException('Mercado Pago não retornou URL de checkout');
+    const cached = await this.prisma.systemSetting.findMany({
+      where: { key: { in: ['mp_plan_fingerprint', 'mp_plan_init_point'] } },
+    });
+    const cachedMap = new Map(cached.map((r) => [r.key, r.value]));
+    const cachedInitPoint = cachedMap.get('mp_plan_init_point');
+    if (cachedMap.get('mp_plan_fingerprint') === fingerprint && cachedInitPoint) {
+      return { initPoint: cachedInitPoint };
     }
 
-    return { initPoint: result.init_point };
+    const planClient = new PreApprovalPlan(await this.mpClient());
+
+    let result;
+    try {
+      result = await planClient.create({
+        body: {
+          reason: plan.reason,
+          auto_recurring: {
+            frequency: plan.frequencyMonths,
+            frequency_type: 'months',
+            transaction_amount: plan.amount,
+            currency_id: 'BRL',
+          },
+          back_url: backUrl,
+        },
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      this.logger.error(`Falha ao criar plano no Mercado Pago: ${message}`);
+      throw new BadRequestException(
+        'Não foi possível iniciar o checkout no Mercado Pago. Verifique o token configurado e tente novamente.',
+      );
+    }
+
+    if (!result.init_point || !result.id) {
+      throw new BadRequestException('Mercado Pago não retornou o link de checkout do plano.');
+    }
+
+    const planId = result.id;
+    const initPoint = result.init_point;
+    await this.prisma.$transaction([
+      this.prisma.systemSetting.upsert({
+        where: { key: 'mp_plan_id' },
+        create: { key: 'mp_plan_id', value: planId },
+        update: { value: planId },
+      }),
+      this.prisma.systemSetting.upsert({
+        where: { key: 'mp_plan_init_point' },
+        create: { key: 'mp_plan_init_point', value: initPoint },
+        update: { value: initPoint },
+      }),
+      this.prisma.systemSetting.upsert({
+        where: { key: 'mp_plan_fingerprint' },
+        create: { key: 'mp_plan_fingerprint', value: fingerprint },
+        update: { value: fingerprint },
+      }),
+    ]);
+
+    return { initPoint };
   }
 
   async handleWebhook(type: string, dataId: string): Promise<void> {
