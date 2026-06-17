@@ -71,6 +71,16 @@ const CompanionSchema = z.object({
   birthDate: z.string().optional(),
 });
 
+const AddressSchema = z.object({
+  cep: z.string().optional(),
+  street: z.string().optional(),
+  number: z.string().optional(),
+  complement: z.string().optional(),
+  neighborhood: z.string().optional(),
+  city: z.string().optional(),
+  state: z.string().optional(),
+});
+
 const SubmitSchema = z.object({
   fullName: z.string().min(2),
   documentType: DocumentTypeEnum.default('cpf'),
@@ -78,6 +88,7 @@ const SubmitSchema = z.object({
   email: z.string().email().optional(),
   birthDate: z.string().optional(),
   nationality: z.string().optional(),
+  address: AddressSchema.optional(),
   documentFile: z
     .object({
       base64: z.string().max(MAX_DOC_BASE64_CHARS, 'Arquivo muito grande (máx. 8MB)'),
@@ -264,6 +275,7 @@ export class GuestLinksController {
           phone: link.phone,
           birthDate: data.birthDate ? new Date(data.birthDate) : undefined,
           nationality: data.nationality,
+          address: data.address ?? undefined,
           documentFilePath,
           notes: 'Cadastro via ficha enviada por WhatsApp',
         },

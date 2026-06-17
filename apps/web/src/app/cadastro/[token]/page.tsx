@@ -24,6 +24,26 @@ interface Companion {
 
 const EMPTY_COMPANION: Companion = { fullName: '', documentType: 'cpf', document: '', birthDate: '' };
 
+interface Address {
+  cep: string;
+  street: string;
+  number: string;
+  complement: string;
+  neighborhood: string;
+  city: string;
+  state: string;
+}
+
+const EMPTY_ADDRESS: Address = {
+  cep: '',
+  street: '',
+  number: '',
+  complement: '',
+  neighborhood: '',
+  city: '',
+  state: '',
+};
+
 export default function CadastroPage() {
   const { token } = useParams<{ token: string }>();
 
@@ -37,6 +57,9 @@ export default function CadastroPage() {
   const [email, setEmail] = useState('');
   const [birthDate, setBirthDate] = useState('');
   const [nationality, setNationality] = useState('BR');
+  const [address, setAddress] = useState<Address>(EMPTY_ADDRESS);
+  const [cepLoading, setCepLoading] = useState(false);
+  const [cepError, setCepError] = useState<string | null>(null);
   const [file, setFile] = useState<{ base64: string; name: string; mime: string } | null>(null);
   const [fileError, setFileError] = useState<string | null>(null);
   const [companions, setCompanions] = useState<Companion[]>([]);
@@ -56,6 +79,34 @@ export default function CadastroPage() {
       .catch((err: Error) => setLoadError(err.message))
       .finally(() => setLoading(false));
   }, [token]);
+
+  async function onCepChange(raw: string) {
+    const digits = raw.replace(/\D/g, '').slice(0, 8);
+    const masked = digits.length > 5 ? `${digits.slice(0, 5)}-${digits.slice(5)}` : digits;
+    setCepError(null);
+    setAddress((a) => ({ ...a, cep: masked }));
+    if (digits.length !== 8) return;
+    setCepLoading(true);
+    try {
+      const res = await fetch(`https://viacep.com.br/ws/${digits}/json/`);
+      const data = await res.json();
+      if (data.erro) {
+        setCepError('CEP não encontrado.');
+        return;
+      }
+      setAddress((a) => ({
+        ...a,
+        street: data.logradouro || a.street,
+        neighborhood: data.bairro || a.neighborhood,
+        city: data.localidade || a.city,
+        state: data.uf || a.state,
+      }));
+    } catch {
+      setCepError('Não foi possível buscar o CEP. Preencha manualmente.');
+    } finally {
+      setCepLoading(false);
+    }
+  }
 
   function onFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     setFileError(null);
@@ -85,6 +136,18 @@ export default function CadastroPage() {
           email: email.trim() || undefined,
           birthDate: birthDate || undefined,
           nationality: nationality.trim() || undefined,
+          address:
+            address.cep || address.street || address.city
+              ? {
+                  cep: address.cep || undefined,
+                  street: address.street.trim() || undefined,
+                  number: address.number.trim() || undefined,
+                  complement: address.complement.trim() || undefined,
+                  neighborhood: address.neighborhood.trim() || undefined,
+                  city: address.city.trim() || undefined,
+                  state: address.state.trim() || undefined,
+                }
+              : undefined,
           documentFile: file ?? undefined,
           companions: companions
             .filter((c) => c.fullName.trim())
@@ -201,7 +264,7 @@ export default function CadastroPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <Field label="Nascimento">
                   <input
                     type="date"
@@ -229,6 +292,93 @@ export default function CadastroPage() {
                   autoComplete="email"
                 />
               </Field>
+
+              <div className="pt-2 mt-1 border-t border-line space-y-3">
+                <p className="text-[11px] font-semibold text-ink-muted uppercase tracking-wider pt-1">
+                  Endereço
+                </p>
+
+                <Field label="CEP">
+                  <div className="relative">
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      value={address.cep}
+                      onChange={(e) => onCepChange(e.target.value)}
+                      placeholder="00000-000"
+                      className="input-base"
+                      autoComplete="postal-code"
+                    />
+                    {cepLoading && (
+                      <Loader2 className="w-4 h-4 animate-spin text-brand-500 absolute right-3 top-1/2 -translate-y-1/2" />
+                    )}
+                  </div>
+                  {cepError && <p className="text-xs text-red-600 mt-1">{cepError}</p>}
+                </Field>
+
+                <div className="grid grid-cols-1 sm:grid-cols-[1fr_7rem] gap-3">
+                  <Field label="Rua / Logradouro">
+                    <input
+                      type="text"
+                      value={address.street}
+                      onChange={(e) => setAddress((a) => ({ ...a, street: e.target.value }))}
+                      className="input-base"
+                      autoComplete="address-line1"
+                    />
+                  </Field>
+                  <Field label="Número">
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      value={address.number}
+                      onChange={(e) => setAddress((a) => ({ ...a, number: e.target.value }))}
+                      className="input-base"
+                    />
+                  </Field>
+                </div>
+
+                <Field label="Complemento">
+                  <input
+                    type="text"
+                    value={address.complement}
+                    onChange={(e) => setAddress((a) => ({ ...a, complement: e.target.value }))}
+                    placeholder="Apto, bloco, referência (opcional)"
+                    className="input-base"
+                  />
+                </Field>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <Field label="Bairro">
+                    <input
+                      type="text"
+                      value={address.neighborhood}
+                      onChange={(e) => setAddress((a) => ({ ...a, neighborhood: e.target.value }))}
+                      className="input-base"
+                    />
+                  </Field>
+                  <div className="grid grid-cols-[1fr_4.5rem] gap-3">
+                    <Field label="Cidade">
+                      <input
+                        type="text"
+                        value={address.city}
+                        onChange={(e) => setAddress((a) => ({ ...a, city: e.target.value }))}
+                        className="input-base"
+                      />
+                    </Field>
+                    <Field label="UF">
+                      <input
+                        type="text"
+                        maxLength={2}
+                        value={address.state}
+                        onChange={(e) =>
+                          setAddress((a) => ({ ...a, state: e.target.value.toUpperCase() }))
+                        }
+                        className="input-base uppercase"
+                      />
+                    </Field>
+                  </div>
+                </div>
+              </div>
             </section>
 
             {/* Documento com foto */}
