@@ -22,6 +22,7 @@ import { TeamModule } from './modules/team/team.module';
 import { AdminModule } from './modules/admin/admin.module';
 import { SubscriptionsModule } from './modules/subscriptions/subscriptions.module';
 import { PaymentsModule } from './modules/payments/payments.module';
+import { SettingsModule } from './modules/settings/settings.module';
 
 @Module({
   imports: [
@@ -54,6 +55,7 @@ import { PaymentsModule } from './modules/payments/payments.module';
     AdminModule,
     SubscriptionsModule,
     PaymentsModule,
+    SettingsModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })
