@@ -17,6 +17,7 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { api } from '@/lib/api';
+import { useCan } from '@/lib/use-permissions';
 import { cn } from '@/lib/cn';
 import { toast } from '@/lib/toast';
 import { Spinner } from '@/components/ui/Spinner';
@@ -57,6 +58,7 @@ export default function RecepcaoPage() {
   const propertyId = process.env.NEXT_PUBLIC_DEMO_PROPERTY_ID ?? '';
   const qc = useQueryClient();
 
+  const can = useCan();
   const [date, setDate] = useState(() => new Date());
   const [tab, setTab] = useState<Tab>('checkins');
 
@@ -215,6 +217,7 @@ export default function RecepcaoPage() {
               tab={tab}
               onCheckIn={() => checkIn.mutate(r.id)}
               onCheckOut={() => checkOut.mutate(r.id)}
+              canAct={can('reservation:checkin')}
               processing={
                 (checkIn.isPending && checkIn.variables === r.id) ||
                 (checkOut.isPending && checkOut.variables === r.id)
@@ -324,16 +327,19 @@ function ReservationRow({
   onCheckIn,
   onCheckOut,
   processing,
+  canAct,
 }: {
   r: DayReservation;
   tab: Tab;
   onCheckIn: () => void;
   onCheckOut: () => void;
   processing: boolean;
+  canAct: boolean;
 }) {
   const openReservation = useUI((s) => s.openReservation);
-  const canCheckIn = tab === 'checkins' && (r.status === 'pending' || r.status === 'confirmed');
-  const canCheckOut = tab === 'checkouts' && r.status === 'checked_in';
+  const canCheckIn =
+    canAct && tab === 'checkins' && (r.status === 'pending' || r.status === 'confirmed');
+  const canCheckOut = canAct && tab === 'checkouts' && r.status === 'checked_in';
   const alreadyCheckedIn = r.status === 'checked_in' && tab === 'checkins';
   const alreadyCheckedOut = r.status === 'checked_out' && tab === 'checkouts';
   const done = alreadyCheckedIn || alreadyCheckedOut;

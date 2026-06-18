@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
+import { useCan } from '@/lib/use-permissions';
 import { Plug, RefreshCw, Plus, Trash2, Copy, ChevronDown, ChevronRight } from 'lucide-react';
 import { format } from 'date-fns';
 import { ConnectChannelModal } from '@/components/ConnectChannelModal';
@@ -29,6 +30,7 @@ interface ExportUrl {
 
 export default function ChannelsPage() {
   const propertyId = process.env.NEXT_PUBLIC_DEMO_PROPERTY_ID ?? '';
+  const can = useCan();
   const qc = useQueryClient();
   const [modalOpen, setModalOpen] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -85,14 +87,16 @@ export default function ChannelsPage() {
           <button onClick={() => refetch()} className="btn-secondary">
             <RefreshCw className="w-4 h-4" /> Atualizar
           </button>
-          <button onClick={() => setModalOpen(true)} disabled={!propertyId} className="btn-primary">
-            <Plus className="w-4 h-4" />
-            Conectar canal
-          </button>
+          {can('channel:manage') && (
+            <button onClick={() => setModalOpen(true)} disabled={!propertyId} className="btn-primary">
+              <Plus className="w-4 h-4" />
+              Conectar canal
+            </button>
+          )}
         </div>
       </header>
 
-      <WhatsappSettings />
+      {can('settings:manage') && <WhatsappSettings />}
 
       {isLoading && <SkeletonCards count={2} />}
 
@@ -122,6 +126,7 @@ export default function ChannelsPage() {
             onToggleExpand={() => setExpandedId(expandedId === c.id ? null : c.id)}
             onSync={() => sync.mutate(c.id)}
             onRemove={() => confirmRemove(c)}
+            canManage={can('channel:manage')}
             syncing={sync.isPending && sync.variables === c.id}
             removing={remove.isPending && remove.variables === c.id}
           />
@@ -145,6 +150,7 @@ function ChannelCard({
   onRemove,
   syncing,
   removing,
+  canManage,
 }: {
   channel: Channel;
   expanded: boolean;
@@ -153,6 +159,7 @@ function ChannelCard({
   onRemove: () => void;
   syncing: boolean;
   removing: boolean;
+  canManage: boolean;
 }) {
   const exportUrls = useQuery({
     queryKey: ['channels', c.id, 'export-urls'],
@@ -201,6 +208,7 @@ function ChannelCard({
         <div className="bg-red-50 text-red-700 text-xs p-2 rounded">⚠ {c.syncError}</div>
       )}
 
+      {canManage && (
       <div className="flex gap-2 pt-1 border-t border-stone-100">
         <button
           onClick={onSync}
@@ -219,6 +227,7 @@ function ChannelCard({
           <Trash2 className="w-3.5 h-3.5" />
         </button>
       </div>
+      )}
 
       <button
         onClick={onToggleExpand}

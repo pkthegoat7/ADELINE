@@ -2,6 +2,7 @@ import { Body, Controller, Get, Put } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { z } from 'zod';
 import { TenantId } from '../../common/decorators/tenant.decorator';
+import { RequireCapability } from '../../common/require-capability.decorator';
 import {
   TENANT_SETTING_KEYS,
   TenantSettingsService,
@@ -24,6 +25,7 @@ export class TenantSettingsController {
   }
 
   @Put()
+  @RequireCapability('settings:manage')
   async upsert(@TenantId() tenantId: string, @Body() body: unknown) {
     const { key, value } = UpsertSchema.parse(body);
     await this.settings.set(tenantId, key, value);

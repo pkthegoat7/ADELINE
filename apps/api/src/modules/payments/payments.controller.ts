@@ -4,6 +4,7 @@ import { Throttle } from '@nestjs/throttler';
 import type { FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import { TenantId } from '../../common/decorators/tenant.decorator';
+import { RequireCapability } from '../../common/require-capability.decorator';
 import { Public } from '../auth/public.decorator';
 import { PaymentsService } from './payments.service';
 
@@ -24,6 +25,7 @@ export class PaymentsController {
   constructor(private readonly payments: PaymentsService) {}
 
   @ApiBearerAuth()
+  @RequireCapability('payment:link')
   @Throttle({ strict: { limit: 20, ttl: 60_000 } })
   @Post('reservations/:id/links')
   async createLink(

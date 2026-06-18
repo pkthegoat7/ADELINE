@@ -2,6 +2,7 @@ import { BadRequestException, Body, Controller, Get, Patch } from '@nestjs/commo
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { z } from 'zod';
 import { CurrentUser, type AuthContext } from '../../common/decorators/tenant.decorator';
+import { RequireCapability } from '../../common/require-capability.decorator';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { isSuperAdmin } from '../auth/auth.controller';
 
@@ -25,6 +26,7 @@ export class TenantsController {
   }
 
   @Patch('appearance')
+  @RequireCapability('settings:manage')
   async updateAppearance(@CurrentUser() user: AuthContext, @Body() body: unknown) {
     const parsed = AppearanceSchema.safeParse(body);
     if (!parsed.success) {

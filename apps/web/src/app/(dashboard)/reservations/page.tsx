@@ -6,6 +6,7 @@ import { Plus, Pencil, Trash2, Search, Filter, MessageCircle, XCircle, CreditCar
 import { SendRegistrationLinkModal } from '@/components/SendRegistrationLinkModal';
 import { motion } from 'framer-motion';
 import { api } from '@/lib/api';
+import { useCan } from '@/lib/use-permissions';
 import { cn } from '@/lib/cn';
 import { format } from 'date-fns';
 import { NewReservationModal, type EditingReservation } from '@/components/NewReservationModal';
@@ -52,6 +53,7 @@ type StatusFilter = 'all' | 'active' | 'checked_in' | 'cancelled';
 
 export default function ReservationsPage() {
   const propertyId = process.env.NEXT_PUBLIC_DEMO_PROPERTY_ID ?? '';
+  const can = useCan();
   const qc = useQueryClient();
   const openReservation = useUI((s) => s.openReservation);
   const [modalState, setModalState] = useState<
@@ -168,14 +170,16 @@ export default function ReservationsPage() {
             {data && filtered.length !== data.length && ` de ${data.length}`}
           </p>
         </div>
-        <button
-          onClick={() => setModalState({ mode: 'create' })}
-          disabled={!propertyId}
-          className="btn-primary"
-        >
-          <Plus className="w-4 h-4" />
-          Nova reserva
-        </button>
+        {can('reservation:write') && (
+          <button
+            onClick={() => setModalState({ mode: 'create' })}
+            disabled={!propertyId}
+            className="btn-primary"
+          >
+            <Plus className="w-4 h-4" />
+            Nova reserva
+          </button>
+        )}
       </header>
 
       {/* Toolbar */}
@@ -287,54 +291,64 @@ export default function ReservationsPage() {
                       </td>
                       <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center justify-end gap-0.5">
-                          <button
-                            onClick={() => setFichaFor(r)}
-                            disabled={isCancelled}
-                            data-tip="Enviar ficha (WhatsApp)"
-                            className="p-1.5 text-ink-muted hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 rounded-md disabled:opacity-30 disabled:cursor-not-allowed active:scale-95 transition-all"
-                          >
-                            <MessageCircle className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => setPayModal({ id: r.id, total: Number(r.totalAmount) })}
-                            disabled={isCancelled}
-                            data-tip="Link de pagamento"
-                            className="p-1.5 text-ink-muted hover:text-brand-600 hover:bg-brand-50 dark:hover:bg-brand-900/30 rounded-md disabled:opacity-30 disabled:cursor-not-allowed active:scale-95 transition-all"
-                          >
-                            <CreditCard className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => startEdit(r)}
-                            disabled={isCancelled}
-                            data-tip="Editar"
-                            className="p-1.5 text-ink-muted hover:text-brand-600 hover:bg-brand-50 dark:hover:bg-brand-900/30 rounded-md disabled:opacity-30 disabled:cursor-not-allowed active:scale-95 transition-all"
-                          >
-                            <Pencil className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => confirmCancel(r)}
-                            disabled={isCancelled || cancel.isPending}
-                            data-tip={isCancelled ? 'Já cancelada' : 'Cancelar'}
-                            className="p-1.5 text-amber-500 hover:text-amber-700 hover:bg-amber-50 dark:hover:bg-amber-900/30 rounded-md disabled:opacity-30 disabled:cursor-not-allowed active:scale-95 transition-all"
-                          >
-                            {cancel.isPending && cancel.variables === r.id ? (
-                              <Spinner size={16} />
-                            ) : (
-                              <XCircle className="w-4 h-4" />
-                            )}
-                          </button>
-                          <button
-                            onClick={() => confirmDelete(r)}
-                            disabled={remove.isPending}
-                            data-tip="Excluir definitivamente"
-                            className="p-1.5 text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-md disabled:opacity-30 disabled:cursor-not-allowed active:scale-95 transition-all"
-                          >
-                            {remove.isPending && remove.variables === r.id ? (
-                              <Spinner size={16} />
-                            ) : (
-                              <Trash2 className="w-4 h-4" />
-                            )}
-                          </button>
+                          {can('reservation:write') && (
+                            <button
+                              onClick={() => setFichaFor(r)}
+                              disabled={isCancelled}
+                              data-tip="Enviar ficha (WhatsApp)"
+                              className="p-1.5 text-ink-muted hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 rounded-md disabled:opacity-30 disabled:cursor-not-allowed active:scale-95 transition-all"
+                            >
+                              <MessageCircle className="w-4 h-4" />
+                            </button>
+                          )}
+                          {can('payment:link') && (
+                            <button
+                              onClick={() => setPayModal({ id: r.id, total: Number(r.totalAmount) })}
+                              disabled={isCancelled}
+                              data-tip="Link de pagamento"
+                              className="p-1.5 text-ink-muted hover:text-brand-600 hover:bg-brand-50 dark:hover:bg-brand-900/30 rounded-md disabled:opacity-30 disabled:cursor-not-allowed active:scale-95 transition-all"
+                            >
+                              <CreditCard className="w-4 h-4" />
+                            </button>
+                          )}
+                          {can('reservation:write') && (
+                            <button
+                              onClick={() => startEdit(r)}
+                              disabled={isCancelled}
+                              data-tip="Editar"
+                              className="p-1.5 text-ink-muted hover:text-brand-600 hover:bg-brand-50 dark:hover:bg-brand-900/30 rounded-md disabled:opacity-30 disabled:cursor-not-allowed active:scale-95 transition-all"
+                            >
+                              <Pencil className="w-4 h-4" />
+                            </button>
+                          )}
+                          {can('reservation:cancel') && (
+                            <button
+                              onClick={() => confirmCancel(r)}
+                              disabled={isCancelled || cancel.isPending}
+                              data-tip={isCancelled ? 'Já cancelada' : 'Cancelar'}
+                              className="p-1.5 text-amber-500 hover:text-amber-700 hover:bg-amber-50 dark:hover:bg-amber-900/30 rounded-md disabled:opacity-30 disabled:cursor-not-allowed active:scale-95 transition-all"
+                            >
+                              {cancel.isPending && cancel.variables === r.id ? (
+                                <Spinner size={16} />
+                              ) : (
+                                <XCircle className="w-4 h-4" />
+                              )}
+                            </button>
+                          )}
+                          {can('reservation:delete') && (
+                            <button
+                              onClick={() => confirmDelete(r)}
+                              disabled={remove.isPending}
+                              data-tip="Excluir definitivamente"
+                              className="p-1.5 text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-md disabled:opacity-30 disabled:cursor-not-allowed active:scale-95 transition-all"
+                            >
+                              {remove.isPending && remove.variables === r.id ? (
+                                <Spinner size={16} />
+                              ) : (
+                                <Trash2 className="w-4 h-4" />
+                              )}
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>

@@ -1,19 +1,8 @@
-import {
-  Body,
-  Controller,
-  ForbiddenException,
-  Get,
-  Param,
-  Post,
-  Put,
-} from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Put } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { z } from 'zod';
-import {
-  CurrentUser,
-  TenantId,
-  type AuthContext,
-} from '../../common/decorators/tenant.decorator';
+import { TenantId } from '../../common/decorators/tenant.decorator';
+import { RequireCapability } from '../../common/require-capability.decorator';
 import {
   MessageTemplatesService,
   TEMPLATE_TYPES,
@@ -31,12 +20,6 @@ const UpdateTemplateSchema = z.object({
   hourBrt: z.number().int().min(0).max(23).nullable().optional(),
 });
 
-function assertManager(user: AuthContext) {
-  if (user.role !== 'owner' && user.role !== 'manager') {
-    throw new ForbiddenException('Apenas proprietário ou gerente podem gerenciar o WhatsApp.');
-  }
-}
-
 @ApiTags('whatsapp')
 @ApiBearerAuth()
 @Controller('whatsapp')
@@ -52,30 +35,26 @@ export class WhatsappController {
   }
 
   @Post('connect')
-  connect(@CurrentUser() user: AuthContext, @TenantId() tenantId: string) {
-    assertManager(user);
+  @RequireCapability('settings:manage')
+  connect(@TenantId() tenantId: string) {
     return this.whatsapp.connect(tenantId);
   }
 
   @Post('disconnect')
-  disconnect(@CurrentUser() user: AuthContext, @TenantId() tenantId: string) {
-    assertManager(user);
+  @RequireCapability('settings:manage')
+  disconnect(@TenantId() tenantId: string) {
     return this.whatsapp.disconnect(tenantId);
   }
 
   @Post('restart')
-  restart(@CurrentUser() user: AuthContext, @TenantId() tenantId: string) {
-    assertManager(user);
+  @RequireCapability('settings:manage')
+  restart(@TenantId() tenantId: string) {
     return this.whatsapp.restart(tenantId);
   }
 
   @Post('test')
-  async test(
-    @CurrentUser() user: AuthContext,
-    @TenantId() tenantId: string,
-    @Body() body: unknown,
-  ) {
-    assertManager(user);
+  @RequireCapability('settings:manage')
+  async test(@TenantId() tenantId: string, @Body() body: unknown) {
     const { phone } = TestSchema.parse(body);
     return this.whatsapp.sendText(
       tenantId,
@@ -92,13 +71,12 @@ export class WhatsappController {
 
   /** Atualiza texto/horário/on-off de uma mensagem. */
   @Put('templates/:type')
+  @RequireCapability('settings:manage')
   async updateTemplate(
-    @CurrentUser() user: AuthContext,
     @TenantId() tenantId: string,
     @Param('type') typeParam: string,
     @Body() body: unknown,
   ) {
-    assertManager(user);
     const type = TemplateTypeSchema.parse(typeParam);
     const patch = UpdateTemplateSchema.parse(body);
     return this.templates.upsert(tenantId, type, patch);
@@ -106,12 +84,8 @@ export class WhatsappController {
 
   /** Volta uma mensagem ao texto/horário padrão. */
   @Post('templates/:type/reset')
-  async resetTemplate(
-    @CurrentUser() user: AuthContext,
-    @TenantId() tenantId: string,
-    @Param('type') typeParam: string,
-  ) {
-    assertManager(user);
+  @RequireCapability('settings:manage')
+  async resetTemplate(@TenantId() tenantId: string, @Param('type') typeParam: string) {
     const type = TemplateTypeSchema.parse(typeParam);
     return this.templates.reset(tenantId, type);
   }

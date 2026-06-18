@@ -2,6 +2,7 @@ import { BadRequestException, Body, Controller, Delete, Get, Param, Post, Put, Q
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { z } from 'zod';
 import { TenantId } from '../../common/decorators/tenant.decorator';
+import { RequireCapability } from '../../common/require-capability.decorator';
 import { PrismaService } from '../../common/prisma/prisma.service';
 
 const CreateRoomTypeSchema = z.object({
@@ -55,12 +56,14 @@ export class RoomsController {
   }
 
   @Post('room-types')
+  @RequireCapability('room:manage')
   createType(@TenantId() tenantId: string, @Body() body: unknown) {
     const data = CreateRoomTypeSchema.parse(body);
     return this.prisma.withTenant(tenantId, (tx) => tx.roomType.create({ data }));
   }
 
   @Put('room-types/:id')
+  @RequireCapability('room:manage')
   updateType(@TenantId() tenantId: string, @Param('id') id: string, @Body() body: unknown) {
     const data = UpdateRoomTypeSchema.parse(body);
     return this.prisma.withTenant(tenantId, (tx) => tx.roomType.update({ where: { id }, data }));
@@ -68,6 +71,7 @@ export class RoomsController {
 
   /** Soft delete do tipo: bloqueia se houver quartos ativos vinculados. */
   @Delete('room-types/:id')
+  @RequireCapability('room:manage')
   async deactivateType(@TenantId() tenantId: string, @Param('id') id: string) {
     return this.prisma.withTenant(tenantId, async (tx) => {
       const rooms = await tx.room.count({ where: { roomTypeId: id, active: true } });
@@ -92,12 +96,14 @@ export class RoomsController {
   }
 
   @Post('rooms')
+  @RequireCapability('room:manage')
   createRoom(@TenantId() tenantId: string, @Body() body: unknown) {
     const data = CreateRoomSchema.parse(body);
     return this.prisma.withTenant(tenantId, (tx) => tx.room.create({ data, include: { roomType: true } }));
   }
 
   @Put('rooms/:id')
+  @RequireCapability('room:manage')
   updateRoom(@TenantId() tenantId: string, @Param('id') id: string, @Body() body: unknown) {
     const data = UpdateRoomSchema.parse(body);
     return this.prisma.withTenant(tenantId, (tx) =>
@@ -106,6 +112,7 @@ export class RoomsController {
   }
 
   @Put('rooms/:id/status')
+  @RequireCapability('room:status')
   updateStatus(
     @TenantId() tenantId: string,
     @Param('id') id: string,
@@ -118,6 +125,7 @@ export class RoomsController {
 
   /** Soft delete: marca quarto como inativo. Bloqueia se houver reserva ativa. */
   @Delete('rooms/:id')
+  @RequireCapability('room:manage')
   async deactivateRoom(@TenantId() tenantId: string, @Param('id') id: string) {
     return this.prisma.withTenant(tenantId, async (tx) => {
       const today = new Date();
@@ -146,6 +154,7 @@ export class RoomsController {
    * Apaga o calendar de disponibilidade vinculado.
    */
   @Delete('rooms/:id/permanent')
+  @RequireCapability('room:manage')
   async deleteRoomPermanent(@TenantId() tenantId: string, @Param('id') id: string) {
     return this.prisma.withTenant(tenantId, async (tx) => {
       const room = await tx.room.findUnique({ where: { id } });

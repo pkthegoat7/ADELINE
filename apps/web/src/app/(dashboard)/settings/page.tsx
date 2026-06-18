@@ -6,6 +6,7 @@ import { Check, Monitor, Moon, Sun, CreditCard, AlertTriangle } from 'lucide-rea
 import { toast } from 'sonner';
 import { MessageTemplatesSection } from '@/components/MessageTemplatesSection';
 import { api } from '@/lib/api';
+import { useCan } from '@/lib/use-permissions';
 import { cn } from '@/lib/cn';
 import { useTheme, type ThemePref } from '@/lib/theme';
 import {
@@ -37,6 +38,7 @@ interface MeResponse {
 }
 
 export default function SettingsPage() {
+  const can = useCan();
   const { data, isLoading } = useQuery({
     queryKey: ['me'],
     queryFn: () => api<MeResponse>('/me'),
@@ -53,7 +55,9 @@ export default function SettingsPage() {
 
       {data && (
         <div className="space-y-4">
-          <AppearanceSection serverAppearance={data.tenant.appearance} />
+          {can('settings:manage') && (
+            <AppearanceSection serverAppearance={data.tenant.appearance} />
+          )}
 
           <section className="surface-card p-5">
             <h2 className="font-semibold text-ink mb-3">Pousada</h2>
@@ -81,9 +85,9 @@ export default function SettingsPage() {
             </dl>
           </section>
 
-          <MessageTemplatesSection />
+          {can('settings:manage') && <MessageTemplatesSection />}
 
-          <PagamentosSettings />
+          {can('settings:manage') && <PagamentosSettings />}
 
           <section className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-sm text-amber-900">
             <strong>Em construção:</strong> edição de dados, gerenciamento de usuários e integrações

@@ -18,6 +18,7 @@ import {
   TenantId,
   type AuthContext,
 } from '../../common/decorators/tenant.decorator';
+import { RequireCapability } from '../../common/require-capability.decorator';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { AuthService } from '../auth/auth.service';
 
@@ -75,6 +76,7 @@ export class TeamController {
   /** Cria login de funcionário (Supabase Auth + users com papel). */
   @Throttle({ strict: { limit: 5, ttl: 60_000 } })
   @Post()
+  @RequireCapability('team:manage')
   async create(
     @CurrentUser() user: AuthContext,
     @TenantId() tenantId: string,
@@ -94,6 +96,7 @@ export class TeamController {
 
   /** Edita papel/nome ou ativa/desativa um membro. */
   @Patch(':id')
+  @RequireCapability('team:manage')
   async update(
     @CurrentUser() user: AuthContext,
     @TenantId() tenantId: string,
@@ -129,6 +132,7 @@ export class TeamController {
 
   /** Hard delete: remove o usuário definitivamente. Revoga o acesso na hora. */
   @Delete(':id')
+  @RequireCapability('team:manage')
   async remove(
     @CurrentUser() user: AuthContext,
     @TenantId() tenantId: string,

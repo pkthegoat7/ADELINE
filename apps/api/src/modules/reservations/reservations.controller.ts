@@ -1,21 +1,8 @@
-import {
-  Body,
-  Controller,
-  Delete,
-  ForbiddenException,
-  Get,
-  Param,
-  Post,
-  Put,
-  Query,
-} from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Post, Put, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { z } from 'zod';
-import {
-  CurrentUser,
-  TenantId,
-  type AuthContext,
-} from '../../common/decorators/tenant.decorator';
+import { TenantId } from '../../common/decorators/tenant.decorator';
+import { RequireCapability } from '../../common/require-capability.decorator';
 import { ReservationsService } from './reservations.service';
 
 const dateString = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Data deve estar no formato YYYY-MM-DD');
@@ -66,42 +53,41 @@ export class ReservationsController {
   }
 
   @Post()
+  @RequireCapability('reservation:write')
   create(@TenantId() tenantId: string, @Body() body: unknown) {
     const data = CreateSchema.parse(body);
     return this.service.create({ tenantId, ...data });
   }
 
   @Put(':id')
+  @RequireCapability('reservation:write')
   update(@TenantId() tenantId: string, @Param('id') id: string, @Body() body: unknown) {
     const data = CreateSchema.parse(body);
     return this.service.update(tenantId, id, data);
   }
 
   @Post(':id/cancel')
+  @RequireCapability('reservation:cancel')
   cancel(@TenantId() tenantId: string, @Param('id') id: string, @Body() body: { reason?: string }) {
     return this.service.cancel(tenantId, id, body.reason);
   }
 
   @Post(':id/check-in')
+  @RequireCapability('reservation:checkin')
   checkIn(@TenantId() tenantId: string, @Param('id') id: string) {
     return this.service.checkIn(tenantId, id);
   }
 
   @Post(':id/check-out')
+  @RequireCapability('reservation:checkin')
   checkOut(@TenantId() tenantId: string, @Param('id') id: string) {
     return this.service.checkOut(tenantId, id);
   }
 
   /** Exclusão definitiva (some do histórico). Libera o calendário antes. */
   @Delete(':id')
-  remove(
-    @CurrentUser() user: AuthContext,
-    @TenantId() tenantId: string,
-    @Param('id') id: string,
-  ) {
-    if (user.role !== 'owner' && user.role !== 'manager') {
-      throw new ForbiddenException('Apenas proprietário ou gerente podem excluir reservas.');
-    }
+  @RequireCapability('reservation:delete')
+  remove(@TenantId() tenantId: string, @Param('id') id: string) {
     return this.service.remove(tenantId, id);
   }
 }

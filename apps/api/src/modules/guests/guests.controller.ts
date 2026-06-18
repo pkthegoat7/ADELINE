@@ -3,7 +3,6 @@ import {
   Body,
   Controller,
   Delete,
-  ForbiddenException,
   Get,
   Param,
   Post,
@@ -12,11 +11,8 @@ import {
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { z } from 'zod';
-import {
-  CurrentUser,
-  TenantId,
-  type AuthContext,
-} from '../../common/decorators/tenant.decorator';
+import { TenantId } from '../../common/decorators/tenant.decorator';
+import { RequireCapability } from '../../common/require-capability.decorator';
 import { PrismaService } from '../../common/prisma/prisma.service';
 
 const GuestSchema = z.object({
@@ -66,6 +62,7 @@ export class GuestsController {
   }
 
   @Post()
+  @RequireCapability('guest:write')
   create(@TenantId() tenantId: string, @Body() body: unknown) {
     const data = GuestSchema.parse(body);
     return this.prisma.withTenant(tenantId, (tx) =>
@@ -80,6 +77,7 @@ export class GuestsController {
   }
 
   @Put(':id')
+  @RequireCapability('guest:write')
   update(@TenantId() tenantId: string, @Param('id') id: string, @Body() body: unknown) {
     const data = GuestSchema.partial().parse(body);
     return this.prisma.withTenant(tenantId, (tx) =>
@@ -95,15 +93,8 @@ export class GuestsController {
 
   /** Exclusão definitiva. Bloqueia se o hóspede tiver reservas (FK Restrict no schema). */
   @Delete(':id')
-  async remove(
-    @CurrentUser() user: AuthContext,
-    @TenantId() tenantId: string,
-    @Param('id') id: string,
-  ) {
-    if (user.role !== 'owner' && user.role !== 'manager') {
-      throw new ForbiddenException('Apenas proprietário ou gerente podem excluir hóspedes.');
-    }
-
+  @RequireCapability('guest:delete')
+  async remove(@TenantId() tenantId: string, @Param('id') id: string) {
     const reservationsCount = await this.prisma.withTenant(tenantId, (tx) =>
       tx.reservation.count({ where: { guestId: id } }),
     );

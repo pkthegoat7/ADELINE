@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Plus, Pencil, Trash2, Tags } from 'lucide-react';
 import { api } from '@/lib/api';
+import { useCan } from '@/lib/use-permissions';
 import { cn } from '@/lib/cn';
 import { RoomFormModal, type EditingRoom } from '@/components/RoomFormModal';
 import { RoomTypesModal } from '@/components/RoomTypesModal';
@@ -65,6 +66,7 @@ const STATUS_OPTIONS: Array<{
 
 export default function RoomsPage() {
   const propertyId = process.env.NEXT_PUBLIC_DEMO_PROPERTY_ID ?? '';
+  const can = useCan();
   const qc = useQueryClient();
   const [modalState, setModalState] = useState<
     { mode: 'closed' } | { mode: 'create' } | { mode: 'edit'; editing: EditingRoom }
@@ -174,16 +176,18 @@ export default function RoomsPage() {
             )}
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <button onClick={() => setTypesModalOpen(true)} disabled={!propertyId} className="btn-secondary">
-            <Tags className="w-4 h-4" />
-            Tipos de quarto
-          </button>
-          <button onClick={() => setModalState({ mode: 'create' })} disabled={!propertyId} className="btn-primary">
-            <Plus className="w-4 h-4" />
-            Novo quarto
-          </button>
-        </div>
+        {can('room:manage') && (
+          <div className="flex items-center gap-2">
+            <button onClick={() => setTypesModalOpen(true)} disabled={!propertyId} className="btn-secondary">
+              <Tags className="w-4 h-4" />
+              Tipos de quarto
+            </button>
+            <button onClick={() => setModalState({ mode: 'create' })} disabled={!propertyId} className="btn-primary">
+              <Plus className="w-4 h-4" />
+              Novo quarto
+            </button>
+          </div>
+        )}
       </header>
 
       {isLoading && <SkeletonCards count={6} />}
@@ -234,7 +238,7 @@ export default function RoomsPage() {
                 onChange={(e) =>
                   updateStatus.mutate({ id: r.id, status: e.target.value as Room['status'] })
                 }
-                disabled={updateStatus.isPending || !r.active}
+                disabled={updateStatus.isPending || !r.active || !can('room:status')}
                 className={cn(
                   'w-full px-3 py-2 rounded-md text-sm font-medium border outline-none transition-colors',
                   'focus:ring-2 focus:ring-brand-500/30',
@@ -252,6 +256,7 @@ export default function RoomsPage() {
                 ))}
               </select>
 
+              {can('room:manage') && (
               <div className="flex gap-1 pt-1 border-t border-line-soft">
                 <button
                   onClick={() => startEdit(r)}
@@ -287,6 +292,7 @@ export default function RoomsPage() {
                   </button>
                 )}
               </div>
+              )}
             </div>
           );
         })}

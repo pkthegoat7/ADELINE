@@ -2,6 +2,7 @@ import { Body, Controller, Get, Param, Post, Put } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { z } from 'zod';
 import { TenantId } from '../../common/decorators/tenant.decorator';
+import { RequireCapability } from '../../common/require-capability.decorator';
 import { PrismaService } from '../../common/prisma/prisma.service';
 
 const CreatePropertySchema = z.object({
@@ -45,6 +46,7 @@ export class PropertiesController {
   }
 
   @Post()
+  @RequireCapability('property:manage')
   create(@TenantId() tenantId: string, @Body() body: unknown) {
     const data = CreatePropertySchema.parse(body);
     return this.prisma.withTenant(tenantId, (tx) =>
@@ -53,6 +55,7 @@ export class PropertiesController {
   }
 
   @Put(':id')
+  @RequireCapability('property:manage')
   update(@TenantId() tenantId: string, @Param('id') id: string, @Body() body: unknown) {
     const data = CreatePropertySchema.partial().parse(body);
     return this.prisma.withTenant(tenantId, (tx) =>

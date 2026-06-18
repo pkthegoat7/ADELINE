@@ -5,6 +5,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { MessageCircle, Plus, Search, Trash2 } from 'lucide-react';
 import { SendRegistrationLinkModal } from '@/components/SendRegistrationLinkModal';
 import { api } from '@/lib/api';
+import { useCan } from '@/lib/use-permissions';
 import { cn } from '@/lib/cn';
 import { Modal } from '@/components/ui/Modal';
 import { Select } from '@/components/ui/Select';
@@ -25,6 +26,7 @@ interface Guest {
 export default function GuestsPage() {
   const qc = useQueryClient();
   const [search, setSearch] = useState('');
+  const can = useCan();
   const [modalOpen, setModalOpen] = useState(false);
   const [linkModalOpen, setLinkModalOpen] = useState(false);
 
@@ -66,14 +68,18 @@ export default function GuestsPage() {
           <p className="text-sm text-ink-muted mt-1 num-tabular">{data?.length ?? 0} resultados</p>
         </div>
         <div className="flex items-center gap-2">
-          <button onClick={() => setLinkModalOpen(true)} className="btn-secondary">
-            <MessageCircle className="w-4 h-4 text-emerald-600" />
-            Enviar link de cadastro
-          </button>
-          <button onClick={() => setModalOpen(true)} className="btn-primary">
-            <Plus className="w-4 h-4" />
-            Novo hóspede
-          </button>
+          {can('guest:write') && (
+            <button onClick={() => setLinkModalOpen(true)} className="btn-secondary">
+              <MessageCircle className="w-4 h-4 text-emerald-600" />
+              Enviar link de cadastro
+            </button>
+          )}
+          {can('guest:write') && (
+            <button onClick={() => setModalOpen(true)} className="btn-primary">
+              <Plus className="w-4 h-4" />
+              Novo hóspede
+            </button>
+          )}
         </div>
       </header>
 
@@ -121,6 +127,7 @@ export default function GuestsPage() {
                     <td className="p-3 text-ink-soft">{g.phone ?? '—'}</td>
                     <td className="p-3 text-ink-soft">{g.nationality ?? '—'}</td>
                     <td className="p-3 text-right">
+                      {can('guest:delete') && (
                       <button
                         onClick={() => confirmRemove(g)}
                         disabled={remove.isPending}
@@ -133,6 +140,7 @@ export default function GuestsPage() {
                           <Trash2 className="w-4 h-4" />
                         )}
                       </button>
+                      )}
                     </td>
                   </tr>
                 ))}

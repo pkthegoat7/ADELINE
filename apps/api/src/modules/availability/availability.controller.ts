@@ -2,6 +2,7 @@ import { Body, Controller, Get, Post, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { z } from 'zod';
 import { TenantId } from '../../common/decorators/tenant.decorator';
+import { RequireCapability } from '../../common/require-capability.decorator';
 import { AvailabilityService } from './availability.service';
 
 const BlockSchema = z.object({
@@ -32,6 +33,7 @@ export class AvailabilityController {
   }
 
   @Post('block')
+  @RequireCapability('calendar:block')
   block(@TenantId() tenantId: string, @Body() body: unknown) {
     const data = BlockSchema.parse(body);
     return this.availability.blockRoom({ tenantId, ...data });
