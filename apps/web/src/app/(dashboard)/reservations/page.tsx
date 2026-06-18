@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, Pencil, Trash2, Search, Filter, MessageCircle, XCircle } from 'lucide-react';
+import { Plus, Pencil, Trash2, Search, Filter, MessageCircle, XCircle, CreditCard } from 'lucide-react';
 import { SendRegistrationLinkModal } from '@/components/SendRegistrationLinkModal';
 import { motion } from 'framer-motion';
 import { api } from '@/lib/api';
@@ -60,6 +60,7 @@ export default function ReservationsPage() {
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<StatusFilter>('all');
   const [fichaFor, setFichaFor] = useState<Reservation | null>(null);
+  const [payModal, setPayModal] = useState<{ id: string; total: number } | null>(null);
 
   const { data, isLoading } = useQuery({
     queryKey: ['reservations'],
@@ -295,6 +296,14 @@ export default function ReservationsPage() {
                             <MessageCircle className="w-4 h-4" />
                           </button>
                           <button
+                            onClick={() => setPayModal({ id: r.id, total: Number(r.totalAmount) })}
+                            disabled={isCancelled}
+                            data-tip="Link de pagamento"
+                            className="p-1.5 text-ink-muted hover:text-brand-600 hover:bg-brand-50 dark:hover:bg-brand-900/30 rounded-md disabled:opacity-30 disabled:cursor-not-allowed active:scale-95 transition-all"
+                          >
+                            <CreditCard className="w-4 h-4" />
+                          </button>
+                          <button
                             onClick={() => startEdit(r)}
                             disabled={isCancelled}
                             data-tip="Editar"
@@ -367,6 +376,140 @@ export default function ReservationsPage() {
         reservationCode={fichaFor?.code}
         initialPhone={fichaFor?.guest.phone}
       />
+
+      {payModal && (
+        <PaymentLinkModal
+          reservationId={payModal.id}
+          reservationTotal={payModal.total}
+          onClose={() => setPayModal(null)}
+        />
+      )}
+    </div>
+  );
+}
+
+function PaymentLinkModal({
+  reservationId,
+  reservationTotal,
+  onClose,
+}: {
+  reservationId: string;
+  reservationTotal: number;
+  onClose: () => void;
+}) {
+  const [amount, setAmount] = useState(String(reservationTotal));
+  const [description, setDescription] = useState('');
+  const [sendWhatsapp, setSendWhatsapp] = useState(true);
+  const [result, setResult] = useState<{ url: string; message: string } | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  const gen = useMutation({
+    mutationFn: () =>
+      api<{ url: string; message: string; sentViaWhatsapp: boolean }>(
+        `/payments/reservations/${reservationId}/links`,
+        {
+          method: 'POST',
+          body: JSON.stringify({
+            amount: Number(amount),
+            description: description.trim() || undefined,
+            sendWhatsapp,
+          }),
+        },
+      ),
+    onSuccess: (r) => {
+      setResult({ url: r.url, message: r.message });
+      toast.success(r.sentViaWhatsapp ? 'Link gerado e enviado por WhatsApp' : 'Link gerado');
+    },
+    onError: (err: Error) => toast.error('Erro ao gerar link', err.message),
+  });
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
+      <div className="surface-card p-6 w-full max-w-md" onClick={(e) => e.stopPropagation()}>
+        <h3 className="font-display text-lg font-bold text-ink mb-4">Gerar link de pagamento</h3>
+
+        {!result ? (
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-ink mb-1">Valor (R$)</label>
+              <input
+                type="number"
+                min="1"
+                step="0.01"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                className="input-base w-full"
+              />
+              <p className="text-xs text-ink-muted mt-1">
+                Total da reserva: R$ {reservationTotal.toFixed(2)}
+              </p>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-ink mb-1">Descrição (opcional)</label>
+              <input
+                type="text"
+                maxLength={120}
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Ex: Sinal 30%"
+                className="input-base w-full"
+              />
+            </div>
+            <label className="flex items-center gap-2 text-sm text-ink cursor-pointer">
+              <input
+                type="checkbox"
+                checked={sendWhatsapp}
+                onChange={(e) => setSendWhatsapp(e.target.checked)}
+                className="h-4 w-4 accent-brand-500"
+              />
+              Enviar por WhatsApp automaticamente
+            </label>
+            <div className="flex gap-2 pt-2">
+              <button onClick={onClose} className="btn-ghost px-4 py-2 text-sm flex-1">
+                Cancelar
+              </button>
+              <button
+                onClick={() => gen.mutate()}
+                disabled={!(Number(amount) > 0) || gen.isPending}
+                className="btn-primary px-4 py-2 text-sm flex-1 disabled:opacity-50"
+              >
+                {gen.isPending ? 'Gerando…' : 'Gerar link'}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-ink mb-1">Link</label>
+              <input readOnly value={result.url} className="input-base w-full text-xs" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-ink mb-1">Mensagem pronta</label>
+              <textarea
+                readOnly
+                value={result.message}
+                rows={6}
+                className="input-base w-full text-xs"
+              />
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(result.message);
+                  setCopied(true);
+                  setTimeout(() => setCopied(false), 1500);
+                }}
+                className="btn-primary px-4 py-2 text-sm flex-1"
+              >
+                {copied ? 'Copiado!' : 'Copiar mensagem'}
+              </button>
+              <button onClick={onClose} className="btn-ghost px-4 py-2 text-sm flex-1">
+                Fechar
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
