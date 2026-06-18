@@ -27,6 +27,7 @@ export async function middleware(request: NextRequest) {
   const isPublicForm =
     pathname.startsWith('/cadastro') ||
     pathname.startsWith('/checkout') ||
+    pathname.startsWith('/pagamento') ||
     pathname.startsWith('/assinatura-necessaria');
 
   const authed = await hasValidSession(request);
