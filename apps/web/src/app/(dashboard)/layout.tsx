@@ -109,7 +109,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <button
           aria-label="Fechar menu"
           onClick={() => setMobileOpen(false)}
-          className="fixed inset-0 z-30 bg-black/55 backdrop-blur-sm md:hidden animate-fade-in"
+          className="fixed inset-0 z-30 bg-black/55 backdrop-blur-sm lg:hidden animate-fade-in"
         />
       )}
 
@@ -123,15 +123,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           // Mobile: overlay deslizante
           'fixed inset-y-0 left-0 z-40 transition-transform duration-300 ease-out',
           mobileOpen ? 'translate-x-0' : '-translate-x-full',
-          // Desktop: em fluxo, sempre visivel
-          'md:relative md:translate-x-0 md:z-auto',
+          // Desktop (>=1024px): em fluxo, sempre visível. Abaixo disso = drawer.
+          'lg:relative lg:translate-x-0 lg:z-auto',
         )}
       >
         {/* Botao fechar (mobile) */}
         <button
           onClick={() => setMobileOpen(false)}
           aria-label="Fechar menu"
-          className="md:hidden absolute top-3 right-3 z-10 inline-flex items-center justify-center w-8 h-8 rounded-lg transition-colors bg-surface-sunken hover:bg-surface-sunken/70 text-ink-soft hover:text-ink border border-line dark:bg-white/[0.05] dark:hover:bg-white/[0.1] dark:text-zinc-300 dark:hover:text-zinc-50 dark:border-white/10"
+          className="lg:hidden absolute top-3 right-3 z-10 inline-flex items-center justify-center w-8 h-8 rounded-lg transition-colors bg-surface-sunken hover:bg-surface-sunken/70 text-ink-soft hover:text-ink border border-line dark:bg-white/[0.05] dark:hover:bg-white/[0.1] dark:text-zinc-300 dark:hover:text-zinc-50 dark:border-white/10"
         >
           <X className="w-4 h-4" />
         </button>
@@ -247,7 +247,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <button
                 onClick={() => setMobileOpen(true)}
                 aria-label="Abrir menu"
-                className="md:hidden inline-flex items-center justify-center w-9 h-9 -ml-1 rounded-lg text-ink-soft hover:text-ink hover:bg-surface-sunken transition-colors flex-shrink-0"
+                className="lg:hidden inline-flex items-center justify-center w-9 h-9 -ml-1 rounded-lg text-ink-soft hover:text-ink hover:bg-surface-sunken transition-colors flex-shrink-0"
               >
                 <Menu className="w-5 h-5" />
               </button>
@@ -266,20 +266,20 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <button
                 onClick={openCmdk}
                 aria-label="Buscar"
-                className="md:hidden inline-flex items-center justify-center w-9 h-9 rounded-lg text-ink-soft hover:text-ink hover:bg-surface-sunken border border-line transition-all"
+                className="lg:hidden inline-flex items-center justify-center w-9 h-9 rounded-lg text-ink-soft hover:text-ink hover:bg-surface-sunken border border-line transition-all"
               >
                 <Search className="w-4 h-4" />
               </button>
               <button
                 onClick={openCmdk}
-                className="hidden md:inline-flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-ink-soft hover:text-ink hover:bg-surface-sunken border border-line transition-all"
+                className="hidden lg:inline-flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-ink-soft hover:text-ink hover:bg-surface-sunken border border-line transition-all"
               >
                 <Search className="w-3.5 h-3.5" />
                 Buscar
                 <kbd>⌘K</kbd>
               </button>
               <ThemeToggle />
-              <div className="hidden md:flex items-center gap-2 pl-3 ml-1 border-l border-line">
+              <div className="hidden lg:flex items-center gap-2 pl-3 ml-1 border-l border-line">
                 <div className="w-8 h-8 rounded-full bg-gradient-to-br from-brand-300 to-brand-600 flex items-center justify-center text-white text-xs font-semibold shadow-soft">
                   {(data?.tenant.name?.trim()?.[0] ?? 'P').toUpperCase()}
                 </div>
