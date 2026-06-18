@@ -83,6 +83,8 @@ export default function SettingsPage() {
 
           <MessageTemplatesSection />
 
+          <PagamentosSettings />
+
           <section className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-sm text-amber-900">
             <strong>Em construção:</strong> edição de dados, gerenciamento de usuários e integrações
             de pagamento (Pix/Stripe) virão nas próximas iterações.
@@ -409,6 +411,118 @@ function SubscriptionSection() {
               </button>
             </div>
           )}
+        </>
+      )}
+    </section>
+  );
+}
+
+/* ============================================================
+   PAGAMENTOS — termos exibidos no link de pagamento
+   ============================================================ */
+
+function PagamentosSettings() {
+  const qc = useQueryClient();
+  const [terms, setTerms] = useState('');
+  const [lgpd, setLgpd] = useState('');
+  const [autoWa, setAutoWa] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+
+  const { data, isLoading } = useQuery({
+    queryKey: ['tenant-settings'],
+    queryFn: () =>
+      api<{
+        payment_terms_of_service: string;
+        payment_lgpd_consent: string;
+        payment_link_auto_whatsapp: string;
+      }>('/settings'),
+  });
+
+  useEffect(() => {
+    if (data && !loaded) {
+      setTerms(data.payment_terms_of_service);
+      setLgpd(data.payment_lgpd_consent);
+      setAutoWa(data.payment_link_auto_whatsapp === 'true');
+      setLoaded(true);
+    }
+  }, [data, loaded]);
+
+  const save = useMutation({
+    mutationFn: async () => {
+      await api('/settings', {
+        method: 'PUT',
+        body: JSON.stringify({ key: 'payment_terms_of_service', value: terms }),
+      });
+      await api('/settings', {
+        method: 'PUT',
+        body: JSON.stringify({ key: 'payment_lgpd_consent', value: lgpd }),
+      });
+      await api('/settings', {
+        method: 'PUT',
+        body: JSON.stringify({ key: 'payment_link_auto_whatsapp', value: String(autoWa) }),
+      });
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['tenant-settings'] });
+      toast.success('Configurações de pagamento salvas');
+    },
+    onError: (err: Error) => toast.error('Erro ao salvar', { description: err.message }),
+  });
+
+  return (
+    <section className="surface-card p-5 space-y-4">
+      <div>
+        <h2 className="font-semibold text-ink flex items-center gap-2">
+          <CreditCard className="w-4 h-4 text-brand-600" /> Pagamentos
+        </h2>
+        <p className="text-xs text-ink-muted mt-0.5">
+          Termos exibidos ao hóspede na página do link de pagamento.
+        </p>
+      </div>
+
+      {isLoading ? (
+        <div className="text-sm text-ink-muted">Carregando…</div>
+      ) : (
+        <>
+          <div>
+            <label className="block text-sm font-medium text-ink mb-1">Termos de Uso e Serviço</label>
+            <textarea
+              value={terms}
+              onChange={(e) => setTerms(e.target.value)}
+              rows={4}
+              maxLength={5000}
+              className="input-base w-full text-sm"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-ink mb-1">Termo de LGPD</label>
+            <textarea
+              value={lgpd}
+              onChange={(e) => setLgpd(e.target.value)}
+              rows={4}
+              maxLength={5000}
+              className="input-base w-full text-sm"
+            />
+          </div>
+
+          <label className="flex items-center gap-2 text-sm text-ink cursor-pointer">
+            <input
+              type="checkbox"
+              checked={autoWa}
+              onChange={(e) => setAutoWa(e.target.checked)}
+              className="h-4 w-4 accent-brand-500"
+            />
+            Enviar link por WhatsApp automaticamente por padrão
+          </label>
+
+          <button
+            onClick={() => save.mutate()}
+            disabled={save.isPending}
+            className="btn-primary text-sm disabled:opacity-50"
+          >
+            {save.isPending ? 'Salvando…' : 'Salvar'}
+          </button>
         </>
       )}
     </section>
