@@ -21,6 +21,7 @@ import { GuestLinksModule } from './modules/guest-links/guest-links.module';
 import { TeamModule } from './modules/team/team.module';
 import { AdminModule } from './modules/admin/admin.module';
 import { SubscriptionsModule } from './modules/subscriptions/subscriptions.module';
+import { PaymentsModule } from './modules/payments/payments.module';
 
 @Module({
   imports: [
@@ -52,6 +53,7 @@ import { SubscriptionsModule } from './modules/subscriptions/subscriptions.modul
     TeamModule,
     AdminModule,
     SubscriptionsModule,
+    PaymentsModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })
