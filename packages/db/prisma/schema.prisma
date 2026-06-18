@@ -58,6 +58,7 @@ model Tenant {
   subscription           Subscription?
   paymentLinks           PaymentLink[]
   settings               TenantSetting[]
+  expenses               Expense[]
 
   @@map("tenants")
 }
@@ -150,6 +151,7 @@ model Property {
   rooms              Room[]
   reservations       Reservation[]
   channelConnections ChannelConnection[]
+  expenses           Expense[]
 
   @@unique([tenantId, slug])
   @@index([tenantId])
@@ -838,4 +840,55 @@ model PricingRule {
 
   @@index([tenantId, active])
   @@map("pricing_rules")
+}
+
+// ════════════════════════════════════════════════════════════════
+// DESPESAS (módulo financeiro)
+// ════════════════════════════════════════════════════════════════
+
+enum ExpenseCategory {
+  utilities_water
+  utilities_power
+  utilities_internet
+  cleaning
+  maintenance
+  salaries
+  taxes
+  supplies
+  marketing
+  software
+  rent
+  other
+}
+
+enum ExpenseStatus {
+  pending
+  paid
+}
+
+model Expense {
+  id          String          @id @default(uuid()) @db.Uuid
+  tenantId    String          @map("tenant_id") @db.Uuid
+  propertyId  String?         @map("property_id") @db.Uuid
+  category    ExpenseCategory
+  description String
+  supplier    String?
+  amount      Decimal         @db.Decimal(10, 2)
+  date        DateTime        @default(now()) @db.Date
+  status      ExpenseStatus   @default(pending)
+  dueDate     DateTime?       @map("due_date") @db.Date
+  paidAt      DateTime?       @map("paid_at") @db.Date
+  receiptUrl  String?         @map("receipt_url")
+  createdAt   DateTime        @default(now()) @map("created_at")
+  updatedAt   DateTime        @updatedAt @map("updated_at")
+
+  tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  property Property? @relation(fields: [propertyId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId])
+  @@index([propertyId])
+  @@index([status])
+  @@index([date])
+  @@index([dueDate])
+  @@map("expenses")
 }
