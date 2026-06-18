@@ -173,16 +173,18 @@ export class AdminController {
 
   private static ALLOWED_SETTINGS = [
     'mp_access_token',
+    'mp_webhook_secret',
     'mp_plan_amount',
     'mp_plan_reason',
     'mp_plan_frequency_months',
     'mp_plan_compare_amount',
     'mp_plan_promo_label',
   ] as const;
-  private static MASKED_SETTINGS = new Set(['mp_access_token']);
+  private static MASKED_SETTINGS = new Set(['mp_access_token', 'mp_webhook_secret']);
   // Configs que o super-admin pode remover (limpar). As demais só são sobrescritas.
   private static DELETABLE_SETTINGS = new Set([
     'mp_access_token',
+    'mp_webhook_secret',
     'mp_plan_compare_amount',
     'mp_plan_promo_label',
   ]);

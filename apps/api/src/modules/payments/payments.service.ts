@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { MercadoPagoConfig, Payment as MpPayment, Preference } from 'mercadopago';
-import { randomBytes } from 'crypto';
+import { createHmac, randomBytes, timingSafeEqual } from 'crypto';
 import { differenceInCalendarDays, format } from 'date-fns';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { TenantSettingsService } from '../../common/tenant-settings.service';
@@ -38,9 +38,12 @@ export class PaymentsService {
     reservationId: string,
     input: { amount: number; description?: string; sendWhatsapp?: boolean },
   ): Promise<{ url: string; message: string; paymentLinkId: string; sentViaWhatsapp: boolean }> {
+    // Escopo de tenant EXPLÍCITO (defesa em profundidade): não dependemos do RLS
+    // para isolar — filtramos por tenantId no WHERE. Assim, mesmo que o role do
+    // banco ignore RLS, um tenant nunca gera link pra reserva de outro.
     const reservation = await this.prisma.withTenant(tenantId, (tx) =>
-      tx.reservation.findUniqueOrThrow({
-        where: { id: reservationId },
+      tx.reservation.findFirstOrThrow({
+        where: { id: reservationId, tenantId },
         include: { guest: true, property: true },
       }),
     );
@@ -185,9 +188,63 @@ export class PaymentsService {
     return { initPoint: result.init_point };
   }
 
+  /** Lê o secret de assinatura do webhook (configurável por painel; env de fallback). */
+  private async webhookSecret(): Promise<string | null> {
+    const setting = await this.prisma.systemSetting.findUnique({
+      where: { key: 'mp_webhook_secret' },
+    });
+    return setting?.value || process.env.MP_WEBHOOK_SECRET || null;
+  }
+
+  /**
+   * Valida a assinatura `x-signature` do Mercado Pago (HMAC-SHA256).
+   * Manifest: `id:<data.id>;request-id:<x-request-id>;ts:<ts>;`.
+   * Retorna true se o secret não estiver configurado (validação opt-in) — o
+   * handler ainda re-busca o pagamento no MP, então não há injeção de dados.
+   */
+  private async isSignatureValid(
+    dataId: string,
+    headers: { signature?: string; requestId?: string },
+  ): Promise<boolean> {
+    const secret = await this.webhookSecret();
+    if (!secret) {
+      this.logger.warn('mp_webhook_secret não configurado — assinatura do webhook não verificada.');
+      return true;
+    }
+    if (!headers.signature) return false;
+    const parts = Object.fromEntries(
+      headers.signature.split(',').map((p) => p.split('=').map((s) => s.trim())),
+    );
+    const ts = parts['ts'];
+    const v1 = parts['v1'];
+    if (!ts || !v1) return false;
+    const manifest =
+      `id:${dataId.toLowerCase()};` +
+      (headers.requestId ? `request-id:${headers.requestId};` : '') +
+      `ts:${ts};`;
+    const expected = createHmac('sha256', secret).update(manifest).digest('hex');
+    try {
+      return (
+        expected.length === v1.length &&
+        timingSafeEqual(Buffer.from(expected), Buffer.from(v1))
+      );
+    } catch {
+      return false;
+    }
+  }
+
   /** Webhook do MP: liquida o pagamento. Idempotente por mpPaymentId. */
-  async handleWebhook(type: string, dataId: string): Promise<void> {
+  async handleWebhook(
+    type: string,
+    dataId: string,
+    headers: { signature?: string; requestId?: string } = {},
+  ): Promise<void> {
     if (type !== 'payment' || !dataId) return;
+
+    if (!(await this.isSignatureValid(dataId, headers))) {
+      this.logger.warn(`Webhook com assinatura inválida (data.id ${dataId}) — ignorado.`);
+      return;
+    }
 
     const mpPayment = new MpPayment(await this.mpClient());
     const pay = await mpPayment.get({ id: dataId });
