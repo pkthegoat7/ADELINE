@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
 import { format } from 'date-fns';
@@ -23,6 +24,7 @@ import { cn } from '@/lib/cn';
 import { Sparkline } from '@/components/Sparkline';
 import { AnimatedNumber } from '@/components/AnimatedNumber';
 import { useUI } from '@/lib/ui-store';
+import { Modal } from '@/components/ui/Modal';
 
 interface ReservationSummary {
   id: string;
@@ -72,6 +74,18 @@ export default function DashboardPage() {
   const propertyId = process.env.NEXT_PUBLIC_DEMO_PROPERTY_ID ?? '';
   const openReservation = useUI((s) => s.openReservation);
 
+  // Aviso de "você já tem o sistema": acionado quando um usuário JÁ logado
+  // clica em "Assinar" na landing e é mandado pra cá com ?ja-assinante=1.
+  const [showAlreadyMember, setShowAlreadyMember] = useState(false);
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('ja-assinante') === '1') {
+      setShowAlreadyMember(true);
+      // Limpa a query da URL sem recarregar, pra não reabrir ao atualizar a página.
+      window.history.replaceState(null, '', window.location.pathname);
+    }
+  }, []);
+
   const { data, isLoading, error } = useQuery({
     queryKey: ['dashboard-summary', propertyId],
     queryFn: () =>
@@ -93,6 +107,41 @@ export default function DashboardPage() {
 
   return (
     <div className="p-4 md:p-6 lg:p-8 space-y-6 max-w-[1600px]">
+      <Modal
+        open={showAlreadyMember}
+        onClose={() => setShowAlreadyMember(false)}
+        title="Você já faz parte da Adelina ✨"
+        description="Sua conta já está ativa e pronta pra usar"
+        size="md"
+      >
+        <div className="px-6 py-5 space-y-4">
+          <div className="flex items-start gap-3 rounded-xl border border-line bg-surface-sunken/40 p-4">
+            <div className="shrink-0 mt-0.5 rounded-lg bg-brand-500/10 p-2 text-brand-600">
+              <Sparkles className="w-5 h-5" />
+            </div>
+            <p className="text-sm leading-relaxed text-ink-soft">
+              Notamos que você já está logado — ou seja,{' '}
+              <strong className="text-ink">você já tem o sistema</strong> e acesso completo a todos
+              os recursos. Não precisa assinar de novo. 🎉
+            </p>
+          </div>
+          <p className="text-sm leading-relaxed text-ink-muted">
+            Por aqui você gerencia reservas, calendário, canais (Airbnb e Booking), hóspedes e o
+            financeiro da sua pousada. Se quiser revisar sua assinatura ou a forma de pagamento, é só
+            ir em <strong className="text-ink-soft">Configurações</strong>.
+          </p>
+          <div className="flex justify-end pt-1">
+            <button
+              onClick={() => setShowAlreadyMember(false)}
+              className="btn-primary px-5 py-2 text-sm"
+            >
+              Continuar no painel
+              <ArrowRight className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      </Modal>
+
       {/* Header ornamentado */}
       <motion.header
         initial={{ opacity: 0, y: 8 }}

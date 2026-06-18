@@ -93,6 +93,15 @@ export default function Home() {
     if (loading) return;
     setLoading(true);
     try {
+      // Já logado? Então a conta já existe — não faz sentido cobrar de novo.
+      // Manda pro painel sinalizando o aviso de "você já tem o sistema".
+      try {
+        await api('/me');
+        window.location.href = '/painel?ja-assinante=1';
+        return;
+      } catch {
+        // Sem sessão: segue o fluxo normal de assinatura.
+      }
       const { initPoint } = await api<{ initPoint: string }>('/subscriptions/create-preapproval', {
         method: 'POST',
       });
