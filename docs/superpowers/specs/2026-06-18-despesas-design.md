@@ -67,6 +67,7 @@ model Expense {
   description String
   supplier    String?         // fornecedor (texto livre)
   amount      Decimal         @db.Decimal(10, 2)
+  date        DateTime        @default(now()) @db.Date // data de competência (quando a despesa ocorreu)
   status      ExpenseStatus   @default(pending)
   dueDate     DateTime?       @map("due_date") @db.Date
   paidAt      DateTime?       @map("paid_at") @db.Date
@@ -80,6 +81,7 @@ model Expense {
   @@index([tenantId])
   @@index([propertyId])
   @@index([status])
+  @@index([date])
   @@index([dueDate])
   @@map("expenses")
 }
@@ -112,8 +114,8 @@ Novo módulo `apps/api/src/modules/expenses` espelhando o padrão dos módulos e
 | Método | Rota | Capacidade | Descrição |
 |--------|------|-----------|-----------|
 | POST | `/api/expenses` | `expense:manage` | Cria despesa |
-| GET | `/api/expenses` | `expense:read` | Lista com filtros: `propertyId`, `category`, `status`, `from`, `to` |
-| GET | `/api/expenses/summary` | `expense:read` | Totais: total, pago, a pagar, por categoria, no período |
+| GET | `/api/expenses` | `expense:read` | Lista com filtros: `propertyId`, `category`, `status`, `from`/`to` (intervalo de `date`) |
+| GET | `/api/expenses/summary` | `expense:read` | Totais: total, pago, a pagar, por categoria, no período (`date` entre `from`/`to`) |
 | GET | `/api/expenses/:id` | `expense:read` | Detalhe |
 | PATCH | `/api/expenses/:id` | `expense:manage` | Edita (inclui marcar como pago) |
 | DELETE | `/api/expenses/:id` | `expense:manage` | Remove |
