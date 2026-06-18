@@ -77,14 +77,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   const pageMeta = PAGE_TITLES[pathname ?? ''] ?? { title: '', subtitle: '' };
 
-  // Equipe: visível só pra proprietário/gerente (a API valida de novo no servidor)
-  const canManageTeam = data?.user.role === 'owner' || data?.user.role === 'manager';
-  const visibleNav = canManageTeam
+  // Financeiro + Equipe: visíveis só pra proprietário/gerente (a API valida de novo no servidor)
+  const isOwnerOrManager = data?.user.role === 'owner' || data?.user.role === 'manager';
+  const extraNav: NavItem[] = isOwnerOrManager
     ? [
-        ...navItems.slice(0, -1),
-        { href: '/equipe', label: 'Equipe', icon: ShieldCheck, hint: 'Acessos' } as NavItem,
-        navItems[navItems.length - 1],
+        { href: '/financeiro/despesas', label: 'Financeiro', icon: Wallet, hint: 'Despesas' },
+        { href: '/equipe', label: 'Equipe', icon: ShieldCheck, hint: 'Acessos' },
       ]
+    : [];
+  const visibleNav = extraNav.length
+    ? [...navItems.slice(0, -1), ...extraNav, navItems[navItems.length - 1]]
     : navItems;
 
   // Fecha o drawer mobile ao trocar de rota
