@@ -136,10 +136,19 @@ export default function Home() {
             <a href="#como-funciona" className="hover:text-ink">Como funciona</a>
             <a href="#preco" className="hover:text-ink">Preço</a>
           </div>
-          <Link href="/login" className="btn-primary px-4 py-2 text-sm">
-            Entrar
-            <ArrowRight className="w-3.5 h-3.5" />
-          </Link>
+          <div className="flex items-center gap-2.5">
+            <Link href="/login" className="btn-secondary px-4 py-2 text-sm">
+              Entrar
+            </Link>
+            <button
+              onClick={handleSubscribe}
+              disabled={loading}
+              className="btn-primary px-4 py-2 text-sm disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              {loading ? 'Redirecionando…' : 'Assinar'}
+              <ArrowRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
         </nav>
       </header>
 
