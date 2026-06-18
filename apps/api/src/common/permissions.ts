@@ -23,6 +23,8 @@ export type Capability =
   | 'settings:manage' // aparência, termos, whatsapp, templates
   | 'payment:link' // gerar link de pagamento
   | 'team:manage' // logins/permissões
+  | 'expense:read' // ver despesas/financeiro
+  | 'expense:manage' // criar/editar/excluir despesa
   | 'subscription:manage'; // ver/cancelar assinatura
 
 /** Para cada capacidade, os papéis que a possuem. */
@@ -41,6 +43,8 @@ const CAPABILITY_ROLES: Record<Capability, readonly Role[]> = {
   'settings:manage': ['owner', 'manager'],
   'payment:link': ['owner', 'manager', 'receptionist'],
   'team:manage': ['owner', 'manager'],
+  'expense:read': ['owner', 'manager'],
+  'expense:manage': ['owner', 'manager'],
   'subscription:manage': ['owner'],
 };
 
