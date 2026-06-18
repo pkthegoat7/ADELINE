@@ -116,7 +116,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       {/* ============================== SIDEBAR ============================== */}
       <aside
         className={cn(
-          'w-64 flex flex-col border-r border-line-soft bg-gradient-to-b from-[#0a0a0c] via-[#18181b] to-[#050507] text-zinc-100 overflow-hidden',
+          'w-64 flex flex-col border-r overflow-hidden',
+          // Claro: superfície quente reativa ao tema; Escuro: gradiente navy original
+          'border-line bg-surface-elevated text-ink',
+          'dark:border-line-soft dark:bg-gradient-to-b dark:from-[#0a0a0c] dark:via-[#18181b] dark:to-[#050507] dark:text-zinc-100',
           // Mobile: overlay deslizante
           'fixed inset-y-0 left-0 z-40 transition-transform duration-300 ease-out',
           mobileOpen ? 'translate-x-0' : '-translate-x-full',
@@ -128,7 +131,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <button
           onClick={() => setMobileOpen(false)}
           aria-label="Fechar menu"
-          className="md:hidden absolute top-3 right-3 z-10 inline-flex items-center justify-center w-8 h-8 rounded-lg bg-white/[0.05] hover:bg-white/[0.1] text-zinc-300 hover:text-zinc-50 border border-white/10 transition-colors"
+          className="md:hidden absolute top-3 right-3 z-10 inline-flex items-center justify-center w-8 h-8 rounded-lg transition-colors bg-surface-sunken hover:bg-surface-sunken/70 text-ink-soft hover:text-ink border border-line dark:bg-white/[0.05] dark:hover:bg-white/[0.1] dark:text-zinc-300 dark:hover:text-zinc-50 dark:border-white/10"
         >
           <X className="w-4 h-4" />
         </button>
@@ -143,18 +146,18 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         />
 
         {/* Logo */}
-        <div className="px-5 pt-6 pb-5 border-b border-white/5 relative">
+        <div className="px-5 pt-6 pb-5 border-b border-line dark:border-white/5 relative">
           <Link href="/" className="flex items-center gap-3 group">
             <div className="relative w-11 h-11 rounded-xl shadow-lg shadow-brand-900/50 group-hover:shadow-gold-400/20 transition-all duration-300 group-hover:scale-[1.04]">
               <AdelinaMark className="w-11 h-11" />
               <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-gold-300 shadow-md shadow-gold-500/60 animate-pulse" />
             </div>
             <div className="leading-tight">
-              <div className="font-serif text-[1.15rem] tracking-serif text-zinc-50 group-hover:text-gold-200 transition-colors">
+              <div className="font-serif text-[1.15rem] tracking-serif text-ink dark:text-zinc-50 group-hover:text-gold-600 dark:group-hover:text-gold-200 transition-colors">
                 Adelina
               </div>
-              <div className="text-[10px] text-zinc-300/70 uppercase tracking-[0.2em] -mt-0.5">
-                {data?.tenant.name ?? 'Pousadas'}
+              <div className="text-[10px] text-ink-muted dark:text-zinc-300/70 uppercase tracking-[0.2em] -mt-0.5">
+                {data?.tenant.name ?? 'Pousada'}
               </div>
             </div>
           </Link>
@@ -163,19 +166,19 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         {/* Busca */}
         <button
           onClick={openCmdk}
-          className="mx-3 mt-4 flex items-center gap-2.5 px-3 py-2.5 text-sm rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-zinc-300 hover:text-zinc-50 border border-white/5 hover:border-white/10 transition-all group"
+          className="mx-3 mt-4 flex items-center gap-2.5 px-3 py-2.5 text-sm rounded-lg border transition-all group bg-surface-sunken hover:bg-surface-sunken/70 text-ink-soft hover:text-ink border-line dark:bg-white/[0.04] dark:hover:bg-white/[0.08] dark:text-zinc-300 dark:hover:text-zinc-50 dark:border-white/5 dark:hover:border-white/10"
         >
-          <Search className="w-3.5 h-3.5 group-hover:text-gold-300 transition-colors" />
+          <Search className="w-3.5 h-3.5 group-hover:text-gold-500 dark:group-hover:text-gold-300 transition-colors" />
           <span className="flex-1 text-left text-xs">Buscar…</span>
           <span className="flex items-center gap-0.5">
-            <kbd className="!bg-white/5 !text-zinc-400 !border-white/10">⌘</kbd>
-            <kbd className="!bg-white/5 !text-zinc-400 !border-white/10">K</kbd>
+            <kbd>⌘</kbd>
+            <kbd>K</kbd>
           </span>
         </button>
 
         {/* Navegação */}
         <nav className="flex-1 px-3 py-5 space-y-0.5 relative">
-          <div className="px-3 pb-2 text-[10px] uppercase text-zinc-400/50 font-semibold tracking-[0.18em]">
+          <div className="px-3 pb-2 text-[10px] uppercase text-ink-muted dark:text-zinc-400/50 font-semibold tracking-[0.18em]">
             Operação
           </div>
           {visibleNav.map((item) => (
@@ -187,7 +190,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <div className="mt-5 mb-2 px-3">
                 <div className="h-px bg-gradient-to-r from-transparent via-gold-400/30 to-transparent" />
               </div>
-              <div className="px-3 text-[10px] uppercase text-gold-300/60 font-semibold tracking-[0.18em] pb-1.5">
+              <div className="px-3 text-[10px] uppercase text-gold-600 dark:text-gold-300/60 font-semibold tracking-[0.18em] pb-1.5">
                 Super admin
               </div>
               <NavLink
@@ -222,9 +225,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </nav>
 
         {/* Rodapé */}
-        <div className="px-3 py-3 border-t border-white/5 space-y-2 relative">
+        <div className="px-3 py-3 border-t border-line dark:border-white/5 space-y-2 relative">
           <LogoutButton />
-          <div className="text-[10px] text-zinc-500 px-3 flex items-center justify-between">
+          <div className="text-[10px] text-ink-muted dark:text-zinc-500 px-3 flex items-center justify-between">
             <span className="font-mono">v0.2.0</span>
             <span className="flex items-center gap-1">
               <span className="ornament">◆</span>
@@ -319,16 +322,16 @@ function NavLink({
       className={cn(
         'relative flex items-center gap-3 px-3 py-2.5 rounded-lg text-[13.5px] transition-all duration-200 group',
         active
-          ? 'text-zinc-50 font-medium'
+          ? 'text-ink dark:text-zinc-50 font-medium'
           : accent
-            ? 'text-gold-200/80 hover:text-gold-100 hover:bg-white/[0.04]'
-            : 'text-zinc-300/80 hover:text-zinc-50 hover:bg-white/[0.04]',
+            ? 'text-gold-700 hover:text-gold-800 hover:bg-surface-sunken dark:text-gold-200/80 dark:hover:text-gold-100 dark:hover:bg-white/[0.04]'
+            : 'text-ink-soft hover:text-ink hover:bg-surface-sunken dark:text-zinc-300/80 dark:hover:text-zinc-50 dark:hover:bg-white/[0.04]',
       )}
     >
       {active && (
         <motion.div
           layoutId="sidebar-active-bg"
-          className="absolute inset-0 bg-gradient-to-r from-white/[0.08] to-white/[0.02] rounded-lg border border-white/[0.06]"
+          className="absolute inset-0 rounded-lg border bg-gradient-to-r from-brand-100/70 to-brand-50/30 border-brand-200/50 dark:from-white/[0.08] dark:to-white/[0.02] dark:border-white/[0.06]"
           transition={{ type: 'spring', stiffness: 380, damping: 30 }}
         />
       )}
@@ -346,10 +349,8 @@ function NavLink({
         className={cn(
           'w-[15px] h-[15px] relative z-10 transition-colors flex-shrink-0',
           active
-            ? accent
-              ? 'text-gold-300'
-              : 'text-gold-300'
-            : 'text-zinc-400/60 group-hover:text-zinc-200',
+            ? 'text-gold-500 dark:text-gold-300'
+            : 'text-ink-muted group-hover:text-ink dark:text-zinc-400/60 dark:group-hover:text-zinc-200',
         )}
       />
       <span className="relative z-10 flex-1">{item.label}</span>
@@ -357,7 +358,7 @@ function NavLink({
         <motion.span
           initial={{ opacity: 0, x: -4 }}
           animate={{ opacity: 1, x: 0 }}
-          className="relative z-10 text-[10px] uppercase tracking-wider text-zinc-400/60 font-medium"
+          className="relative z-10 text-[10px] uppercase tracking-wider text-ink-muted dark:text-zinc-400/60 font-medium"
         >
           {item.hint}
         </motion.span>
