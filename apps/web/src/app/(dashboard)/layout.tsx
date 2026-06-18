@@ -44,26 +44,26 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
-  { href: '/dashboard', label: 'Visão geral', icon: BarChart3, hint: 'Painel' },
+  { href: '/painel', label: 'Visão geral', icon: BarChart3, hint: 'Painel' },
   { href: '/recepcao', label: 'Recepção', icon: ClipboardList, hint: 'Check-ins' },
-  { href: '/calendar', label: 'Calendário', icon: CalendarRange, hint: 'Timeline' },
-  { href: '/reservations', label: 'Reservas', icon: ListChecks },
-  { href: '/rooms', label: 'Quartos', icon: Bed },
-  { href: '/guests', label: 'Hóspedes', icon: Users },
-  { href: '/channels', label: 'Canais', icon: Plug },
-  { href: '/settings', label: 'Configurações', icon: Settings },
+  { href: '/calendario', label: 'Calendário', icon: CalendarRange, hint: 'Timeline' },
+  { href: '/reservas', label: 'Reservas', icon: ListChecks },
+  { href: '/quartos', label: 'Quartos', icon: Bed },
+  { href: '/hospedes', label: 'Hóspedes', icon: Users },
+  { href: '/canais', label: 'Canais', icon: Plug },
+  { href: '/configuracoes', label: 'Configurações', icon: Settings },
 ];
 
 const PAGE_TITLES: Record<string, { title: string; subtitle?: string }> = {
-  '/dashboard': { title: 'Visão geral', subtitle: 'Resumo da operação' },
+  '/painel': { title: 'Visão geral', subtitle: 'Resumo da operação' },
   '/recepcao': { title: 'Recepção', subtitle: 'Chegadas e saídas do dia' },
-  '/calendar': { title: 'Calendário', subtitle: 'Disponibilidade e bloqueios' },
-  '/reservations': { title: 'Reservas', subtitle: 'Histórico e gestão' },
-  '/rooms': { title: 'Quartos', subtitle: 'Inventário e status' },
-  '/guests': { title: 'Hóspedes', subtitle: 'Cadastro e histórico' },
-  '/channels': { title: 'Canais', subtitle: 'Airbnb · Booking · iCal' },
+  '/calendario': { title: 'Calendário', subtitle: 'Disponibilidade e bloqueios' },
+  '/reservas': { title: 'Reservas', subtitle: 'Histórico e gestão' },
+  '/quartos': { title: 'Quartos', subtitle: 'Inventário e status' },
+  '/hospedes': { title: 'Hóspedes', subtitle: 'Cadastro e histórico' },
+  '/canais': { title: 'Canais', subtitle: 'Airbnb · Booking · iCal' },
   '/equipe': { title: 'Equipe', subtitle: 'Logins e permissões' },
-  '/settings': { title: 'Configurações', subtitle: 'Preferências da pousada' },
+  '/configuracoes': { title: 'Configurações', subtitle: 'Preferências da pousada' },
 };
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -281,7 +281,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <ThemeToggle />
               <div className="hidden md:flex items-center gap-2 pl-3 ml-1 border-l border-line">
                 <div className="w-8 h-8 rounded-full bg-gradient-to-br from-brand-300 to-brand-600 flex items-center justify-center text-white text-xs font-semibold shadow-soft">
-                  {(data?.user.email?.[0] ?? 'A').toUpperCase()}
+                  {(data?.tenant.name?.trim()?.[0] ?? 'P').toUpperCase()}
                 </div>
               </div>
             </div>
@@ -369,6 +369,6 @@ function NavLink({
 
 function isActive(pathname: string | null, href: string): boolean {
   if (!pathname) return false;
-  if (href === '/dashboard') return pathname === '/dashboard' || pathname === '/';
+  if (href === '/painel') return pathname === '/painel' || pathname === '/';
   return pathname === href || pathname.startsWith(href + '/');
 }

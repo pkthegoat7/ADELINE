@@ -155,7 +155,7 @@ function CheckoutSucesso() {
           propertyName: form.propertyName,
         }),
       });
-      router.push('/dashboard');
+      router.push('/painel');
     } catch (err) {
       setGlobalError(err instanceof Error ? err.message : 'Erro ao ativar conta. Tente novamente.');
       setLoading(false);

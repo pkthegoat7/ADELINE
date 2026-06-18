@@ -171,7 +171,7 @@ export default function Home() {
               Entrar no sistema
               <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
             </Link>
-            <Link href="/calendar" className="btn-secondary px-7 py-3 text-sm">
+            <Link href="/calendario" className="btn-secondary px-7 py-3 text-sm">
               Ver calendário
             </Link>
           </div>

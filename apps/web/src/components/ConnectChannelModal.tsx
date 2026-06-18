@@ -77,7 +77,7 @@ export function ConnectChannelModal({
         }
       }
 
-      return api('/channels', {
+      return api('/canais', {
         method: 'POST',
         body: JSON.stringify({
           propertyId,

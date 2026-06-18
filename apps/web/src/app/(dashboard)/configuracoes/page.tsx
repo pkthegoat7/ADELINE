@@ -439,7 +439,7 @@ function PagamentosSettings() {
         payment_terms_of_service: string;
         payment_lgpd_consent: string;
         payment_link_auto_whatsapp: string;
-      }>('/settings'),
+      }>('/configuracoes'),
   });
 
   useEffect(() => {
@@ -453,15 +453,15 @@ function PagamentosSettings() {
 
   const save = useMutation({
     mutationFn: async () => {
-      await api('/settings', {
+      await api('/configuracoes', {
         method: 'PUT',
         body: JSON.stringify({ key: 'payment_terms_of_service', value: terms }),
       });
-      await api('/settings', {
+      await api('/configuracoes', {
         method: 'PUT',
         body: JSON.stringify({ key: 'payment_lgpd_consent', value: lgpd }),
       });
-      await api('/settings', {
+      await api('/configuracoes', {
         method: 'PUT',
         body: JSON.stringify({ key: 'payment_link_auto_whatsapp', value: String(autoWa) }),
       });

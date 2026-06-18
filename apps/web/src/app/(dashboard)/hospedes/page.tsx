@@ -198,7 +198,7 @@ function NewGuestModal({
   const create = useMutation({
     mutationFn: () => {
       if (!fullName.trim()) throw new Error('Nome obrigatório');
-      return api('/guests', {
+      return api('/hospedes', {
         method: 'POST',
         body: JSON.stringify({
           fullName: fullName.trim(),

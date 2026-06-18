@@ -41,7 +41,7 @@ export async function middleware(request: NextRequest) {
 
   if (authed && isAuthPage && !pathname.startsWith('/redefinir-senha')) {
     const url = request.nextUrl.clone();
-    url.pathname = '/dashboard';
+    url.pathname = '/painel';
     url.search = '';
     return NextResponse.redirect(url);
   }

@@ -260,7 +260,7 @@ export default function CadastrarPousadaPage() {
             Esta página é exclusiva pra super admins do sistema. Sua conta não tem essa permissão.
           </p>
           <button
-            onClick={() => router.push('/dashboard')}
+            onClick={() => router.push('/painel')}
             className="text-sm text-amber-900 hover:underline"
           >
             ← Voltar pro dashboard
@@ -274,7 +274,7 @@ export default function CadastrarPousadaPage() {
     <div className="p-6 max-w-2xl">
       <header className="mb-6">
         <Link
-          href="/dashboard"
+          href="/painel"
           className="text-sm text-ink-muted hover:text-ink flex items-center gap-1 mb-2"
         >
           <ArrowLeft className="w-3.5 h-3.5" /> Voltar

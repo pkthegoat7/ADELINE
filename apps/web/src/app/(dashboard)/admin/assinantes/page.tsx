@@ -142,7 +142,7 @@ export default function AssinantesPage() {
             Esta página é exclusiva pra super admins do sistema.
           </p>
           <button
-            onClick={() => router.push('/dashboard')}
+            onClick={() => router.push('/painel')}
             className="text-sm text-amber-900 hover:underline"
           >
             ← Voltar pro dashboard
@@ -156,7 +156,7 @@ export default function AssinantesPage() {
     <div className="p-4 md:p-6 max-w-5xl">
       <header className="mb-6">
         <Link
-          href="/dashboard"
+          href="/painel"
           className="text-sm text-ink-muted hover:text-ink flex items-center gap-1 mb-2"
         >
           <ArrowLeft className="w-3.5 h-3.5" /> Voltar

@@ -28,7 +28,7 @@ export default function AdminConfiguracoes() {
       <div className="p-8 text-center">
         <ShieldAlert className="w-12 h-12 text-danger mx-auto mb-4" />
         <p className="text-ink-soft">Acesso restrito a super admins.</p>
-        <Link href="/dashboard" className="btn-primary px-4 py-2 text-sm mt-4 inline-flex">
+        <Link href="/painel" className="btn-primary px-4 py-2 text-sm mt-4 inline-flex">
           Voltar
         </Link>
       </div>

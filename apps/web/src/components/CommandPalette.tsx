@@ -60,14 +60,14 @@ type Item = {
 };
 
 const NAV_ITEMS: Array<{ label: string; href: string; icon: LucideIcon; hint: string }> = [
-  { label: 'Visão geral', href: '/dashboard', icon: BarChart3, hint: 'Dashboard' },
+  { label: 'Visão geral', href: '/painel', icon: BarChart3, hint: 'Dashboard' },
   { label: 'Recepção', href: '/recepcao', icon: ClipboardList, hint: 'Check-ins do dia' },
-  { label: 'Calendário', href: '/calendar', icon: CalendarRange, hint: 'Timeline' },
-  { label: 'Reservas', href: '/reservations', icon: ListChecks, hint: 'Listar reservas' },
-  { label: 'Quartos', href: '/rooms', icon: Bed, hint: 'Cadastro de quartos' },
-  { label: 'Hóspedes', href: '/guests', icon: Users, hint: 'Cadastro de hóspedes' },
-  { label: 'Canais', href: '/channels', icon: Plug, hint: 'Airbnb / Booking' },
-  { label: 'Configurações', href: '/settings', icon: Settings, hint: 'Preferências' },
+  { label: 'Calendário', href: '/calendario', icon: CalendarRange, hint: 'Timeline' },
+  { label: 'Reservas', href: '/reservas', icon: ListChecks, hint: 'Listar reservas' },
+  { label: 'Quartos', href: '/quartos', icon: Bed, hint: 'Cadastro de quartos' },
+  { label: 'Hóspedes', href: '/hospedes', icon: Users, hint: 'Cadastro de hóspedes' },
+  { label: 'Canais', href: '/canais', icon: Plug, hint: 'Airbnb / Booking' },
+  { label: 'Configurações', href: '/configuracoes', icon: Settings, hint: 'Preferências' },
 ];
 
 export function CommandPalette() {
@@ -136,7 +136,7 @@ export function CommandPalette() {
         hint: 'Abrir formulário',
         group: 'Ações',
         action: () => {
-          router.push('/reservations');
+          router.push('/reservas');
           close();
         },
       });
@@ -149,7 +149,7 @@ export function CommandPalette() {
         hint: 'Cadastrar pessoa',
         group: 'Ações',
         action: () => {
-          router.push('/guests');
+          router.push('/hospedes');
           close();
         },
       });
@@ -176,7 +176,7 @@ export function CommandPalette() {
         hint: [g.email, g.phone, g.document].filter(Boolean).join(' · ') || 'Hóspede',
         group: 'Hóspedes',
         action: () => {
-          router.push('/guests');
+          router.push('/hospedes');
           close();
         },
       })) ?? [];
@@ -189,7 +189,7 @@ export function CommandPalette() {
         hint: `${rm.roomType.name} · cap ${rm.roomType.capacity}`,
         group: 'Quartos',
         action: () => {
-          router.push('/rooms');
+          router.push('/quartos');
           close();
         },
       })) ?? [];

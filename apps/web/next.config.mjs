@@ -4,6 +4,24 @@ const nextConfig = {
   experimental: {
     typedRoutes: true,
   },
+  // ADL-2: rotas canônicas em pt-BR. Aliases EN antigos redirecionam (308)
+  // para não quebrar links compartilhados/marcados.
+  async redirects() {
+    const map = {
+      '/dashboard': '/painel',
+      '/calendar': '/calendario',
+      '/reservations': '/reservas',
+      '/rooms': '/quartos',
+      '/guests': '/hospedes',
+      '/channels': '/canais',
+      '/settings': '/configuracoes',
+    };
+    return Object.entries(map).map(([source, destination]) => ({
+      source,
+      destination,
+      permanent: true,
+    }));
+  },
   async rewrites() {
     return [
       {

@@ -262,7 +262,7 @@ export default function DashboardPage() {
               Canais
             </h2>
             <Link
-              href="/channels"
+              href="/canais"
               className="text-xs text-ink-muted hover:text-brand-600 flex items-center gap-0.5 transition-colors group"
             >
               gerenciar
@@ -278,7 +278,7 @@ export default function DashboardPage() {
           ) : data?.channels.length === 0 ? (
             <div className="text-sm text-ink-muted italic py-3">
               Nenhum canal conectado.{' '}
-              <Link href="/channels" className="text-brand-600 hover:text-brand-700 underline-offset-2 hover:underline">
+              <Link href="/canais" className="text-brand-600 hover:text-brand-700 underline-offset-2 hover:underline">
                 Conectar
               </Link>
             </div>
@@ -426,7 +426,7 @@ function ReservationList({
           </div>
         </div>
         <Link
-          href="/reservations"
+          href="/reservas"
           className="text-xs text-ink-muted hover:text-brand-600 flex items-center gap-0.5 transition-colors group"
         >
           <Icon className="w-3.5 h-3.5" />
