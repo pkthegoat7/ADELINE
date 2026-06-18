@@ -19,6 +19,8 @@ export type Capability =
   | 'settings:manage'
   | 'payment:link'
   | 'team:manage'
+  | 'expense:read'
+  | 'expense:manage'
   | 'subscription:manage';
 
 const CAPABILITY_ROLES: Record<Capability, readonly string[]> = {
@@ -36,6 +38,8 @@ const CAPABILITY_ROLES: Record<Capability, readonly string[]> = {
   'settings:manage': ['owner', 'manager'],
   'payment:link': ['owner', 'manager', 'receptionist'],
   'team:manage': ['owner', 'manager'],
+  'expense:read': ['owner', 'manager'],
+  'expense:manage': ['owner', 'manager'],
   'subscription:manage': ['owner'],
 };
 
