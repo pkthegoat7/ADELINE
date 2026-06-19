@@ -66,7 +66,7 @@ export default function ReservationsPage() {
 
   const { data, isLoading } = useQuery({
     queryKey: ['reservations'],
-    queryFn: () => api<Reservation[]>('/reservas'),
+    queryFn: () => api<Reservation[]>('/reservations'),
   });
 
   const filtered = useMemo(() => {

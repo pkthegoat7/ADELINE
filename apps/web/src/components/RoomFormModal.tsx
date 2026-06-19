@@ -75,7 +75,7 @@ export function RoomFormModal({
           body: JSON.stringify(body),
         });
       }
-      return api('/quartos', {
+      return api('/rooms', {
         method: 'POST',
         body: JSON.stringify(payload),
       });

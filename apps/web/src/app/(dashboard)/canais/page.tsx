@@ -37,7 +37,7 @@ export default function ChannelsPage() {
 
   const { data, isLoading, refetch } = useQuery({
     queryKey: ['channels'],
-    queryFn: () => api<Channel[]>('/canais'),
+    queryFn: () => api<Channel[]>('/channels'),
   });
 
   const sync = useMutation({

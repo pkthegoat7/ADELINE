@@ -453,15 +453,15 @@ function PagamentosSettings() {
 
   const save = useMutation({
     mutationFn: async () => {
-      await api('/configuracoes', {
+      await api('/settings', {
         method: 'PUT',
         body: JSON.stringify({ key: 'payment_terms_of_service', value: terms }),
       });
-      await api('/configuracoes', {
+      await api('/settings', {
         method: 'PUT',
         body: JSON.stringify({ key: 'payment_lgpd_consent', value: lgpd }),
       });
-      await api('/configuracoes', {
+      await api('/settings', {
         method: 'PUT',
         body: JSON.stringify({ key: 'payment_link_auto_whatsapp', value: String(autoWa) }),
       });

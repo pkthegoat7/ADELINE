@@ -122,7 +122,7 @@ export function NewReservationModal({
 
       if (guestMode === 'new') {
         if (!newGuestName.trim()) throw new Error('Nome do hóspede obrigatório');
-        const newGuest = await api<{ id: string }>('/hospedes', {
+        const newGuest = await api<{ id: string }>('/guests', {
           method: 'POST',
           body: JSON.stringify({
             fullName: newGuestName.trim(),
@@ -150,7 +150,7 @@ export function NewReservationModal({
         totalAmount: Number(totalAmount),
       };
 
-      return api(isEditing ? `/reservations/${editing!.id}` : '/reservas', {
+      return api(isEditing ? `/reservations/${editing!.id}` : '/reservations', {
         method: isEditing ? 'PUT' : 'POST',
         body: JSON.stringify(payload),
       });
