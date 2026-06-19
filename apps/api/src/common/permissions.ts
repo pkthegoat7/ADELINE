@@ -25,6 +25,10 @@ export type Capability =
   | 'team:manage' // logins/permissões
   | 'expense:read' // ver despesas/financeiro
   | 'expense:manage' // criar/editar/excluir despesa
+  | 'owner:read' // ver proprietários
+  | 'owner:manage' // criar/editar/excluir proprietário e termos de administração
+  | 'payout:read' // ver repasses
+  | 'payout:manage' // marcar pago / reabrir / lançamentos avulsos
   | 'subscription:manage'; // ver/cancelar assinatura
 
 /** Para cada capacidade, os papéis que a possuem. */
@@ -45,6 +49,10 @@ const CAPABILITY_ROLES: Record<Capability, readonly Role[]> = {
   'team:manage': ['owner', 'manager'],
   'expense:read': ['owner', 'manager'],
   'expense:manage': ['owner', 'manager'],
+  'owner:read': ['owner', 'manager'],
+  'owner:manage': ['owner', 'manager'],
+  'payout:read': ['owner', 'manager'],
+  'payout:manage': ['owner', 'manager'],
   'subscription:manage': ['owner'],
 };
 
