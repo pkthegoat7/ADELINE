@@ -15,6 +15,8 @@ import {
   ListChecks,
   ShieldCheck,
   Wallet,
+  HandCoins,
+  Building2,
   ClipboardList,
   Search,
   ChevronRight,
@@ -82,6 +84,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const extraNav: NavItem[] = isOwnerOrManager
     ? [
         { href: '/financeiro/despesas', label: 'Financeiro', icon: Wallet, hint: 'Despesas' },
+        { href: '/financeiro/repasses', label: 'Repasses', icon: HandCoins, hint: 'Proprietários' },
+        { href: '/financeiro/proprietarios', label: 'Proprietários', icon: Building2 },
         { href: '/equipe', label: 'Equipe', icon: ShieldCheck, hint: 'Acessos' },
       ]
     : [];
