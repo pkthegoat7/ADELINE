@@ -59,6 +59,9 @@ model Tenant {
   paymentLinks           PaymentLink[]
   settings               TenantSetting[]
   expenses               Expense[]
+  owners                 Owner[]
+  ownerPayouts           OwnerPayout[]
+  payoutEntries          PayoutEntry[]
 
   @@map("tenants")
 }
@@ -142,9 +145,12 @@ model Property {
   description String?
   amenities   Json     @default("[]")
   photos      Json     @default("[]")
-  active      Boolean  @default(true)
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+  active                Boolean  @default(true)
+  ownerId               String?  @map("owner_id") @db.Uuid
+  mgmtCommissionPercent Decimal  @default(0) @map("mgmt_commission_percent") @db.Decimal(5, 2)
+  mgmtMonthlyFee        Decimal  @default(0) @map("mgmt_monthly_fee") @db.Decimal(10, 2)
+  createdAt             DateTime @default(now()) @map("created_at")
+  updatedAt             DateTime @updatedAt @map("updated_at")
 
   tenant             Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   roomTypes          RoomType[]
@@ -152,9 +158,13 @@ model Property {
   reservations       Reservation[]
   channelConnections ChannelConnection[]
   expenses           Expense[]
+  owner              Owner?              @relation(fields: [ownerId], references: [id], onDelete: SetNull)
+  payouts            OwnerPayout[]
+  payoutEntries      PayoutEntry[]
 
   @@unique([tenantId, slug])
   @@index([tenantId])
+  @@index([ownerId])
   @@map("properties")
 }
 
@@ -891,4 +901,83 @@ model Expense {
   @@index([date])
   @@index([dueDate])
   @@map("expenses")
+}
+
+// ════════════════════════════════════════════════════════════════
+// REPASSE A PROPRIETÁRIOS
+// ════════════════════════════════════════════════════════════════
+
+model Owner {
+  id        String   @id @default(uuid()) @db.Uuid
+  tenantId  String   @map("tenant_id") @db.Uuid
+  name      String
+  document  String?
+  email     String?
+  phone     String?
+  pixKey    String?  @map("pix_key")
+  bankInfo  String?  @map("bank_info")
+  notes     String?
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  tenant     Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  properties Property[]
+  payouts    OwnerPayout[]
+
+  @@index([tenantId])
+  @@map("owners")
+}
+
+enum PayoutEntryType {
+  credit
+  debit
+}
+
+model PayoutEntry {
+  id          String          @id @default(uuid()) @db.Uuid
+  tenantId    String          @map("tenant_id") @db.Uuid
+  propertyId  String          @map("property_id") @db.Uuid
+  competence  DateTime        @db.Date
+  type        PayoutEntryType
+  description String
+  amount      Decimal         @db.Decimal(10, 2)
+  createdAt   DateTime        @default(now()) @map("created_at")
+
+  tenant   Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  property Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([propertyId, competence])
+  @@map("payout_entries")
+}
+
+model OwnerPayout {
+  id                  String   @id @default(uuid()) @db.Uuid
+  tenantId            String   @map("tenant_id") @db.Uuid
+  propertyId          String   @map("property_id") @db.Uuid
+  ownerId             String?  @map("owner_id") @db.Uuid
+  competence          DateTime @db.Date
+  revenueAmount       Decimal  @map("revenue_amount") @db.Decimal(10, 2)
+  commissionPercent   Decimal  @map("commission_percent") @db.Decimal(5, 2)
+  commissionFeeAmount Decimal  @map("commission_fee_amount") @db.Decimal(10, 2)
+  monthlyFeeAmount    Decimal  @map("monthly_fee_amount") @db.Decimal(10, 2)
+  expensesAmount      Decimal  @map("expenses_amount") @db.Decimal(10, 2)
+  netPayoutAmount     Decimal  @map("net_payout_amount") @db.Decimal(10, 2)
+  reservationCount    Int      @map("reservation_count")
+  breakdown           Json
+  paidAt              DateTime @map("paid_at")
+  paymentMethod       String?  @map("payment_method")
+  receiptUrl          String?  @map("receipt_url")
+  createdAt           DateTime @default(now()) @map("created_at")
+
+  tenant   Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  property Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  owner    Owner?   @relation(fields: [ownerId], references: [id], onDelete: SetNull)
+
+  @@unique([propertyId, competence])
+  @@index([tenantId])
+  @@index([propertyId])
+  @@index([competence])
+  @@map("owner_payouts")
 }
