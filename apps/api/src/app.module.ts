@@ -25,6 +25,7 @@ import { PaymentsModule } from './modules/payments/payments.module';
 import { SettingsModule } from './modules/settings/settings.module';
 import { ExpensesModule } from './modules/expenses/expenses.module';
 import { OwnersModule } from './modules/owners/owners.module';
+import { PayoutsModule } from './modules/payouts/payouts.module';
 
 @Module({
   imports: [
@@ -60,6 +61,7 @@ import { OwnersModule } from './modules/owners/owners.module';
     SettingsModule,
     ExpensesModule,
     OwnersModule,
+    PayoutsModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })
