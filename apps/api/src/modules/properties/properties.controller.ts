@@ -17,6 +17,10 @@ const CreatePropertySchema = z.object({
   cnpj: z.string().optional(),
   phone: z.string().optional(),
   email: z.string().email().optional(),
+  // Termos de administração (repasse a proprietários). ownerId escalar: null desvincula.
+  ownerId: z.string().uuid().nullish(),
+  mgmtCommissionPercent: z.number().min(0).max(100).optional(),
+  mgmtMonthlyFee: z.number().min(0).optional(),
 });
 
 @ApiTags('properties')
