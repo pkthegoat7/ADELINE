@@ -28,7 +28,9 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith('/cadastro') ||
     pathname.startsWith('/checkout') ||
     pathname.startsWith('/pagamento') ||
-    pathname.startsWith('/assinatura-necessaria');
+    pathname.startsWith('/assinatura-necessaria') ||
+    pathname.startsWith('/termos') ||
+    pathname.startsWith('/privacidade');
 
   const authed = await hasValidSession(request);
 

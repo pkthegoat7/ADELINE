@@ -496,6 +496,10 @@ export default function Home() {
             <AdelinaMark className="w-6 h-6 rounded-md" />
             <span className="font-display font-semibold text-sm text-ink">Adelina</span>
           </div>
+          <div className="flex items-center gap-4 text-xs text-ink-muted">
+            <a href="/termos" className="hover:text-ink">Termos de Uso</a>
+            <a href="/privacidade" className="hover:text-ink">Política de Privacidade</a>
+          </div>
           <div className="flex items-center gap-3 text-[10px] text-ink-muted uppercase tracking-[0.22em] font-medium">
             <span className="font-mono">v0.2.0</span>
             <span className="ornament">◆</span>
