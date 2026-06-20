@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ShieldAlert, Save, Eye, EyeOff, CreditCard, Tag, Trash2, Percent } from 'lucide-react';
 import Link from 'next/link';
@@ -46,6 +46,7 @@ export default function AdminConfiguracoes() {
 
       <MercadoPagoSection />
       <PlanoSection />
+      <DadosEmpresaSection />
     </div>
   );
 }
@@ -357,5 +358,82 @@ function PlanoSection() {
         </div>
       )}
     </div>
+  );
+}
+
+const LEGAL_FIELDS: { key: string; label: string; placeholder: string }[] = [
+  { key: 'legal_company_name', label: 'Razão social', placeholder: 'Ex: Pousada Sol LTDA' },
+  { key: 'legal_cnpj', label: 'CNPJ', placeholder: '00.000.000/0001-00' },
+  { key: 'legal_address', label: 'Endereço completo', placeholder: 'Rua, nº, bairro, cidade/UF, CEP' },
+  { key: 'legal_support_email', label: 'E-mail de suporte', placeholder: 'suporte@suaempresa.com.br' },
+  { key: 'legal_dpo_name', label: 'Encarregado (DPO)', placeholder: 'Nome do responsável LGPD' },
+  { key: 'legal_dpo_email', label: 'E-mail do encarregado', placeholder: 'privacidade@suaempresa.com.br' },
+  { key: 'legal_jurisdiction', label: 'Comarca do foro', placeholder: 'Ex: Comarca de São Paulo/SP' },
+  { key: 'legal_data_retention', label: 'Prazo de retenção de dados', placeholder: 'Ex: 90 dias após o término' },
+  { key: 'legal_cloud_provider', label: 'Provedor de nuvem', placeholder: 'Ex: Contabo / servidor próprio' },
+];
+
+function DadosEmpresaSection() {
+  const [values, setValues] = useState<Record<string, string>>({});
+  const [saving, setSaving] = useState<string | null>(null);
+
+  useEffect(() => {
+    api<SystemSetting[]>('/admin/settings')
+      .then((rows) => {
+        const map: Record<string, string> = {};
+        for (const r of rows) if (r.key.startsWith('legal_')) map[r.key] = r.value;
+        setValues(map);
+      })
+      .catch(() => {});
+  }, []);
+
+  async function save(key: string) {
+    const value = (values[key] ?? '').trim();
+    setSaving(key);
+    try {
+      if (value) {
+        await api('/admin/settings', { method: 'PUT', body: JSON.stringify({ key, value }) });
+      } else {
+        await api(`/admin/settings/${key}`, { method: 'DELETE' });
+      }
+      toast.success('Salvo');
+    } catch (e) {
+      toast.error('Erro ao salvar', (e as Error).message);
+    } finally {
+      setSaving(null);
+    }
+  }
+
+  return (
+    <section className="surface-card p-6">
+      <h3 className="font-semibold text-ink">Dados da empresa (documentos legais)</h3>
+      <p className="text-sm text-ink-soft mt-1 mb-4">
+        Preenchem os Termos de Uso e a Política de Privacidade. Campos vazios aparecem como
+        &ldquo;〔a preencher〕&rdquo; nas páginas públicas.
+      </p>
+      <div className="space-y-3">
+        {LEGAL_FIELDS.map((f) => (
+          <div key={f.key} className="flex flex-col sm:flex-row sm:items-end gap-2">
+            <div className="flex-1">
+              <label className="block text-sm font-medium text-ink mb-1">{f.label}</label>
+              <input
+                className="input-base w-full"
+                placeholder={f.placeholder}
+                value={values[f.key] ?? ''}
+                onChange={(e) => setValues((p) => ({ ...p, [f.key]: e.target.value }))}
+              />
+            </div>
+            <button
+              type="button"
+              className="btn-secondary px-4 py-2 text-sm"
+              disabled={saving === f.key}
+              onClick={() => save(f.key)}
+            >
+              {saving === f.key ? 'Salvando…' : 'Salvar'}
+            </button>
+          </div>
+        ))}
+      </div>
+    </section>
   );
 }
