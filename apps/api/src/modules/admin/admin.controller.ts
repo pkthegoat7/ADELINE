@@ -179,6 +179,15 @@ export class AdminController {
     'mp_plan_frequency_months',
     'mp_plan_compare_amount',
     'mp_plan_promo_label',
+    'legal_company_name',
+    'legal_cnpj',
+    'legal_address',
+    'legal_support_email',
+    'legal_dpo_name',
+    'legal_dpo_email',
+    'legal_jurisdiction',
+    'legal_data_retention',
+    'legal_cloud_provider',
   ] as const;
   private static MASKED_SETTINGS = new Set(['mp_access_token', 'mp_webhook_secret']);
   // Configs que o super-admin pode remover (limpar). As demais só são sobrescritas.
@@ -187,6 +196,15 @@ export class AdminController {
     'mp_webhook_secret',
     'mp_plan_compare_amount',
     'mp_plan_promo_label',
+    'legal_company_name',
+    'legal_cnpj',
+    'legal_address',
+    'legal_support_email',
+    'legal_dpo_name',
+    'legal_dpo_email',
+    'legal_jurisdiction',
+    'legal_data_retention',
+    'legal_cloud_provider',
   ]);
   // Plano MP cacheado — vive na conta do token atual. Ao trocar/remover o token
   // (conta MP possivelmente diferente), esse cache TEM que ser invalidado.
@@ -228,6 +246,12 @@ export class AdminController {
     }
     if (key === 'mp_plan_promo_label' && value.length > 40) {
       throw new BadRequestException('Selo da promoção muito longo (máx. 40 caracteres).');
+    }
+    if ((key === 'legal_support_email' || key === 'legal_dpo_email') && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(value)) {
+      throw new BadRequestException('E-mail inválido.');
+    }
+    if (key.startsWith('legal_') && value.length > 500) {
+      throw new BadRequestException('Valor muito longo (máx. 500 caracteres).');
     }
 
     await this.prisma.systemSetting.upsert({
