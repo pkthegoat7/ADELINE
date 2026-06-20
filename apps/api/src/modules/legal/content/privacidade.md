@@ -1,20 +1,14 @@
 # Política de Privacidade — Adelina PMS
 
-> **Nota:** a fonte canônica deste documento agora é `apps/api/src/modules/legal/content/`, servida em produção via `GET /api/legal/:doc`. Edite lá. Este arquivo permanece como referência histórica da minuta.
-
 **Última atualização:** 19 de junho de 2026
 **Versão:** 1.0
-
-> ⚠️ **Aviso:** Minuta-modelo alinhada à **Lei Geral de Proteção de Dados Pessoais (LGPD —
-> Lei 13.709/2018)** e ao Marco Civil da Internet (Lei 12.965/2014). **Deve ser revisada por
-> um(a) advogado(a)/encarregado(a)** antes de produção. Preencha os campos em `[COLCHETES]`.
 
 ---
 
 ## 1. Quem trata seus dados
 
 Esta Política descreve como a **Adelina PMS**, plataforma de gestão hoteleira de titularidade de
-**[RAZÃO SOCIAL]** (CNPJ **[CNPJ]**, sede em **[ENDEREÇO]**), trata dados pessoais.
+**{{razaoSocial}}** (CNPJ **{{cnpj}}**, sede em **{{endereco}}**), trata dados pessoais.
 
 **Dois papéis distintos, conforme a LGPD:**
 - **Dados dos Assinantes** (donos/funcionários das pousadas que contratam a Adelina): a Adelina é a
@@ -25,8 +19,8 @@ Esta Política descreve como a **Adelina PMS**, plataforma de gestão hoteleira 
 
 ## 2. Encarregado pelo Tratamento de Dados (DPO)
 
-Em cumprimento ao art. 41 da LGPD, o Encarregado é **[NOME DO ENCARREGADO/DPO]**, contato:
-**[E-MAIL DO ENCARREGADO, ex.: privacidade@adelina.com.br]**. Por esse canal você exerce seus
+Em cumprimento ao art. 41 da LGPD, o Encarregado é **{{nomeDpo}}**, contato:
+**{{emailDpo}}**. Por esse canal você exerce seus
 direitos e tira dúvidas sobre privacidade.
 
 ## 3. Quais dados coletamos
@@ -60,8 +54,8 @@ aplicável, de desempenho. Veja a seção 9.
 
 Compartilhamos dados pessoais apenas com:
 - **Operadores/subprocessadores** necessários ao serviço: provedor de infraestrutura/hospedagem
-  **[PROVEDOR DE NUVEM, ex.: Contabo/servidor próprio]**, **Mercado Pago** (pagamentos),
-  **[PROVEDOR DE E-MAIL/WHATSAPP, se houver]**;
+  **{{provedorNuvem}}**, **Mercado Pago** (pagamentos),
+  **provedor de e-mail/mensageria, quando aplicável**;
 - **Canais de distribuição** quando o Assinante conecta (Airbnb, Booking via iCal) — limitado ao
   necessário para a sincronização que o Assinante configura;
 - **Autoridades**, quando exigido por lei, ordem judicial ou requisição de autoridade competente.
@@ -72,7 +66,7 @@ Não vendemos dados pessoais.
 
 Caso algum subprocessador trate dados fora do Brasil, a transferência observará os requisitos do
 art. 33 da LGPD (país com grau de proteção adequado ou garantias contratuais apropriadas).
-**[Listar se aplicável; se tudo for hospedado no Brasil, declarar que não há transferência internacional.]**
+**Os dados são hospedados em servidores localizados no Brasil; não há transferência internacional de dados.**
 
 ## 7. Seus direitos como titular (art. 18 da LGPD)
 
@@ -85,14 +79,14 @@ Você pode, a qualquer tempo e gratuitamente, solicitar:
 - **informação** sobre compartilhamentos e sobre a possibilidade de não consentir;
 - **revogação do consentimento**.
 
-Para exercer, contate o Encarregado em **[E-MAIL DO ENCARREGADO]**. Responderemos nos prazos legais.
+Para exercer, contate o Encarregado em **{{emailDpo}}**. Responderemos nos prazos legais.
 **Observação:** pedidos sobre dados de **hóspedes** devem ser dirigidos à pousada (controladora);
 a Adelina, como operadora, encaminhará/auxiliará o Assinante.
 
 ## 8. Retenção e eliminação
 
 Mantemos os dados pelo tempo necessário às finalidades e às obrigações legais:
-- **Conta e dados do Assinante:** durante a vigência e por **[PRAZO, ex.: 90 dias]** após o
+- **Conta e dados do Assinante:** durante a vigência e por **{{prazoRetencao}}** após o
   cancelamento, para reativação/exportação; depois, eliminados ou anonimizados.
 - **Registros de acesso (logs):** no mínimo **6 meses** (Marco Civil, art. 15).
 - **Dados fiscais/financeiros:** pelos prazos exigidos pela legislação tributária (até 5 anos).
@@ -124,15 +118,6 @@ versão e a data no topo indicam a edição vigente.
 
 ## 13. Contato e Encarregado
 
-**[RAZÃO SOCIAL]** — CNPJ **[CNPJ]**
-Encarregado (DPO): **[NOME]** — **[E-MAIL DO ENCARREGADO]**
+**{{razaoSocial}}** — CNPJ **{{cnpj}}**
+Encarregado (DPO): **{{nomeDpo}}** — **{{emailDpo}}**
 Autoridade Nacional de Proteção de Dados (ANPD): https://www.gov.br/anpd
-
----
-
-### Campos a preencher antes de publicar
-- `[RAZÃO SOCIAL]`, `[CNPJ]`, `[ENDEREÇO]`
-- `[NOME DO ENCARREGADO/DPO]`, `[E-MAIL DO ENCARREGADO]`
-- `[PROVEDOR DE NUVEM]`, `[PROVEDOR DE E-MAIL/WHATSAPP]`
-- `[PRAZO]` de retenção pós-cancelamento
-- Transferência internacional: confirmar se há (seção 6)

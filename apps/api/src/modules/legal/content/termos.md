@@ -1,14 +1,7 @@
 # Termos de Uso e Condições da Assinatura — Adelina PMS
 
-> **Nota:** a fonte canônica deste documento agora é `apps/api/src/modules/legal/content/`, servida em produção via `GET /api/legal/:doc`. Edite lá. Este arquivo permanece como referência histórica da minuta.
-
 **Última atualização:** 19 de junho de 2026
 **Versão:** 1.0
-
-> ⚠️ **Aviso:** Este documento é uma minuta-modelo, alinhada à legislação brasileira vigente
-> (Código Civil, Código de Defesa do Consumidor — Lei 8.078/1990, Marco Civil da Internet —
-> Lei 12.965/2014 e LGPD — Lei 13.709/2018). **Deve ser revisado por um(a) advogado(a)** antes
-> de entrar em produção. Os campos entre `[COLCHETES]` precisam ser preenchidos por você.
 
 ---
 
@@ -16,12 +9,12 @@
 
 Estes Termos de Uso ("Termos") regem o acesso e o uso da plataforma **Adelina PMS** ("Adelina",
 "Plataforma", "Sistema"), um software de gestão para pousadas e hotéis disponibilizado no modelo
-SaaS (*Software as a Service*), de titularidade de **[RAZÃO SOCIAL DA EMPRESA]**, inscrita no
-CNPJ sob nº **[CNPJ]**, com sede em **[ENDEREÇO COMPLETO]** ("nós", "Adelina").
+SaaS (*Software as a Service*), de titularidade de **{{razaoSocial}}**, inscrita no
+CNPJ sob nº **{{cnpj}}**, com sede em **{{endereco}}** ("nós", "Adelina").
 
 Ao criar uma conta, contratar a assinatura ou utilizar a Plataforma, você ("Cliente", "Usuário",
 "Assinante") declara ter lido, compreendido e aceitado integralmente estes Termos e a
-[Política de Privacidade](./politica-de-privacidade.md). Caso não concorde, não utilize a Plataforma.
+[Política de Privacidade](/privacidade). Caso não concorde, não utilize a Plataforma.
 
 ## 2. Definições
 
@@ -44,7 +37,7 @@ responsável por mantê-las em sigilo e por toda atividade realizada em sua cont
 3.3. O Assinante deve ser maior de 18 anos e ter capacidade civil para contratar, ou representar
 validamente a pessoa jurídica titular do estabelecimento.
 
-3.4. Notifique-nos imediatamente em **[E-MAIL DE SUPORTE]** em caso de uso não autorizado da conta.
+3.4. Notifique-nos imediatamente em **{{emailSuporte}}** em caso de uso não autorizado da conta.
 
 ## 4. Objeto e licença de uso
 
@@ -58,7 +51,7 @@ reversa, revender ou sublicenciar a Plataforma.
 ## 5. Plano, preços e pagamento
 
 5.1. A Assinatura é cobrada em **ciclo mensal recorrente**, no valor vigente apresentado no
-momento da contratação (atualmente **R$ [VALOR]/mês**, configurável e sujeito à atualização
+momento da contratação (atualmente **R$ o valor vigente informado no momento da contratação/mês**, configurável e sujeito à atualização
 conforme cláusula 5.5).
 
 5.2. O pagamento é processado pelo **Mercado Pago** (Mercado Pago Instituição de Pagamento Ltda.),
@@ -80,12 +73,12 @@ vigência do novo valor caso não concorde.
 6.1. Nos termos do **art. 49 do Código de Defesa do Consumidor**, o Assinante pessoa física que
 contratar fora do estabelecimento comercial poderá desistir da contratação no prazo de **7 (sete)
 dias** corridos a contar da data da contratação, com **reembolso integral** do valor pago no
-período, bastando solicitar pelo e-mail **[E-MAIL DE SUPORTE]**.
+período, bastando solicitar pelo e-mail **{{emailSuporte}}**.
 
 ## 7. Cancelamento
 
 7.1. O Assinante pode cancelar a Assinatura a qualquer momento pelo painel ou solicitando em
-**[E-MAIL DE SUPORTE]**. O cancelamento encerra a renovação automática; o acesso permanece ativo
+**{{emailSuporte}}**. O cancelamento encerra a renovação automática; o acesso permanece ativo
 até o fim do ciclo já pago, **sem reembolso proporcional** do período em curso (ressalvado o direito
 de arrependimento da cláusula 6).
 
@@ -111,10 +104,10 @@ terceiros, sobrecarregar a infraestrutura, ou tentar acessar áreas não autoriz
 mas **não garante operação ininterrupta ou livre de erros**. Poderá haver paradas programadas para
 manutenção, comunicadas quando possível.
 
-9.2. O suporte é prestado pelos canais oficiais em **[E-MAIL DE SUPORTE]** / **[WHATSAPP/HORÁRIO]**.
+9.2. O suporte é prestado pelos canais oficiais em **{{emailSuporte}}** / **os canais de suporte informados**.
 
 9.3. **Exportação e retenção de dados:** durante a vigência, o Assinante pode exportar seus dados.
-Após o cancelamento, os dados serão mantidos por **[PRAZO, ex.: 90 dias]** para eventual
+Após o cancelamento, os dados serão mantidos por **{{prazoRetencao}}** para eventual
 reativação/exportação, e então poderão ser eliminados ou anonimizados, ressalvadas obrigações
 legais de guarda.
 
@@ -143,18 +136,9 @@ versão e a data no topo deste documento indicam a edição vigente.
 ## 13. Lei aplicável e foro
 
 Estes Termos são regidos pelas leis da República Federativa do Brasil. Fica eleito o foro da
-comarca de **[CIDADE/UF]**, com renúncia a qualquer outro, ressalvada a competência do foro do
+comarca de **{{foro}}**, com renúncia a qualquer outro, ressalvada a competência do foro do
 domicílio do consumidor nos termos do CDC.
 
 ## 14. Contato
 
-Dúvidas sobre estes Termos: **[E-MAIL DE SUPORTE]** — **[RAZÃO SOCIAL]**, CNPJ **[CNPJ]**.
-
----
-
-### Campos a preencher antes de publicar
-- `[RAZÃO SOCIAL DA EMPRESA]`, `[CNPJ]`, `[ENDEREÇO COMPLETO]`
-- `[E-MAIL DE SUPORTE]`, `[WHATSAPP/HORÁRIO]`
-- `[VALOR]` da mensalidade (ou manter "valor vigente apresentado na contratação")
-- `[PRAZO]` de retenção pós-cancelamento
-- `[CIDADE/UF]` do foro
+Dúvidas sobre estes Termos: **{{emailSuporte}}** — **{{razaoSocial}}**, CNPJ **{{cnpj}}**.

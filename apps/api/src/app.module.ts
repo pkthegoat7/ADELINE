@@ -21,6 +21,7 @@ import { GuestLinksModule } from './modules/guest-links/guest-links.module';
 import { TeamModule } from './modules/team/team.module';
 import { AdminModule } from './modules/admin/admin.module';
 import { SubscriptionsModule } from './modules/subscriptions/subscriptions.module';
+import { LegalModule } from './modules/legal/legal.module';
 import { PaymentsModule } from './modules/payments/payments.module';
 import { SettingsModule } from './modules/settings/settings.module';
 import { ExpensesModule } from './modules/expenses/expenses.module';
@@ -57,6 +58,7 @@ import { PayoutsModule } from './modules/payouts/payouts.module';
     TeamModule,
     AdminModule,
     SubscriptionsModule,
+    LegalModule,
     PaymentsModule,
     SettingsModule,
     ExpensesModule,

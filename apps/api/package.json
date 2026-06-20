@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "dotenv -e ../../.env -- nest start --watch",
-    "build": "nest build",
+    "build": "nest build && mkdir -p dist/modules/legal && cp -r src/modules/legal/content dist/modules/legal/content",
     "start": "node dist/main.js",
     "start:local": "dotenv -e ../../.env -- node dist/main.js",
     "start:worker": "node dist/worker.js",
