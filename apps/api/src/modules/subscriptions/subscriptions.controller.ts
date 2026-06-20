@@ -1,7 +1,7 @@
-import { Body, Controller, ForbiddenException, Get, Post, Res } from '@nestjs/common';
+import { Body, Controller, ForbiddenException, Get, Post, Req, Res } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
-import type { FastifyReply } from 'fastify';
+import type { FastifyReply, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import { CurrentUser, type AuthContext } from '../../common/decorators/tenant.decorator';
 import { AuthService } from '../auth/auth.service';
@@ -14,6 +14,9 @@ const ActivateSchema = z.object({
   email: z.string().email('Email inválido'),
   password: z.string().min(8, 'Senha deve ter no mínimo 8 caracteres'),
   propertyName: z.string().min(1, 'Nome da pousada obrigatório'),
+  acceptedTerms: z.literal(true, {
+    errorMap: () => ({ message: 'É necessário aceitar os Termos de Uso e a Política de Privacidade.' }),
+  }),
 });
 
 @ApiTags('subscriptions')
@@ -53,9 +56,13 @@ export class SubscriptionsController {
   @Public()
   @Throttle({ strict: { limit: 5, ttl: 60_000 } })
   @Post('activate')
-  async activate(@Body() body: unknown, @Res({ passthrough: true }) res: FastifyReply) {
+  async activate(
+    @Body() body: unknown,
+    @Req() req: FastifyRequest,
+    @Res({ passthrough: true }) res: FastifyReply,
+  ) {
     const data = ActivateSchema.parse(body);
-    const { token } = await this.subscriptions.activate(data);
+    const { token } = await this.subscriptions.activate({ ...data, consentIp: req.ip });
     res.header('Set-Cookie', this.auth.sessionCookie(token));
     return { ok: true, redirect: '/dashboard' };
   }

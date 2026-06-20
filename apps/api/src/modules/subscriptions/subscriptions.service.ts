@@ -4,6 +4,7 @@ import { MercadoPagoConfig, PreApproval, PreApprovalPlan } from 'mercadopago';
 import { addMonths } from 'date-fns';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { AuthService } from '../auth/auth.service';
+import { LEGAL_DOC_VERSION } from '../legal/legal.tokens';
 
 @Injectable()
 export class SubscriptionsService {
@@ -207,6 +208,8 @@ export class SubscriptionsService {
     email: string;
     password: string;
     propertyName: string;
+    acceptedTerms: true;
+    consentIp: string;
   }): Promise<{ token: string }> {
     const preapproval = new PreApproval(await this.mpClient());
     const mp = await preapproval.get({ id: input.preapprovalId });
@@ -275,6 +278,10 @@ export class SubscriptionsService {
           role: 'owner',
           active: true,
           passwordHash,
+          termsAcceptedAt: now,
+          privacyAcceptedAt: now,
+          consentIp: input.consentIp,
+          consentDocVersion: LEGAL_DOC_VERSION,
         },
       });
 
