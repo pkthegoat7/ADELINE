@@ -2,15 +2,17 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from './prisma/prisma.service';
 
 export const DEFAULT_TERMS_OF_SERVICE =
-  'Ao prosseguir com o pagamento, você confirma a reserva e concorda com as ' +
-  'políticas de hospedagem, check-in, check-out e cancelamento informadas pela ' +
-  'pousada. O pagamento é processado de forma segura pelo Mercado Pago.';
+  'Ao concluir este pagamento, você confirma a reserva e declara estar de acordo com as ' +
+  'políticas de hospedagem, check-in, check-out e cancelamento informadas pela pousada. ' +
+  'O valor é processado de forma segura pelo Mercado Pago; a pousada não armazena os dados ' +
+  'do seu cartão.';
 
 export const DEFAULT_LGPD_CONSENT =
-  'Autorizo o tratamento dos meus dados pessoais para fins de processamento do ' +
-  'pagamento e gestão da minha reserva, conforme a Lei Geral de Proteção de Dados ' +
-  '(LGPD, Lei nº 13.709/2018). Os dados não serão compartilhados para finalidades ' +
-  'diversas sem o meu consentimento.';
+  'Autorizo o tratamento dos meus dados pessoais pela pousada, na condição de controladora, ' +
+  'para processar este pagamento e gerir a minha reserva, conforme a Lei Geral de Proteção de ' +
+  'Dados (LGPD, Lei nº 13.709/2018). Os dados não serão usados para outras finalidades sem o ' +
+  'meu consentimento, e eu posso solicitar acesso, correção ou exclusão a qualquer momento ' +
+  'pelos canais de atendimento da pousada.';
 
 export const TENANT_SETTING_KEYS = [
   'payment_terms_of_service',
