@@ -27,6 +27,9 @@ const FormSchema = z
     password: z.string().min(8, 'Senha deve ter no mínimo 8 caracteres'),
     confirmPassword: z.string(),
     propertyName: z.string().min(1, 'Nome da pousada obrigatório'),
+    acceptedTerms: z.literal(true, {
+      errorMap: () => ({ message: 'É necessário aceitar os Termos e a Política de Privacidade.' }),
+    }),
   })
   .refine((d) => d.password === d.confirmPassword, {
     message: 'Senhas não coincidem',
@@ -95,6 +98,7 @@ function CheckoutSucesso() {
     password: '',
     confirmPassword: '',
     propertyName: '',
+    acceptedTerms: false as boolean,
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
@@ -153,6 +157,7 @@ function CheckoutSucesso() {
           email: form.email,
           password: form.password,
           propertyName: form.propertyName,
+          acceptedTerms: form.acceptedTerms,
         }),
       });
       router.push('/painel');
@@ -343,6 +348,24 @@ function CheckoutSucesso() {
                 placeholder="Ex: Pousada Sol Nascente"
                 error={errors.propertyName}
               />
+
+              <label className="flex items-start gap-2.5 text-sm text-ink-soft cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={form.acceptedTerms}
+                  onChange={(e) => setForm((p) => ({ ...p, acceptedTerms: e.target.checked }))}
+                  className="mt-0.5 h-4 w-4 rounded border-ink-muted/40 text-brand-600 focus:ring-brand-600"
+                />
+                <span>
+                  Li e aceito os{' '}
+                  <a href="/termos" target="_blank" className="text-brand-600 underline">Termos de Uso</a>{' '}
+                  e a{' '}
+                  <a href="/privacidade" target="_blank" className="text-brand-600 underline">Política de Privacidade</a>.
+                </span>
+              </label>
+              {errors.acceptedTerms && (
+                <p className="text-red-500 text-xs">{errors.acceptedTerms}</p>
+              )}
 
               <button
                 type="submit"
