@@ -100,8 +100,12 @@ model User {
   active       Boolean  @default(true)
   // Auth próprio: hash bcrypt (importado do Supabase na migração)
   passwordHash String?  @map("password_hash")
-  createdAt    DateTime @default(now()) @map("created_at")
-  updatedAt    DateTime @updatedAt @map("updated_at")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+  termsAcceptedAt   DateTime? @map("terms_accepted_at")
+  privacyAcceptedAt DateTime? @map("privacy_accepted_at")
+  consentIp         String?   @map("consent_ip")
+  consentDocVersion String?   @map("consent_doc_version")
 
   tenant      Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   resetTokens PasswordResetToken[]
