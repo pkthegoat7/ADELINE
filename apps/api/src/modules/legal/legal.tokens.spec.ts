@@ -18,6 +18,11 @@ describe('substituteTokens', () => {
     expect(out).toBe('&lt;script&gt;x&lt;/script&gt;');
   });
 
+  it('escapa & antes de < e > para evitar dupla-escape', () => {
+    const out = substituteTokens('{{razaoSocial}}', { legal_company_name: 'A & B <Ltd>' });
+    expect(out).toBe('A &amp; B &lt;Ltd&gt;');
+  });
+
   it('substitui todas as ocorrências do mesmo token', () => {
     const out = substituteTokens('{{cnpj}} / {{cnpj}}', { legal_cnpj: '00.000.000/0001-00' });
     expect(out).toBe('00.000.000/0001-00 / 00.000.000/0001-00');
@@ -27,8 +32,10 @@ describe('substituteTokens', () => {
     expect(substituteTokens('Sem tokens aqui.', {})).toBe('Sem tokens aqui.');
   });
 
-  it('expõe todos os tokens conhecidos mapeados para uma chave de setting', () => {
+  it('mapeia todos os 10 tokens esperados para chaves de setting', () => {
+    const keys = Object.keys(LEGAL_TOKEN_KEYS);
+    expect(keys).toHaveLength(10);
     expect(LEGAL_TOKEN_KEYS.razaoSocial).toBe('legal_company_name');
-    expect(Object.keys(LEGAL_TOKEN_KEYS)).toContain('emailDpo');
+    expect(LEGAL_TOKEN_KEYS.emailDpo).toBe('legal_dpo_email');
   });
 });
