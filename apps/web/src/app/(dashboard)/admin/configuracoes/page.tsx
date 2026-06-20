@@ -415,8 +415,9 @@ function DadosEmpresaSection() {
         {LEGAL_FIELDS.map((f) => (
           <div key={f.key} className="flex flex-col sm:flex-row sm:items-end gap-2">
             <div className="flex-1">
-              <label className="block text-sm font-medium text-ink mb-1">{f.label}</label>
+              <label htmlFor={f.key} className="block text-sm font-medium text-ink mb-1">{f.label}</label>
               <input
+                id={f.key}
                 className="input-base w-full"
                 placeholder={f.placeholder}
                 value={values[f.key] ?? ''}
