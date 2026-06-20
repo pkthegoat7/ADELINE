@@ -1,6 +1,6 @@
 import { marked } from 'marked';
 
-const API = process.env.NEXT_PUBLIC_API_URL ?? '';
+const API = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3333';
 
 export async function fetchLegalDoc(doc: 'termos' | 'privacidade') {
   const res = await fetch(`${API}/api/legal/${doc}`, { next: { revalidate: 300 } });
