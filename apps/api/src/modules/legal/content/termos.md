@@ -51,8 +51,7 @@ reversa, revender ou sublicenciar a Plataforma.
 ## 5. Plano, preços e pagamento
 
 5.1. A Assinatura é cobrada em **ciclo mensal recorrente**, no valor vigente apresentado no
-momento da contratação (atualmente **R$ o valor vigente informado no momento da contratação/mês**, configurável e sujeito à atualização
-conforme cláusula 5.5).
+momento da contratação, configurável e sujeito à atualização conforme cláusula 5.5.
 
 5.2. O pagamento é processado pelo **Mercado Pago** (Mercado Pago Instituição de Pagamento Ltda.),
 responsável pelo processamento financeiro e pela guarda dos dados de cartão. A Adelina **não

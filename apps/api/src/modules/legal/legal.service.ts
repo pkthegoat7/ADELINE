@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { PrismaService } from '../../common/prisma/prisma.service';
@@ -17,7 +17,14 @@ export class LegalService {
     const meta = DOCS[doc];
     if (!meta) throw new NotFoundException('Documento não encontrado.');
 
-    const raw = readFileSync(join(__dirname, 'content', meta.file), 'utf8');
+    let raw: string;
+    try {
+      raw = readFileSync(join(__dirname, 'content', meta.file), 'utf8');
+    } catch {
+      throw new InternalServerErrorException(
+        `Arquivo de conteúdo legal ausente: ${meta.file} — verifique o passo de build (cp content para dist).`,
+      );
+    }
 
     const keys = Object.values(LEGAL_TOKEN_KEYS);
     const rows = await this.prisma.systemSetting.findMany({ where: { key: { in: keys } } });

@@ -32,9 +32,9 @@ describe('substituteTokens', () => {
     expect(substituteTokens('Sem tokens aqui.', {})).toBe('Sem tokens aqui.');
   });
 
-  it('mapeia todos os 10 tokens esperados para chaves de setting', () => {
+  it('mapeia todos os 9 tokens esperados para chaves de setting', () => {
     const keys = Object.keys(LEGAL_TOKEN_KEYS);
-    expect(keys).toHaveLength(10);
+    expect(keys).toHaveLength(9);
     expect(LEGAL_TOKEN_KEYS.razaoSocial).toBe('legal_company_name');
     expect(LEGAL_TOKEN_KEYS.emailDpo).toBe('legal_dpo_email');
   });
