@@ -26,14 +26,22 @@ Critério de sucesso: testes automatizados provam que `withTenant(A)` não acess
 
 ## Decisões (aprovadas)
 
-- **Opção A:** `FORCE RLS` no role dono atual (`adelina`) + **GUC duplo** (`app.bypass_rls`). Sem novo role/credencial.
-- **As duas camadas** (RLS enforce + filtros explícitos).
+- **Opção B:** o app conecta como um **role dedicado não-superuser** (`adelina_app`, `NOSUPERUSER NOBYPASSRLS`) + **GUC duplo** (`app.bypass_rls`). **Por quê não a Opção A (`FORCE` no `adelina`):** confirmado no banco que `adelina` é `rolsuper=t, rolbypassrls=t` (criado via `POSTGRES_USER=adelina`). **Superusers e roles `BYPASSRLS` ignoram o RLS mesmo com `FORCE`** — logo forçar o RLS no `adelina` não isola nada. Roles comuns (não-dono, não-super) obedecem RLS por padrão, sem precisar de `FORCE`. O `adelina` segue como role de admin (migrations/backups/`docker exec psql`); só a aplicação em runtime troca para `adelina_app`.
+- **As duas camadas** (RLS enforce via role dedicado + filtros `tenantId` explícitos).
 
 ## Arquitetura
 
-### 1. Banco — migration aditiva (`packages/db/prisma/migrations/20260622000000_rls_force_enforce`)
+### 1. Banco — role dedicado + migration aditiva
 
-Aplicada em prod via `docker exec adelina_postgres psql -U adelina -d adelina --single-transaction` (padrão do projeto — **NUNCA `db push`**, que quer dropar tabelas por divergência de histórico).
+Tudo aplicado em prod via `docker exec adelina_postgres psql -U adelina -d adelina --single-transaction` (padrão do projeto — **NUNCA `db push`**, que quer dropar tabelas por divergência de histórico).
+
+**1a. Role dedicado (passo de ops manual — senha NÃO entra no git):**
+```sql
+CREATE ROLE adelina_app WITH LOGIN PASSWORD '<senha-forte-gerada>' NOSUPERUSER NOBYPASSRLS NOCREATEDB NOCREATEROLE;
+```
+A senha é gerada na hora (ex.: `openssl rand -base64 32`), guardada fora do git (ex.: `/root/adelina/.adelina_app_db_password`, chmod 600) e referenciada na `DATABASE_URL` do `stack.yml`.
+
+**1b. Migration aditiva** (`packages/db/prisma/migrations/20260622000000_rls_app_role_enforce`) — versionada, idempotente, assume que o role `adelina_app` já existe:
 
 1. **Helper de bypass:**
    ```sql
@@ -47,9 +55,19 @@ Aplicada em prod via `docker exec adelina_postgres psql -U adelina -d adelina --
 
 3. **Cobrir as tabelas órfãs** (`users`, `subscriptions`, `whatsapp_instances`): `ENABLE ROW LEVEL SECURITY` onde faltar + `CREATE POLICY x_tenant ON … USING (app_is_bypass() OR tenant_id = app_current_tenant())`.
 
-4. **`FORCE ROW LEVEL SECURITY`** em todas as tabelas tenant-scoped (as 29 + as 3 órfãs).
+4. **Grants para `adelina_app`** (não-dono precisa de privilégios explícitos):
+   ```sql
+   GRANT USAGE ON SCHEMA public TO adelina_app;
+   GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO adelina_app;
+   GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO adelina_app;
+   GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public TO adelina_app;
+   -- tabelas/sequences futuras (migrations rodam como adelina):
+   ALTER DEFAULT PRIVILEGES FOR ROLE adelina TO adelina_app … (SELECT/INSERT/UPDATE/DELETE em TABLES, USAGE/SELECT em SEQUENCES, EXECUTE em FUNCTIONS);
+   ```
 
-> Falha é **fechada**: query sem GUC (nem tenant nem bypass) passa a retornar 0 linhas / violar WITH CHECK — nunca vaza. Por isso os testes pré-deploy são obrigatórios.
+> **Não usa `FORCE`** — role não-dono já obedece RLS. `adelina_app` não tem `BYPASSRLS`, então só passa pelas linhas do tenant (ou tudo, quando `app.bypass_rls='on'`). Falha é **fechada**: query sem GUC retorna 0 linhas / viola WITH CHECK — nunca vaza. Por isso os testes pré-deploy são obrigatórios.
+
+**1c. `stack.yml`** (`/root/adelina/stack.yml`): trocar `DATABASE_URL` do serviço `api` (e `worker`, se houver) de `adelina:…` para `adelina_app:<senha>@postgres:5432/adelina`. O `POSTGRES_USER=adelina` do serviço `postgres` **não muda** (migrations/admin seguem como `adelina`). `DIRECT_URL` (se usado por migrations) **permanece** como `adelina`.
 
 ### 2. App — `PrismaService` (`apps/api/src/common/prisma/prisma.service.ts`)
 
@@ -91,7 +109,7 @@ Módulos afetados (contagem aproximada): reservations 12, payments 7, channel-ma
 
 Primeiro framework de teste de integração do repo de API (já há `vitest` para unidades puras — `payouts.calc`, `legal.tokens`).
 
-- **DB descartável:** subir Postgres em container numa porta de teste, aplicar **todas** as migrations (incluindo a nova), semear **2 tenants** (A e B) com property+user+reserva+despesa cada.
+- **DB descartável:** subir Postgres em container numa porta de teste (imagem `postgres:17-alpine`, igual à prod), aplicar **todas** as migrations (incluindo a nova) como o owner, **criar o role restrito `adelina_app`** (não-super, não-bypassrls) + grants, semear **2 tenants** (A e B) com property+user+reserva+despesa cada. **Os testes de isolação conectam como `adelina_app`** (conectar como o owner/superuser daria falso-positivo, pois superuser ignora RLS).
 - **Suíte de isolação** (`apps/api/test/rls-isolation.spec.ts`), conectando como o app:
   1. `withTenant(A)` → `reservation.findMany()` retorna só as de A; `findFirst({id: <id de B>})` → `null`.
   2. `withTenant(A)` tentando `deleteMany({where:{id:<id de B>}})` → count 0 (não deleta B).
@@ -101,12 +119,13 @@ Primeiro framework de teste de integração do repo de API (já há `vitest` par
 - **Suíte de fluxo de sistema** (`auth-system.spec.ts`): login (lookup por email) funciona; lookup público por token funciona; listagem admin cross-tenant funciona — todos via `withSystem`.
 - Rodar `pnpm --filter @adelina/api test` → tudo verde **é pré-condição do deploy**.
 
-## Rollout
+## Rollout (ordem importa)
 
-1. Migration no prod via `psql --single-transaction` (transacional → ou aplica tudo, ou nada).
-2. Deploy do código (`bash /root/adelina/deploy.sh`; verificar image ID conforme o gotcha de Swarm `:latest`).
-3. Smoke test prod: login OK; um tenant vê só o próprio dado; tentativa cross-tenant por id → NotFound; webhook de pagamento OK.
-4. **Rollback:** a migration é reversível (`ALTER … NO FORCE` + restaurar `USING` antigo) — guardar o SQL de reversão junto.
+1. **Criar o role** `adelina_app` no prod (senha gerada, guardada em `/root/adelina/.adelina_app_db_password` chmod 600).
+2. **Aplicar a migration** no prod via `psql -U adelina --single-transaction` (transacional → ou aplica tudo, ou nada): policies dual-GUC + tabelas órfãs + grants.
+3. **Atualizar `stack.yml`** (`DATABASE_URL` → `adelina_app`) e **deployar** (`bash /root/adelina/deploy.sh`; verificar image ID conforme o gotcha de Swarm `:latest`). A troca de role só "vale" quando o container novo sobe com a nova `DATABASE_URL`.
+4. **Smoke test prod:** login OK; um tenant vê só o próprio dado; tentativa cross-tenant por id → NotFound; webhook de pagamento OK; um endpoint de cada categoria (auth/tenant/admin/público) responde.
+5. **Rollback:** reverter a `DATABASE_URL` do `stack.yml` para `adelina` + redeploy restaura o comportamento anterior na hora (sem precisar reverter a migration; as policies com bypass são compatíveis com o `adelina` superuser, que simplesmente as ignora). Guardar o SQL de reversão das policies junto, por garantia.
 
 ## Fora de escopo
 
