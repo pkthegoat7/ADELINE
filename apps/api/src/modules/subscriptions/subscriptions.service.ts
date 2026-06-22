@@ -160,9 +160,11 @@ export class SubscriptionsService {
     const mp = await preapproval.get({ id: dataId });
     if (!mp.id) return;
 
-    const sub = await this.prisma.subscription.findUnique({
-      where: { mpPreapprovalId: mp.id },
-    });
+    const sub = await this.prisma.withSystem((tx) =>
+      tx.subscription.findUnique({
+        where: { mpPreapprovalId: mp.id },
+      }),
+    );
     if (!sub) {
       this.logger.log(`Webhook para preapproval ${mp.id} sem subscription local — ignorando`);
       return;
@@ -177,26 +179,30 @@ export class SubscriptionsService {
     const newStatus = statusMap[mp.status ?? ''] ?? sub.status;
 
     const plan = await this.getPlanConfig();
-    await this.prisma.subscription.update({
-      where: { id: sub.id },
-      data: {
-        status: newStatus,
-        ...(newStatus === 'cancelled'
-          ? {}
-          : {
-              currentPeriodStart: new Date(),
-              currentPeriodEnd: addMonths(new Date(), plan.frequencyMonths),
-            }),
-      },
-    });
+    await this.prisma.withSystem((tx) =>
+      tx.subscription.update({
+        where: { id: sub.id },
+        data: {
+          status: newStatus,
+          ...(newStatus === 'cancelled'
+            ? {}
+            : {
+                currentPeriodStart: new Date(),
+                currentPeriodEnd: addMonths(new Date(), plan.frequencyMonths),
+              }),
+        },
+      }),
+    );
 
     // Cancelamento NÃO bloqueia na hora: o acesso vale até o fim do período já pago
     // (o job diário `suspendExpiredCancelled` suspende no vencimento). past_due mantém ativo.
     if (newStatus === 'past_due') {
-      await this.prisma.tenant.update({
-        where: { id: sub.tenantId },
-        data: { status: 'active' },
-      });
+      await this.prisma.withSystem((tx) =>
+        tx.tenant.update({
+          where: { id: sub.tenantId },
+          data: { status: 'active' },
+        }),
+      );
     }
 
     this.logger.log(`Subscription ${sub.id} atualizada: ${sub.status} → ${newStatus}`);
@@ -220,16 +226,20 @@ export class SubscriptionsService {
       );
     }
 
-    const existingEmail = await this.prisma.user.findUnique({
-      where: { email: input.email.toLowerCase().trim() },
-    });
+    const existingEmail = await this.prisma.withSystem((tx) =>
+      tx.user.findUnique({
+        where: { email: input.email.toLowerCase().trim() },
+      }),
+    );
     if (existingEmail) {
       throw new BadRequestException('Já existe um login com esse email.');
     }
 
-    const existingSub = await this.prisma.subscription.findUnique({
-      where: { mpPreapprovalId: mp.id },
-    });
+    const existingSub = await this.prisma.withSystem((tx) =>
+      tx.subscription.findUnique({
+        where: { mpPreapprovalId: mp.id },
+      }),
+    );
     if (existingSub) {
       throw new BadRequestException('Essa assinatura já foi ativada.');
     }
@@ -242,14 +252,16 @@ export class SubscriptionsService {
       .replace(/^-|-$/g, '')
       .slice(0, 40);
 
-    const existingSlug = await this.prisma.tenant.findUnique({ where: { slug } });
+    const existingSlug = await this.prisma.withSystem((tx) =>
+      tx.tenant.findUnique({ where: { slug } }),
+    );
     const finalSlug = existingSlug ? `${slug}-${Date.now().toString(36)}` : slug;
 
     const passwordHash = await this.auth.hashPassword(input.password);
     const plan = await this.getPlanConfig();
     const now = new Date();
 
-    const result = await this.prisma.$transaction(async (tx) => {
+    const result = await this.prisma.withSystem(async (tx) => {
       const tenant = await tx.tenant.create({
         data: {
           name: input.propertyName,
@@ -311,7 +323,9 @@ export class SubscriptionsService {
    * NÃO deve bloquear o acesso sem antes confirmar que a cobrança parou).
    */
   async cancelForTenant(tenantId: string): Promise<{ cancelled: boolean }> {
-    const sub = await this.prisma.subscription.findUnique({ where: { tenantId } });
+    const sub = await this.prisma.withSystem((tx) =>
+      tx.subscription.findUnique({ where: { tenantId } }),
+    );
     if (!sub) return { cancelled: false };
     if (sub.status === 'cancelled') return { cancelled: true };
 
@@ -326,10 +340,12 @@ export class SubscriptionsService {
       );
     }
 
-    await this.prisma.subscription.update({
-      where: { id: sub.id },
-      data: { status: 'cancelled' },
-    });
+    await this.prisma.withSystem((tx) =>
+      tx.subscription.update({
+        where: { id: sub.id },
+        data: { status: 'cancelled' },
+      }),
+    );
     this.logger.log(`Assinatura ${sub.id} cancelada no MP por bloqueio manual do admin`);
     return { cancelled: true };
   }
@@ -341,10 +357,12 @@ export class SubscriptionsService {
   async cancelOwnSubscription(
     tenantId: string,
   ): Promise<{ ok: true; accessUntil: Date | null }> {
-    const sub = await this.prisma.subscription.findUnique({
-      where: { tenantId },
-      select: { status: true, currentPeriodEnd: true },
-    });
+    const sub = await this.prisma.withTenant(tenantId, (tx) =>
+      tx.subscription.findUnique({
+        where: { tenantId },
+        select: { status: true, currentPeriodEnd: true },
+      }),
+    );
     if (!sub) {
       throw new BadRequestException('Você não tem uma assinatura para cancelar.');
     }
@@ -358,33 +376,39 @@ export class SubscriptionsService {
   @Cron('0 4 * * *', { timeZone: 'America/Sao_Paulo' })
   async suspendExpiredCancelled(): Promise<void> {
     const now = new Date();
-    const expired = await this.prisma.subscription.findMany({
-      where: {
-        status: 'cancelled',
-        currentPeriodEnd: { lt: now },
-        tenant: { status: 'active' },
-      },
-      select: { tenantId: true },
-    });
+    const expired = await this.prisma.withSystem((tx) =>
+      tx.subscription.findMany({
+        where: {
+          status: 'cancelled',
+          currentPeriodEnd: { lt: now },
+          tenant: { status: 'active' },
+        },
+        select: { tenantId: true },
+      }),
+    );
     if (expired.length === 0) return;
-    await this.prisma.tenant.updateMany({
-      where: { id: { in: expired.map((s) => s.tenantId) } },
-      data: { status: 'suspended' },
-    });
+    await this.prisma.withSystem((tx) =>
+      tx.tenant.updateMany({
+        where: { id: { in: expired.map((s) => s.tenantId) } },
+        data: { status: 'suspended' },
+      }),
+    );
     this.logger.log(
       `Bloqueadas ${expired.length} pousada(s) com assinatura cancelada e período vencido`,
     );
   }
 
   async getStatus(tenantId: string) {
-    const sub = await this.prisma.subscription.findUnique({
-      where: { tenantId },
-      select: {
-        status: true,
-        currentPeriodEnd: true,
-        planAmount: true,
-      },
-    });
+    const sub = await this.prisma.withTenant(tenantId, (tx) =>
+      tx.subscription.findUnique({
+        where: { tenantId },
+        select: {
+          status: true,
+          currentPeriodEnd: true,
+          planAmount: true,
+        },
+      }),
+    );
     return sub;
   }
 }

@@ -137,7 +137,9 @@ export class GuestLinksController {
     let sentViaWhatsapp = false;
     let whatsappError: string | null = null;
     try {
-      const tenant = await this.prisma.tenant.findUniqueOrThrow({ where: { id: tenantId } });
+      const tenant = await this.prisma.withTenant(tenantId, (tx) =>
+        tx.tenant.findUniqueOrThrow({ where: { id: tenantId } }),
+      );
       const introReserva = reservation
         ? `Recebemos sua reserva ${reservation.code} (check-in ${format(reservation.checkIn, 'dd/MM')}). Pra agilizar sua chegada, `
         : '';
@@ -230,12 +232,16 @@ export class GuestLinksController {
   @Get('public/:token')
   async publicInfo(@Param('token') token: string) {
     const link = await this.findValidLink(token);
-    const tenant = await this.prisma.tenant.findUniqueOrThrow({ where: { id: link.tenantId } });
+    const tenant = await this.prisma.withSystem((tx) =>
+      tx.tenant.findUniqueOrThrow({ where: { id: link.tenantId } }),
+    );
     const reservation = link.reservationId
-      ? await this.prisma.reservation.findUnique({
-          where: { id: link.reservationId },
-          select: { code: true, checkIn: true, checkOut: true },
-        })
+      ? await this.prisma.withSystem((tx) =>
+          tx.reservation.findUnique({
+            where: { id: link.reservationId! },
+            select: { code: true, checkIn: true, checkOut: true },
+          }),
+        )
       : null;
     return { pousada: tenant.name, phone: link.phone, status: link.status, reservation };
   }
@@ -264,7 +270,7 @@ export class GuestLinksController {
       documentFilePath = `${link.tenantId}/${link.token}/${safeName}`;
     }
 
-    const result = await this.prisma.$transaction(async (tx) => {
+    const result = await this.prisma.withSystem(async (tx) => {
       const guest = await tx.guest.create({
         data: {
           tenantId: link.tenantId,
@@ -334,8 +340,10 @@ export class GuestLinksController {
   }
 
   private async findValidLink(token: string) {
-    // Lookup público por token: service role, sem contexto de tenant
-    const link = await this.prisma.guestRegistrationLink.findUnique({ where: { token } });
+    // Lookup público por token: sem contexto de tenant → withSystem
+    const link = await this.prisma.withSystem((tx) =>
+      tx.guestRegistrationLink.findUnique({ where: { token } }),
+    );
     if (!link) throw new NotFoundException('Link de cadastro não encontrado.');
     if (link.status === 'completed') {
       throw new BadRequestException('Esta ficha já foi preenchida. Obrigado!');

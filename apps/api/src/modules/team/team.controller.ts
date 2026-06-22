@@ -59,18 +59,20 @@ export class TeamController {
   @Get()
   list(@CurrentUser() user: AuthContext, @TenantId() tenantId: string) {
     this.assertManager(user);
-    return this.prisma.user.findMany({
-      where: { tenantId },
-      select: {
-        id: true,
-        email: true,
-        fullName: true,
-        role: true,
-        active: true,
-        createdAt: true,
-      },
-      orderBy: { createdAt: 'asc' },
-    });
+    return this.prisma.withTenant(tenantId, (tx) =>
+      tx.user.findMany({
+        where: { tenantId },
+        select: {
+          id: true,
+          email: true,
+          fullName: true,
+          role: true,
+          active: true,
+          createdAt: true,
+        },
+        orderBy: { createdAt: 'asc' },
+      }),
+    );
   }
 
   /** Cria login de funcionário (Supabase Auth + users com papel). */
@@ -88,7 +90,9 @@ export class TeamController {
       throw new ForbiddenException(`Seu papel não permite criar usuários "${data.role}".`);
     }
 
-    const existing = await this.prisma.user.findUnique({ where: { email: data.email } });
+    const existing = await this.prisma.withTenant(tenantId, (tx) =>
+      tx.user.findUnique({ where: { email: data.email } }),
+    );
     if (existing) throw new BadRequestException('Já existe um login com esse email.');
 
     return this.auth.createLocalUser({ tenantId, ...data });
@@ -106,7 +110,9 @@ export class TeamController {
     this.assertManager(user);
     const data = UpdateSchema.parse(body);
 
-    const target = await this.prisma.user.findFirst({ where: { id, tenantId } });
+    const target = await this.prisma.withTenant(tenantId, (tx) =>
+      tx.user.findFirst({ where: { id, tenantId } }),
+    );
     if (!target) throw new NotFoundException('Usuário não encontrado.');
 
     if (target.id === user.userId && (data.role || data.active === false)) {
@@ -120,14 +126,17 @@ export class TeamController {
     }
 
     const { password, ...rest } = data;
-    return this.prisma.user.update({
-      where: { id },
-      data: {
-        ...rest,
-        ...(password ? { passwordHash: await this.auth.hashPassword(password) } : {}),
-      },
-      select: { id: true, email: true, fullName: true, role: true, active: true },
-    });
+    const passwordHash = password ? await this.auth.hashPassword(password) : undefined;
+    return this.prisma.withTenant(tenantId, (tx) =>
+      tx.user.update({
+        where: { id },
+        data: {
+          ...rest,
+          ...(passwordHash ? { passwordHash } : {}),
+        },
+        select: { id: true, email: true, fullName: true, role: true, active: true },
+      }),
+    );
   }
 
   /** Hard delete: remove o usuário definitivamente. Revoga o acesso na hora. */
@@ -140,7 +149,9 @@ export class TeamController {
   ) {
     this.assertManager(user);
 
-    const target = await this.prisma.user.findFirst({ where: { id, tenantId } });
+    const target = await this.prisma.withTenant(tenantId, (tx) =>
+      tx.user.findFirst({ where: { id, tenantId } }),
+    );
     if (!target) throw new NotFoundException('Usuário não encontrado.');
     if (target.id === user.userId) {
       throw new BadRequestException('Você não pode excluir a si mesmo.');
@@ -152,7 +163,7 @@ export class TeamController {
       throw new ForbiddenException('Seu papel não permite gerenciar esse usuário.');
     }
 
-    await this.prisma.user.delete({ where: { id } });
+    await this.prisma.withTenant(tenantId, (tx) => tx.user.delete({ where: { id } }));
     return { ok: true };
   }
 

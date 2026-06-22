@@ -21,7 +21,9 @@ export class TenantsController {
 
   @Get()
   async me(@CurrentUser() user: AuthContext) {
-    const tenant = await this.prisma.tenant.findUnique({ where: { id: user.tenantId } });
+    const tenant = await this.prisma.withTenant(user.tenantId, (tx) =>
+      tx.tenant.findUnique({ where: { id: user.tenantId } }),
+    );
     return { user: { ...user, isSuperAdmin: isSuperAdmin(user.email) }, tenant };
   }
 
@@ -32,10 +34,12 @@ export class TenantsController {
     if (!parsed.success) {
       throw new BadRequestException(parsed.error.flatten());
     }
-    const tenant = await this.prisma.tenant.update({
-      where: { id: user.tenantId },
-      data: { appearance: parsed.data },
-    });
+    const tenant = await this.prisma.withTenant(user.tenantId, (tx) =>
+      tx.tenant.update({
+        where: { id: user.tenantId },
+        data: { appearance: parsed.data },
+      }),
+    );
     return { appearance: tenant.appearance };
   }
 }

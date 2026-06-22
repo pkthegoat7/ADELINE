@@ -22,19 +22,23 @@ export class IcalFeedController {
       throw new NotFoundException();
     }
 
-    const room = await this.prisma.room.findUnique({
-      where: { id: roomId },
-      include: { property: true, roomType: true },
-    });
+    const room = await this.prisma.withSystem((tx) =>
+      tx.room.findUnique({
+        where: { id: roomId },
+        include: { property: true, roomType: true },
+      }),
+    );
     if (!room) throw new NotFoundException();
 
-    const rows = await this.prisma.availabilityCalendar.findMany({
-      where: {
-        roomId,
-        date: { gte: new Date(), lt: addMonths(new Date(), 24) },
-      },
-      orderBy: { date: 'asc' },
-    });
+    const rows = await this.prisma.withSystem((tx) =>
+      tx.availabilityCalendar.findMany({
+        where: {
+          roomId,
+          date: { gte: new Date(), lt: addMonths(new Date(), 24) },
+        },
+        orderBy: { date: 'asc' },
+      }),
+    );
 
     const events = compactAvailabilityIntoEvents(
       rows.map((r) => ({

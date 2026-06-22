@@ -19,10 +19,12 @@ export class ChannelSchedulerService {
   /** A cada 5 minutos, enfileira um pull para cada connection ativa. */
   @Cron(CronExpression.EVERY_5_MINUTES)
   async schedulePulls() {
-    const conns = await this.prisma.channelConnection.findMany({
-      where: { status: 'active', icalImportUrl: { not: null } },
-      select: { id: true },
-    });
+    const conns = await this.prisma.withSystem((tx) =>
+      tx.channelConnection.findMany({
+        where: { status: 'active', icalImportUrl: { not: null } },
+        select: { id: true },
+      }),
+    );
     this.logger.log(`Scheduling ${conns.length} iCal pulls`);
     for (const c of conns) {
       await this.pullQueue.add(

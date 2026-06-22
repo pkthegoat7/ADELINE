@@ -46,14 +46,16 @@ export class ReminderSchedulerService {
 
   private async checkinTomorrow(hourBrt: number) {
     const tomorrow = new Date(format(addDays(new Date(), 1), 'yyyy-MM-dd'));
-    const reservations = await this.prisma.reservation.findMany({
-      where: {
-        checkIn: tomorrow,
-        status: { in: ['pending', 'confirmed'] },
-        reminders: { none: { type: 'checkin_tomorrow' } },
-      },
-      include: { guest: true, property: true },
-    });
+    const reservations = await this.prisma.withSystem((tx) =>
+      tx.reservation.findMany({
+        where: {
+          checkIn: tomorrow,
+          status: { in: ['pending', 'confirmed'] },
+          reminders: { none: { type: 'checkin_tomorrow' } },
+        },
+        include: { guest: true, property: true },
+      }),
+    );
 
     for (const r of reservations) {
       if (!r.guest.phone) continue;
@@ -72,14 +74,16 @@ export class ReminderSchedulerService {
 
   private async postCheckoutThanks(hourBrt: number) {
     const yesterday = new Date(format(subDays(new Date(), 1), 'yyyy-MM-dd'));
-    const reservations = await this.prisma.reservation.findMany({
-      where: {
-        checkOut: yesterday,
-        status: { notIn: ['cancelled', 'no_show'] },
-        reminders: { none: { type: 'post_checkout' } },
-      },
-      include: { guest: true, property: true },
-    });
+    const reservations = await this.prisma.withSystem((tx) =>
+      tx.reservation.findMany({
+        where: {
+          checkOut: yesterday,
+          status: { notIn: ['cancelled', 'no_show'] },
+          reminders: { none: { type: 'post_checkout' } },
+        },
+        include: { guest: true, property: true },
+      }),
+    );
 
     for (const r of reservations) {
       if (!r.guest.phone) continue;
@@ -97,15 +101,17 @@ export class ReminderSchedulerService {
   /** Ficha enviada há mais de 24h e não preenchida: cobra uma única vez. */
   private async pendingRegistrationLinks(hourBrt: number) {
     const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000);
-    const links = await this.prisma.guestRegistrationLink.findMany({
-      where: {
-        status: 'pending',
-        reminderSentAt: null,
-        createdAt: { lt: cutoff },
-        expiresAt: { gt: new Date() },
-      },
-      include: { tenant: true },
-    });
+    const links = await this.prisma.withSystem((tx) =>
+      tx.guestRegistrationLink.findMany({
+        where: {
+          status: 'pending',
+          reminderSentAt: null,
+          createdAt: { lt: cutoff },
+          expiresAt: { gt: new Date() },
+        },
+        include: { tenant: true },
+      }),
+    );
 
     for (const link of links) {
       const tpl = await this.templates.resolve(link.tenantId, 'pending_registration');
@@ -118,10 +124,12 @@ export class ReminderSchedulerService {
       if (!msg) continue;
       try {
         await this.whatsapp.sendText(link.tenantId, link.phone, msg);
-        await this.prisma.guestRegistrationLink.update({
-          where: { id: link.id },
-          data: { reminderSentAt: new Date() },
-        });
+        await this.prisma.withTenant(link.tenantId, (tx) =>
+          tx.guestRegistrationLink.update({
+            where: { id: link.id },
+            data: { reminderSentAt: new Date() },
+          }),
+        );
       } catch (err) {
         this.logger.warn(`ficha pendente ${link.id}: ${(err as Error).message}`);
       }
@@ -137,9 +145,11 @@ export class ReminderSchedulerService {
   ) {
     try {
       await this.whatsapp.sendText(tenantId, phone, msg);
-      await this.prisma.reservationReminder.create({
-        data: { tenantId, reservationId, type },
-      });
+      await this.prisma.withTenant(tenantId, (tx) =>
+        tx.reservationReminder.create({
+          data: { tenantId, reservationId, type },
+        }),
+      );
     } catch (err) {
       // WhatsApp desconectado ou número inválido: tenta de novo no próximo ciclo
       this.logger.warn(`${type} ${reservationId}: ${(err as Error).message}`);

@@ -95,18 +95,20 @@ export class PaymentsService {
 
   /** Dados públicos do link (sem auth). */
   async getPublic(token: string) {
-    const link = await this.prisma.paymentLink.findUnique({
-      where: { token },
-      include: {
-        reservation: {
-          include: {
-            guest: true,
-            property: true,
-            rooms: { include: { room: { include: { roomType: true } } } },
+    const link = await this.prisma.withSystem((tx) =>
+      tx.paymentLink.findUnique({
+        where: { token },
+        include: {
+          reservation: {
+            include: {
+              guest: true,
+              property: true,
+              rooms: { include: { room: { include: { roomType: true } } } },
+            },
           },
         },
-      },
-    });
+      }),
+    );
     if (!link) throw new NotFoundException('Link não encontrado.');
 
     const expired = link.status === 'pending' && link.expiresAt < new Date();
@@ -137,10 +139,12 @@ export class PaymentsService {
     if (!input.acceptTerms || !input.acceptLgpd) {
       throw new BadRequestException('É necessário aceitar os termos para prosseguir.');
     }
-    const link = await this.prisma.paymentLink.findUnique({
-      where: { token },
-      include: { reservation: { include: { property: true } } },
-    });
+    const link = await this.prisma.withSystem((tx) =>
+      tx.paymentLink.findUnique({
+        where: { token },
+        include: { reservation: { include: { property: true } } },
+      }),
+    );
     if (!link) throw new NotFoundException('Link não encontrado.');
     if (link.status === 'paid') throw new BadRequestException('Este link já foi pago.');
     if (link.status === 'cancelled') throw new BadRequestException('Este link foi cancelado.');
@@ -148,15 +152,17 @@ export class PaymentsService {
 
     const terms = await this.settings.getAll(link.tenantId);
     const now = new Date();
-    await this.prisma.paymentLink.update({
-      where: { id: link.id },
-      data: {
-        termsAcceptedAt: now,
-        lgpdAcceptedAt: now,
-        acceptedIp: input.ip,
-        termsSnapshot: `${terms.payment_terms_of_service}\n\n---\n\n${terms.payment_lgpd_consent}`,
-      },
-    });
+    await this.prisma.withSystem((tx) =>
+      tx.paymentLink.update({
+        where: { id: link.id },
+        data: {
+          termsAcceptedAt: now,
+          lgpdAcceptedAt: now,
+          acceptedIp: input.ip,
+          termsSnapshot: `${terms.payment_terms_of_service}\n\n---\n\n${terms.payment_lgpd_consent}`,
+        },
+      }),
+    );
 
     const preference = new Preference(await this.mpClient());
     const apiUrl = process.env.PUBLIC_API_URL ?? 'http://localhost:3333';
@@ -181,10 +187,12 @@ export class PaymentsService {
     if (!result.init_point) {
       throw new BadRequestException('Mercado Pago não retornou URL de checkout.');
     }
-    await this.prisma.paymentLink.update({
-      where: { id: link.id },
-      data: { mpPreferenceId: result.id },
-    });
+    await this.prisma.withSystem((tx) =>
+      tx.paymentLink.update({
+        where: { id: link.id },
+        data: { mpPreferenceId: result.id },
+      }),
+    );
     return { initPoint: result.init_point };
   }
 
@@ -253,14 +261,16 @@ export class PaymentsService {
     const linkId = pay.external_reference;
     if (!linkId) return;
 
-    const link = await this.prisma.paymentLink.findUnique({ where: { id: linkId } });
+    const link = await this.prisma.withSystem((tx) =>
+      tx.paymentLink.findUnique({ where: { id: linkId } }),
+    );
     if (!link) {
       this.logger.warn(`Webhook para link inexistente ${linkId} — ignorando.`);
       return;
     }
     if (link.mpPaymentId === String(pay.id)) return; // idempotência
 
-    await this.prisma.$transaction(async (tx) => {
+    await this.prisma.withSystem(async (tx) => {
       await tx.paymentLink.update({
         where: { id: link.id },
         data: { status: 'paid', paidAt: new Date(), mpPaymentId: String(pay.id) },

@@ -28,7 +28,9 @@ export class TenantSettingsService {
 
   /** Retorna todas as settings da pousada como mapa, com defaults aplicados. */
   async getAll(tenantId: string): Promise<Record<TenantSettingKey, string>> {
-    const rows = await this.prisma.tenantSetting.findMany({ where: { tenantId } });
+    const rows = await this.prisma.withTenant(tenantId, (tx) =>
+      tx.tenantSetting.findMany({ where: { tenantId } }),
+    );
     const map = new Map(rows.map((r) => [r.key, r.value]));
     return {
       payment_terms_of_service:
@@ -44,10 +46,12 @@ export class TenantSettingsService {
   }
 
   async set(tenantId: string, key: TenantSettingKey, value: string): Promise<void> {
-    await this.prisma.tenantSetting.upsert({
-      where: { tenantId_key: { tenantId, key } },
-      create: { tenantId, key, value },
-      update: { value },
-    });
+    await this.prisma.withTenant(tenantId, (tx) =>
+      tx.tenantSetting.upsert({
+        where: { tenantId_key: { tenantId, key } },
+        create: { tenantId, key, value },
+        update: { value },
+      }),
+    );
   }
 }

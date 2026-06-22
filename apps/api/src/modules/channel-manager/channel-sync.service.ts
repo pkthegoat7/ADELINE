@@ -26,10 +26,12 @@ export class ChannelSyncService {
    */
   async pullIcal(connectionId: string): Promise<PullResult> {
     const start = Date.now();
-    const conn = await this.prisma.channelConnection.findUniqueOrThrow({
-      where: { id: connectionId },
-      include: { property: { select: { tenantId: true, id: true } }, roomMappings: true },
-    });
+    const conn = await this.prisma.withSystem((tx) =>
+      tx.channelConnection.findUniqueOrThrow({
+        where: { id: connectionId },
+        include: { property: { select: { tenantId: true, id: true } }, roomMappings: true },
+      }),
+    );
     if (!conn.icalImportUrl) {
       throw new Error(`Connection ${connectionId} has no icalImportUrl`);
     }
@@ -87,15 +89,17 @@ export class ChannelSyncService {
     await this.detectCancellations(conn.id, conn.channel, events);
 
     // 6. Atualiza connection
-    await this.prisma.channelConnection.update({
-      where: { id: conn.id },
-      data: {
-        lastSyncAt: new Date(),
-        lastSyncHash: hash,
-        syncError: null,
-        errorCount: 0,
-      },
-    });
+    await this.prisma.withSystem((tx) =>
+      tx.channelConnection.update({
+        where: { id: conn.id },
+        data: {
+          lastSyncAt: new Date(),
+          lastSyncHash: hash,
+          syncError: null,
+          errorCount: 0,
+        },
+      }),
+    );
 
     await this.logSync(conn.id, 'inbound', conflicts > 0 ? 'conflict' : 'success', {
       hash,
@@ -136,16 +140,20 @@ export class ChannelSyncService {
     // Quando o canal tiver API, enriquecemos com dados reais.
     const externalId = ev.externalReservationId ?? ev.uid;
 
-    let reservation = await this.prisma.reservation.findUnique({
-      where: { channel_channelReservationId: { channel, channelReservationId: externalId } },
-    });
+    let reservation = await this.prisma.withSystem((tx) =>
+      tx.reservation.findUnique({
+        where: { channel_channelReservationId: { channel, channelReservationId: externalId } },
+      }),
+    );
 
     if (!reservation) {
       // Cria placeholder guest + reservation
-      const room = await this.prisma.room.findUniqueOrThrow({
-        where: { id: roomId },
-        include: { property: { select: { id: true, tenantId: true } }, roomType: true },
-      });
+      const room = await this.prisma.withSystem((tx) =>
+        tx.room.findUniqueOrThrow({
+          where: { id: roomId },
+          include: { property: { select: { id: true, tenantId: true } }, roomType: true },
+        }),
+      );
 
       reservation = await this.prisma.withTenant(tenantId, async (tx) => {
         const guest = await tx.guest.create({
@@ -205,28 +213,34 @@ export class ChannelSyncService {
     );
 
     // Reservas que tínhamos desse canal e que sumiram do feed
-    const conn = await this.prisma.channelConnection.findUniqueOrThrow({
-      where: { id: connectionId },
-      include: { property: true },
-    });
+    const conn = await this.prisma.withSystem((tx) =>
+      tx.channelConnection.findUniqueOrThrow({
+        where: { id: connectionId },
+        include: { property: true },
+      }),
+    );
 
-    const stale = await this.prisma.reservation.findMany({
-      where: {
-        propertyId: conn.propertyId,
-        channel,
-        status: { in: ['confirmed', 'pending'] },
-        checkOut: { gte: new Date() },
-      },
-      select: { id: true, channelReservationId: true },
-    });
+    const stale = await this.prisma.withSystem((tx) =>
+      tx.reservation.findMany({
+        where: {
+          propertyId: conn.propertyId,
+          channel,
+          status: { in: ['confirmed', 'pending'] },
+          checkOut: { gte: new Date() },
+        },
+        select: { id: true, channelReservationId: true },
+      }),
+    );
 
     for (const r of stale) {
       if (r.channelReservationId && !currentExternalIds.has(r.channelReservationId)) {
         this.logger.log(`Detected cancellation on ${channel}: ${r.channelReservationId}`);
-        await this.prisma.reservation.update({
-          where: { id: r.id },
-          data: { status: 'cancelled', cancelledAt: new Date(), cancelReason: 'channel-removed' },
-        });
+        await this.prisma.withSystem((tx) =>
+          tx.reservation.update({
+            where: { id: r.id },
+            data: { status: 'cancelled', cancelledAt: new Date(), cancelReason: 'channel-removed' },
+          }),
+        );
         await this.availability.releaseReservation(conn.property.tenantId, r.id);
       }
     }
@@ -238,18 +252,20 @@ export class ChannelSyncService {
     status: 'success' | 'noop' | 'conflict' | 'error',
     extra: { hash?: string; itemsCount?: number; conflicts?: number; durationMs?: number; error?: string },
   ) {
-    await this.prisma.syncLog.create({
-      data: {
-        connectionId,
-        direction,
-        status,
-        payloadHash: extra.hash,
-        itemsCount: extra.itemsCount ?? 0,
-        conflicts: extra.conflicts ?? 0,
-        error: extra.error,
-        durationMs: extra.durationMs,
-      },
-    });
+    await this.prisma.withSystem((tx) =>
+      tx.syncLog.create({
+        data: {
+          connectionId,
+          direction,
+          status,
+          payloadHash: extra.hash,
+          itemsCount: extra.itemsCount ?? 0,
+          conflicts: extra.conflicts ?? 0,
+          error: extra.error,
+          durationMs: extra.durationMs,
+        },
+      }),
+    );
   }
 
   /**
@@ -257,17 +273,21 @@ export class ChannelSyncService {
    * mesmo que o hash bata (ignora cache) — pega drift silencioso.
    */
   async reconcileAll(): Promise<void> {
-    const conns = await this.prisma.channelConnection.findMany({
-      where: { status: 'active' },
-      select: { id: true },
-    });
+    const conns = await this.prisma.withSystem((tx) =>
+      tx.channelConnection.findMany({
+        where: { status: 'active' },
+        select: { id: true },
+      }),
+    );
     for (const c of conns) {
       try {
         // Limpa hash p/ forçar reprocessamento
-        await this.prisma.channelConnection.update({
-          where: { id: c.id },
-          data: { lastSyncHash: null },
-        });
+        await this.prisma.withSystem((tx) =>
+          tx.channelConnection.update({
+            where: { id: c.id },
+            data: { lastSyncHash: null },
+          }),
+        );
         await this.pullIcal(c.id);
       } catch (err) {
         this.logger.error(`Reconcile failed for ${c.id}: ${(err as Error).message}`);

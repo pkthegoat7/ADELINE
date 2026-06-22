@@ -138,7 +138,9 @@ export class WhatsappService {
     );
     if (existing) return existing;
 
-    const tenant = await this.prisma.tenant.findUniqueOrThrow({ where: { id: tenantId } });
+    const tenant = await this.prisma.withTenant(tenantId, (tx) =>
+      tx.tenant.findUniqueOrThrow({ where: { id: tenantId } }),
+    );
     const instanceName = `adelina-${tenant.slug}`;
 
     try {
@@ -259,7 +261,9 @@ export class WhatsappService {
 
   /** Remove a instância da Evolution (usado ao excluir uma pousada). */
   async deleteInstance(tenantId: string) {
-    const inst = await this.prisma.whatsappInstance.findUnique({ where: { tenantId } });
+    const inst = await this.prisma.withSystem((tx) =>
+      tx.whatsappInstance.findUnique({ where: { tenantId } }),
+    );
     if (!inst) return { ok: true };
     try {
       await this.evo(`/instance/logout/${inst.instanceName}`, { method: 'DELETE' });

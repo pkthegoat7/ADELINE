@@ -57,14 +57,17 @@ export class ReservationsService {
 
     // Idempotência: se vem do canal e já existe, retorna a existente.
     if (channel !== 'direct' && input.channelReservationId) {
-      const existing = await this.prisma.reservation.findUnique({
-        where: {
-          channel_channelReservationId: {
-            channel,
-            channelReservationId: input.channelReservationId,
+      const channelReservationId = input.channelReservationId;
+      const existing = await this.prisma.withTenant(input.tenantId, (tx) =>
+        tx.reservation.findUnique({
+          where: {
+            channel_channelReservationId: {
+              channel,
+              channelReservationId,
+            },
           },
-        },
-      });
+        }),
+      );
       if (existing) {
         this.logger.log(`Idempotent: reservation ${existing.code} already exists`);
         return existing;
@@ -366,7 +369,9 @@ export class ReservationsService {
   /** Gera código humano: ADL-2026-00001 (sequencial por tenant). */
   private async generateCode(tenantId: string): Promise<string> {
     const year = new Date().getFullYear();
-    const count = await this.prisma.reservation.count({ where: { tenantId } });
+    const count = await this.prisma.withTenant(tenantId, (tx) =>
+      tx.reservation.count({ where: { tenantId } }),
+    );
     return `ADL-${year}-${String(count + 1).padStart(5, '0')}`;
   }
 }

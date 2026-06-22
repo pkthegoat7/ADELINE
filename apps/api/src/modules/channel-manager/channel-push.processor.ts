@@ -34,25 +34,29 @@ export class ChannelPushProcessor extends WorkerHost {
     const { tenantId, propertyId, excludeChannel, reason } = job.data;
     this.logger.log(`Push to other channels (excl. ${excludeChannel}) for ${propertyId}: ${reason}`);
 
-    const conns = await this.prisma.channelConnection.findMany({
-      where: {
-        propertyId,
-        status: 'active',
-        NOT: excludeChannel ? { channel: excludeChannel } : undefined,
-      },
-    });
+    const conns = await this.prisma.withSystem((tx) =>
+      tx.channelConnection.findMany({
+        where: {
+          propertyId,
+          status: 'active',
+          NOT: excludeChannel ? { channel: excludeChannel } : undefined,
+        },
+      }),
+    );
 
     for (const c of conns) {
       // TODO: integrar com APIs diretas. Por ora, o feed iCal já reflete o estado.
       this.logger.debug(`  → would push to ${c.channel} (${c.id})`);
-      await this.prisma.syncLog.create({
-        data: {
-          connectionId: c.id,
-          direction: 'outbound',
-          status: 'success',
-          itemsCount: 1,
-        },
-      });
+      await this.prisma.withSystem((tx) =>
+        tx.syncLog.create({
+          data: {
+            connectionId: c.id,
+            direction: 'outbound',
+            status: 'success',
+            itemsCount: 1,
+          },
+        }),
+      );
     }
 
     return { tenantId, pushed: conns.length };

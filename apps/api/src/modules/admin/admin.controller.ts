@@ -34,13 +34,15 @@ export class AdminController {
   @Get('tenants')
   async listTenants(@CurrentUser() user: AuthContext) {
     this.assertSuperAdmin(user);
-    const tenants = await this.prisma.tenant.findMany({
-      orderBy: { createdAt: 'asc' },
-      include: {
-        users: { where: { role: 'owner' }, select: { email: true, fullName: true }, take: 1 },
-        _count: { select: { users: true, properties: true, guests: true, reservations: true } },
-      },
-    });
+    const tenants = await this.prisma.withSystem((tx) =>
+      tx.tenant.findMany({
+        orderBy: { createdAt: 'asc' },
+        include: {
+          users: { where: { role: 'owner' }, select: { email: true, fullName: true }, take: 1 },
+          _count: { select: { users: true, properties: true, guests: true, reservations: true } },
+        },
+      }),
+    );
     return tenants.map((t) => ({
       id: t.id,
       name: t.name,
@@ -57,22 +59,24 @@ export class AdminController {
   @Get('subscribers')
   async listSubscribers(@CurrentUser() user: AuthContext) {
     this.assertSuperAdmin(user);
-    const tenants = await this.prisma.tenant.findMany({
-      orderBy: { createdAt: 'asc' },
-      include: {
-        users: { where: { role: 'owner' }, select: { email: true, fullName: true }, take: 1 },
-        subscription: {
-          select: {
-            status: true,
-            planAmount: true,
-            currentPeriodStart: true,
-            currentPeriodEnd: true,
-            mpPayerEmail: true,
-            updatedAt: true,
+    const tenants = await this.prisma.withSystem((tx) =>
+      tx.tenant.findMany({
+        orderBy: { createdAt: 'asc' },
+        include: {
+          users: { where: { role: 'owner' }, select: { email: true, fullName: true }, take: 1 },
+          subscription: {
+            select: {
+              status: true,
+              planAmount: true,
+              currentPeriodStart: true,
+              currentPeriodEnd: true,
+              mpPayerEmail: true,
+              updatedAt: true,
+            },
           },
         },
-      },
-    });
+      }),
+    );
 
     const subscribers = tenants.map((t) => ({
       id: t.id,
@@ -138,11 +142,13 @@ export class AdminController {
     if (status === 'suspended') {
       await this.subscriptions.cancelForTenant(id);
     }
-    return this.prisma.tenant.update({
-      where: { id },
-      data: { status },
-      select: { id: true, name: true, status: true },
-    });
+    return this.prisma.withSystem((tx) =>
+      tx.tenant.update({
+        where: { id },
+        data: { status },
+        select: { id: true, name: true, status: true },
+      }),
+    );
   }
 
   /** Exclusão definitiva: apaga tudo da pousada (cascade) + logins do Auth + instância WhatsApp. */
@@ -153,16 +159,18 @@ export class AdminController {
     if (id === user.tenantId) {
       throw new BadRequestException('Você não pode excluir a sua própria pousada.');
     }
-    const tenant = await this.prisma.tenant.findUniqueOrThrow({
-      where: { id },
-      include: { users: { select: { id: true } } },
-    });
+    const tenant = await this.prisma.withSystem((tx) =>
+      tx.tenant.findUniqueOrThrow({
+        where: { id },
+        include: { users: { select: { id: true } } },
+      }),
+    );
 
     // Best-effort: desconecta e remove a instância WhatsApp na Evolution
     await this.whatsapp.deleteInstance(id).catch(() => undefined);
 
     // Cascade no banco apaga properties/quartos/reservas/hóspedes/users/etc
-    await this.prisma.tenant.delete({ where: { id } });
+    await this.prisma.withSystem((tx) => tx.tenant.delete({ where: { id } }));
 
     // users do tenant caem junto pelo cascade do banco
 
