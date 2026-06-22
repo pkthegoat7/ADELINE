@@ -60,3 +60,49 @@ describe('RLS isolation (conectado como adelina_app, não-superuser)', () => {
     ).rejects.toBeTruthy();
   });
 });
+
+describe('RLS isolation — expenses (tabela adicionada depois, tenant_id direto)', () => {
+  it('expenses: withTenant(A) só vê as de A e não acha as de B por id', async () => {
+    const own = await withTenant(app, TENANT_A(), (tx) => tx.expense.findMany());
+    expect(own.length).toBeGreaterThan(0);
+    expect(own.every((e) => e.tenantId === TENANT_A())).toBe(true);
+
+    const bId = await withSystem(app, async (tx) =>
+      (await tx.expense.findFirstOrThrow({ where: { tenantId: TENANT_B() } })).id,
+    );
+    const cross = await withTenant(app, TENANT_A(), (tx) =>
+      tx.expense.findFirst({ where: { id: bId } }),
+    );
+    expect(cross).toBeNull();
+  });
+
+  it('expenses: sem GUC → 0 linhas (RLS habilitado na tabela tardia)', async () => {
+    expect(await app.expense.count()).toBe(0);
+  });
+});
+
+describe('RLS isolation — rooms (política helper-based: app_property_in_tenant)', () => {
+  it('rooms: withTenant(A) só vê quartos de A; sem GUC → 0 linhas', async () => {
+    const own = await withTenant(app, TENANT_A(), (tx) => tx.room.findMany());
+    expect(own.length).toBeGreaterThan(0);
+
+    const all = await withSystem(app, (tx) => tx.room.findMany());
+    // Sistema vê ambos; tenant A só vê os seus
+    expect(all.length).toBeGreaterThan(own.length);
+
+    expect(await app.room.count()).toBe(0); // sem GUC → 0 (RLS fecha tudo)
+  });
+
+  it('rooms: withTenant(A) não encontra quarto de B por id', async () => {
+    const bRoomId = await withSystem(app, async (tx) => {
+      const r = await tx.room.findFirst({
+        where: { property: { tenantId: TENANT_B() } },
+      });
+      return r!.id;
+    });
+    const cross = await withTenant(app, TENANT_A(), (tx) =>
+      tx.room.findFirst({ where: { id: bRoomId } }),
+    );
+    expect(cross).toBeNull();
+  });
+});

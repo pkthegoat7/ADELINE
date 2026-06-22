@@ -1,5 +1,5 @@
 import { execSync, spawnSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 const CONTAINER = 'adelina-rls-test-pg';
@@ -55,13 +55,18 @@ export async function setup() {
   const ownerUrl = `postgresql://${OWNER}:${OWNER_PW}@localhost:${PORT}/${DB}`;
   sh(`DATABASE_URL='${ownerUrl}' DIRECT_URL='${ownerUrl}' pnpm --filter @adelina/db exec prisma db push --skip-generate --accept-data-loss`);
 
-  // Phase 2: Apply the two RLS migration SQL files manually to get policies + grants.
-  // These are idempotent-safe (CREATE OR REPLACE, DROP POLICY IF EXISTS).
-  // Some ALTER POLICY statements in the last migration reference policies created by
-  // intermediate migrations not present here; those ERRORs are non-fatal because the
-  // base policy already has the correct content from the init rls_policies migration.
-  psqlFile(OWNER, resolve(MIGRATIONS_DIR, '20260517000000_rls_policies/migration.sql'));
-  psqlFile(OWNER, resolve(MIGRATIONS_DIR, '20260622000000_rls_app_role_enforce/migration.sql'));
+  // Phase 2: Apply ALL migration SQL files in timestamp order so every table gets its
+  // RLS policies, GRANTs, and helper functions — not just the two originally hardcoded.
+  // psqlFile runs without ON_ERROR_STOP, so CREATE TABLE / ADD COLUMN errors from
+  // db push having already created the tables are harmless; what matters is that
+  // CREATE POLICY / ENABLE ROW LEVEL SECURITY / CREATE FUNCTION / GRANT all succeed.
+  const migrationDirs = readdirSync(MIGRATIONS_DIR, { withFileTypes: true })
+    .filter((d) => d.isDirectory())
+    .map((d) => d.name)
+    .sort();
+  for (const dir of migrationDirs) {
+    psqlFile(OWNER, resolve(MIGRATIONS_DIR, dir, 'migration.sql'));
+  }
 
   const tA = '11111111-1111-1111-1111-111111111111';
   const tB = '22222222-2222-2222-2222-222222222222';
@@ -73,6 +78,12 @@ export async function setup() {
   const guestB = 'dddddddd-dddd-dddd-dddd-dddddddddddd';
   const userA = '11111111-1111-1111-1111-111111111112';
   const userB = '22222222-2222-2222-2222-222222222223';
+  const expenseA = 'ea000000-ea00-ea00-ea00-ea0000000000';
+  const expenseB = 'eb000000-eb00-eb00-eb00-eb0000000000';
+  const rtA = 'a1000000-a100-a100-a100-a10000000000'; // room_type tenant A
+  const rtB = 'b1000000-b100-b100-b100-b10000000000'; // room_type tenant B
+  const roomA = 'a2000000-a200-a200-a200-a20000000000';
+  const roomB = 'b2000000-b200-b200-b200-b20000000000';
 
   // Seed as owner (superuser bypasses RLS, so inserts work even with RLS enabled)
   // Seed tenant A
@@ -88,6 +99,16 @@ export async function setup() {
   psql(OWNER, `INSERT INTO guests (id, tenant_id, full_name, created_at, updated_at) VALUES ('${guestB}', '${tB}', 'Guest B', now(), now());`);
   psql(OWNER, `INSERT INTO users (id, tenant_id, email, full_name, role, active, created_at, updated_at) VALUES ('${userB}', '${tB}', 'owner-b@x.com', 'Owner B', 'owner', true, now(), now());`);
   psql(OWNER, `INSERT INTO reservations (id, tenant_id, property_id, guest_id, code, status, check_in, check_out, total_amount, net_amount, created_at, updated_at) VALUES ('ffffffff-ffff-ffff-ffff-ffffffffffff', '${tB}', '${propB}', '${guestB}', 'ADL-b-1', 'confirmed', CURRENT_DATE, CURRENT_DATE + 1, 200.00, 200.00, now(), now());`);
+
+  // Seed expenses (direct tenant_id — proves later-added table's RLS policy works)
+  psql(OWNER, `INSERT INTO expenses (id, tenant_id, category, description, amount, date, status, created_at, updated_at) VALUES ('${expenseA}', '${tA}', 'other', 'Custo A', 50.00, CURRENT_DATE, 'pending', now(), now());`);
+  psql(OWNER, `INSERT INTO expenses (id, tenant_id, category, description, amount, date, status, created_at, updated_at) VALUES ('${expenseB}', '${tB}', 'other', 'Custo B', 80.00, CURRENT_DATE, 'pending', now(), now());`);
+
+  // Seed room_types + rooms (helper-based policy: rooms_tenant uses app_property_in_tenant(property_id))
+  psql(OWNER, `INSERT INTO room_types (id, property_id, name, code, capacity, beds, base_price, created_at, updated_at) VALUES ('${rtA}', '${propA}', 'Standard A', 'STD', 2, 1, 100.00, now(), now());`);
+  psql(OWNER, `INSERT INTO room_types (id, property_id, name, code, capacity, beds, base_price, created_at, updated_at) VALUES ('${rtB}', '${propB}', 'Standard B', 'STD', 2, 1, 100.00, now(), now());`);
+  psql(OWNER, `INSERT INTO rooms (id, property_id, room_type_id, code, status, active, created_at, updated_at) VALUES ('${roomA}', '${propA}', '${rtA}', '101', 'clean', true, now(), now());`);
+  psql(OWNER, `INSERT INTO rooms (id, property_id, room_type_id, code, status, active, created_at, updated_at) VALUES ('${roomB}', '${propB}', '${rtB}', '101', 'clean', true, now(), now());`);
 
   process.env.RLS_TEST_OWNER_URL = ownerUrl;
   process.env.RLS_TEST_APP_URL = `postgresql://${APP}:${APP_PW}@localhost:${PORT}/${DB}`;
