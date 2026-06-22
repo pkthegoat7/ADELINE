@@ -39,10 +39,13 @@ export class AuthService {
   }
 
   async login(email: string, password: string) {
-    const user = await this.prisma.user.findUnique({
-      where: { email: email.toLowerCase().trim() },
-      include: { tenant: { select: { status: true } } },
-    });
+    // Auth lookup is pre-tenant — bypass RLS to find user by email.
+    const user = await this.prisma.withSystem((tx) =>
+      tx.user.findUnique({
+        where: { email: email.toLowerCase().trim() },
+        include: { tenant: { select: { status: true } } },
+      }),
+    );
     // Mesma mensagem pra usuário inexistente e senha errada (evita enumeração)
     const fail = () => new UnauthorizedException('Email ou senha incorretos.');
     if (!user || !user.active) throw fail();
@@ -94,28 +97,38 @@ export class AuthService {
    * WhatsApp conectado da pousada (o aparelho fica com o dono/recepção).
    */
   async forgotPassword(email: string): Promise<void> {
-    const user = await this.prisma.user.findUnique({
-      where: { email: email.toLowerCase().trim() },
-    });
-    if (!user || !user.active) return; // resposta idêntica, sem enumeração
+    // Fetch user + instance + create token inside withSystem (pre-tenant lookup).
+    // Network call (WhatsApp send) happens AFTER the transaction to avoid holding
+    // a DB connection during a slow HTTP request.
+    const result = await this.prisma.withSystem(async (tx) => {
+      const user = await tx.user.findUnique({
+        where: { email: email.toLowerCase().trim() },
+      });
+      if (!user || !user.active) return null; // resposta idêntica, sem enumeração
 
-    const instance = await this.prisma.whatsappInstance.findUnique({
-      where: { tenantId: user.tenantId },
-    });
-    if (!instance?.phoneNumber || instance.status !== 'connected') {
-      this.logger.warn(`forgot-password sem WhatsApp conectado (tenant ${user.tenantId})`);
-      return;
-    }
+      const instance = await tx.whatsappInstance.findUnique({
+        where: { tenantId: user.tenantId },
+      });
+      if (!instance?.phoneNumber || instance.status !== 'connected') {
+        this.logger.warn(`forgot-password sem WhatsApp conectado (tenant ${user.tenantId})`);
+        return null;
+      }
 
-    const token = randomBytes(24).toString('hex');
-    await this.prisma.passwordResetToken.create({
-      data: {
-        userId: user.id,
-        token,
-        expiresAt: new Date(Date.now() + RESET_TTL_MIN * 60 * 1000),
-      },
+      const token = randomBytes(24).toString('hex');
+      await tx.passwordResetToken.create({
+        data: {
+          userId: user.id,
+          token,
+          expiresAt: new Date(Date.now() + RESET_TTL_MIN * 60 * 1000),
+        },
+      });
+
+      return { user, instance, token };
     });
 
+    if (!result) return;
+
+    const { user, instance, token } = result;
     const url = `${publicWebUrl()}/redefinir-senha?token=${token}`;
     const msg = await this.templates.render(user.tenantId, 'password_reset', {
       email: user.email,
@@ -127,36 +140,41 @@ export class AuthService {
       return;
     }
     await this.whatsapp
-      .sendText(user.tenantId, instance.phoneNumber, msg)
+      // phoneNumber is guaranteed non-null: the withSystem block returns null if it's missing.
+      .sendText(user.tenantId, instance.phoneNumber!, msg)
       .catch((err) => this.logger.warn(`reset via whatsapp falhou: ${(err as Error).message}`));
   }
 
   async resetPassword(token: string, newPassword: string): Promise<void> {
-    const row = await this.prisma.passwordResetToken.findUnique({
-      where: { token },
-      include: { user: true },
-    });
-    if (!row || row.usedAt || row.expiresAt < new Date()) {
-      throw new BadRequestException('Link inválido ou expirado. Solicite um novo.');
-    }
+    // Token lookup is cross-tenant by nature — bypass RLS.
     const passwordHash = await this.hashPassword(newPassword);
-    await this.prisma.$transaction([
-      this.prisma.user.update({ where: { id: row.userId }, data: { passwordHash } }),
-      this.prisma.passwordResetToken.update({
+    await this.prisma.withSystem(async (tx) => {
+      const row = await tx.passwordResetToken.findUnique({
+        where: { token },
+        include: { user: true },
+      });
+      if (!row || row.usedAt || row.expiresAt < new Date()) {
+        throw new BadRequestException('Link inválido ou expirado. Solicite um novo.');
+      }
+      await tx.user.update({ where: { id: row.userId }, data: { passwordHash } });
+      await tx.passwordResetToken.update({
         where: { id: row.id },
         data: { usedAt: new Date() },
-      }),
-    ]);
+      });
+    });
   }
 
   async changePassword(userId: string, current: string, newPassword: string): Promise<void> {
-    const user = await this.prisma.user.findUniqueOrThrow({ where: { id: userId } });
-    if (!user.passwordHash || !(await compare(current, user.passwordHash))) {
-      throw new BadRequestException('Senha atual incorreta.');
-    }
-    await this.prisma.user.update({
-      where: { id: userId },
-      data: { passwordHash: await this.hashPassword(newPassword) },
+    // userId is known from JWT but the row lookup still needs RLS bypass (no tenant GUC set here).
+    await this.prisma.withSystem(async (tx) => {
+      const user = await tx.user.findUniqueOrThrow({ where: { id: userId } });
+      if (!user.passwordHash || !(await compare(current, user.passwordHash))) {
+        throw new BadRequestException('Senha atual incorreta.');
+      }
+      await tx.user.update({
+        where: { id: userId },
+        data: { passwordHash: await this.hashPassword(newPassword) },
+      });
     });
   }
 
@@ -168,17 +186,21 @@ export class AuthService {
     fullName: string;
     role: 'owner' | 'manager' | 'receptionist' | 'housekeeper' | 'readonly';
   }) {
-    return this.prisma.user.create({
-      data: {
-        id: randomUUID(),
-        tenantId: input.tenantId,
-        email: input.email.toLowerCase().trim(),
-        fullName: input.fullName,
-        role: input.role,
-        active: true,
-        passwordHash: await this.hashPassword(input.password),
-      },
-      select: { id: true, email: true, fullName: true, role: true, active: true },
-    });
+    const passwordHash = await this.hashPassword(input.password);
+    // User creation is a system operation (cross-tenant by super-admin).
+    return this.prisma.withSystem((tx) =>
+      tx.user.create({
+        data: {
+          id: randomUUID(),
+          tenantId: input.tenantId,
+          email: input.email.toLowerCase().trim(),
+          fullName: input.fullName,
+          role: input.role,
+          active: true,
+          passwordHash,
+        },
+        select: { id: true, email: true, fullName: true, role: true, active: true },
+      }),
+    );
   }
 }

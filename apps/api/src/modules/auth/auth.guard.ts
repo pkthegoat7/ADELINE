@@ -42,17 +42,29 @@ export class AuthGuard implements CanActivate {
     }
 
     // Resolve tenant via tabela users (1 user = 1 tenant no MVP)
-    const user = await this.prisma.user.findUnique({
-      where: { id: sub },
-      select: {
-        id: true,
-        tenantId: true,
-        email: true,
-        role: true,
-        active: true,
-        tenant: { select: { status: true } },
-      },
+    // Auth queries run before tenant context is known — bypass RLS for system-level lookups.
+    const { user, subscription } = await this.prisma.withSystem(async (tx) => {
+      const user = await tx.user.findUnique({
+        where: { id: sub },
+        select: {
+          id: true,
+          tenantId: true,
+          email: true,
+          role: true,
+          active: true,
+          tenant: { select: { status: true } },
+        },
+      });
+      let subscription: { status: string; currentPeriodEnd: Date | null } | null = null;
+      if (user) {
+        subscription = await tx.subscription.findUnique({
+          where: { tenantId: user.tenantId },
+          select: { status: true, currentPeriodEnd: true },
+        });
+      }
+      return { user, subscription };
     });
+
     if (!user || !user.active) throw new UnauthorizedException('User not found or inactive');
     if (user.tenant.status !== 'active') {
       throw new UnauthorizedException('Pousada suspensa. Entre em contato com o suporte.');
@@ -66,10 +78,6 @@ export class AuthGuard implements CanActivate {
     const isSuperAdmin = superEmails.includes(user.email.toLowerCase());
 
     if (!isSuperAdmin) {
-      const subscription = await this.prisma.subscription.findUnique({
-        where: { tenantId: user.tenantId },
-        select: { status: true, currentPeriodEnd: true },
-      });
       // Tenants without subscription that were created before the subscription system
       // are allowed through (grandfathered). Only block if subscription exists and is cancelled.
       if (subscription?.status === 'cancelled') {

@@ -118,14 +118,15 @@ export class AuthController {
     const data = SignupSchema.parse(body);
     const slug = data.tenantSlug.toLowerCase();
 
-    const existingTenant = await this.prisma.tenant.findUnique({ where: { slug } });
-    if (existingTenant) throw new BadRequestException(`Slug "${slug}" já está em uso`);
-    const existingEmail = await this.prisma.user.findUnique({ where: { email: data.email } });
-    if (existingEmail) throw new BadRequestException('Já existe um login com esse email.');
-
     const passwordHash = await this.auth.hashPassword(data.password);
 
-    const result = await this.prisma.$transaction(async (tx) => {
+    // Tenant creation is a super-admin system operation — bypass RLS for all lookups and writes.
+    const result = await this.prisma.withSystem(async (tx) => {
+      const existingTenant = await tx.tenant.findUnique({ where: { slug } });
+      if (existingTenant) throw new BadRequestException(`Slug "${slug}" já está em uso`);
+      const existingEmail = await tx.user.findUnique({ where: { email: data.email } });
+      if (existingEmail) throw new BadRequestException('Já existe um login com esse email.');
+
       const tenant = await tx.tenant.create({
         data: { name: data.tenantName, slug, plan: 'trial', status: 'active' },
       });
