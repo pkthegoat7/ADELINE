@@ -216,7 +216,11 @@ export class PaymentsService {
   ): Promise<boolean> {
     const secret = await this.webhookSecret();
     if (!secret) {
-      this.logger.warn('mp_webhook_secret não configurado — assinatura do webhook não verificada.');
+      if (process.env.NODE_ENV === 'production') {
+        this.logger.error('mp_webhook_secret ausente em produção — webhook rejeitado (fail-closed).');
+        return false;
+      }
+      this.logger.warn('mp_webhook_secret não configurado (não-produção) — assinatura não verificada.');
       return true;
     }
     if (!headers.signature) return false;
