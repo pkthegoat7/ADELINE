@@ -171,9 +171,11 @@ export class ReservationsService {
       throw new BadRequestException('A data de check-out precisa ser depois do check-in.');
     }
 
-    const existing = await this.prisma.withTenant(tenantId, (tx) =>
-      tx.reservation.findUniqueOrThrow({ where: { id: reservationId } }),
-    );
+    const existing = await this.prisma.withTenant(tenantId, async (tx) => {
+      const r = await tx.reservation.findFirst({ where: { id: reservationId, tenantId } });
+      if (!r) throw new NotFoundException('Reserva não encontrada');
+      return r;
+    });
 
     // Libera availability antiga
     await this.availability.releaseReservation(tenantId, reservationId);
@@ -194,6 +196,10 @@ export class ReservationsService {
 
       await tx.reservationRoom.deleteMany({ where: { reservationId } });
       await tx.reservationGuest.deleteMany({ where: { reservationId } });
+
+      // 2ª camada: garante que a reserva pertence ao tenant antes do update
+      const guardedR = await tx.reservation.findFirst({ where: { id: reservationId, tenantId } });
+      if (!guardedR) throw new NotFoundException('Reserva não encontrada');
 
       await tx.reservation.update({
         where: { id: reservationId },
@@ -249,7 +255,8 @@ export class ReservationsService {
 
   async cancel(tenantId: string, reservationId: string, reason?: string) {
     const r = await this.prisma.withTenant(tenantId, async (tx) => {
-      const r = await tx.reservation.findUniqueOrThrow({ where: { id: reservationId } });
+      const r = await tx.reservation.findFirst({ where: { id: reservationId, tenantId } });
+      if (!r) throw new NotFoundException('Reserva não encontrada');
       const updated = await tx.reservation.update({
         where: { id: reservationId },
         data: { status: 'cancelled', cancelledAt: new Date(), cancelReason: reason },
@@ -272,14 +279,16 @@ export class ReservationsService {
 
   /** Exclusão definitiva: libera calendário, apaga a reserva (cascade) e avisa os canais. */
   async remove(tenantId: string, reservationId: string) {
-    const r = await this.prisma.withTenant(tenantId, (tx) =>
-      tx.reservation.findUniqueOrThrow({ where: { id: reservationId } }),
-    );
+    const r = await this.prisma.withTenant(tenantId, async (tx) => {
+      const found = await tx.reservation.findFirst({ where: { id: reservationId, tenantId } });
+      if (!found) throw new NotFoundException('Reserva não encontrada');
+      return found;
+    });
 
     await this.availability.releaseReservation(tenantId, reservationId);
 
     await this.prisma.withTenant(tenantId, (tx) =>
-      tx.reservation.delete({ where: { id: reservationId } }),
+      tx.reservation.deleteMany({ where: { id: reservationId, tenantId } }),
     );
 
     await this.pushQueue.add('push', {
@@ -294,16 +303,20 @@ export class ReservationsService {
   }
 
   async checkIn(tenantId: string, reservationId: string) {
-    return this.prisma.withTenant(tenantId, (tx) =>
-      tx.reservation.update({
+    return this.prisma.withTenant(tenantId, async (tx) => {
+      const guard = await tx.reservation.findFirst({ where: { id: reservationId, tenantId } });
+      if (!guard) throw new NotFoundException('Reserva não encontrada');
+      return tx.reservation.update({
         where: { id: reservationId },
         data: { status: 'checked_in', checkedInAt: new Date() },
-      }),
-    );
+      });
+    });
   }
 
   async checkOut(tenantId: string, reservationId: string) {
     return this.prisma.withTenant(tenantId, async (tx) => {
+      const guard = await tx.reservation.findFirst({ where: { id: reservationId, tenantId } });
+      if (!guard) throw new NotFoundException('Reserva não encontrada');
       const r = await tx.reservation.update({
         where: { id: reservationId },
         data: { status: 'checked_out', checkedOutAt: new Date() },
@@ -351,8 +364,8 @@ export class ReservationsService {
 
   async getOne(tenantId: string, id: string) {
     const r = await this.prisma.withTenant(tenantId, (tx) =>
-      tx.reservation.findUnique({
-        where: { id },
+      tx.reservation.findFirst({
+        where: { id, tenantId },
         include: {
           guest: true,
           rooms: { include: { room: true, roomType: true } },

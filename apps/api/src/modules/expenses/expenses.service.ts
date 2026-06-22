@@ -126,12 +126,17 @@ export class ExpensesService {
       data.paidAt = input.paidAt ? new Date(input.paidAt) : null;
     }
 
-    return this.prisma.withTenant(tenantId, (tx) => tx.expense.update({ where: { id }, data }));
+    return this.prisma.withTenant(tenantId, async (tx) => {
+      // 2ª camada: garante pertencimento ao tenant mesmo que findOne acima seja em TX separada
+      const guard = await tx.expense.findFirst({ where: { id, tenantId } });
+      if (!guard) throw new NotFoundException('Despesa não encontrada.');
+      return tx.expense.update({ where: { id }, data });
+    });
   }
 
   async remove(tenantId: string, id: string) {
     await this.findOne(tenantId, id);
-    await this.prisma.withTenant(tenantId, (tx) => tx.expense.delete({ where: { id } }));
+    await this.prisma.withTenant(tenantId, (tx) => tx.expense.deleteMany({ where: { id, tenantId } }));
     return { ok: true };
   }
 

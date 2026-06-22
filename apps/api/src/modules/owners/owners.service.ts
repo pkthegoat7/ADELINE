@@ -66,7 +66,12 @@ export class OwnersService {
     if (input.bankInfo !== undefined) data.bankInfo = input.bankInfo ?? null;
     if (input.notes !== undefined) data.notes = input.notes ?? null;
     if (input.active !== undefined) data.active = input.active;
-    return this.prisma.withTenant(tenantId, (tx) => tx.owner.update({ where: { id }, data }));
+    return this.prisma.withTenant(tenantId, async (tx) => {
+      // 2ª camada: garante pertencimento ao tenant mesmo que findOne acima seja em TX separada
+      const guard = await tx.owner.findFirst({ where: { id, tenantId } });
+      if (!guard) throw new NotFoundException('Proprietário não encontrado.');
+      return tx.owner.update({ where: { id }, data });
+    });
   }
 
   async remove(tenantId: string, id: string) {
@@ -76,7 +81,7 @@ export class OwnersService {
         'Desvincule os imóveis deste proprietário antes de excluí-lo.',
       );
     }
-    await this.prisma.withTenant(tenantId, (tx) => tx.owner.delete({ where: { id } }));
+    await this.prisma.withTenant(tenantId, (tx) => tx.owner.deleteMany({ where: { id, tenantId } }));
     return { ok: true };
   }
 }

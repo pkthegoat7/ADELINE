@@ -81,6 +81,15 @@ describe('RLS isolation — expenses (tabela adicionada depois, tenant_id direto
   });
 });
 
+describe('2ª camada de defesa — filtro explícito tenantId', () => {
+  it('2ª camada: filtro tenantId explícito também bloqueia (expenses)', async () => {
+    const bId = await withSystem(app, async (tx) => (await tx.expense.findFirstOrThrow({ where: { tenantId: TENANT_B() } })).id);
+    // mesmo com bypass LIGADO, o filtro explícito tenantId=A não acha a despesa de B
+    const cross = await withSystem(app, (tx) => tx.expense.findFirst({ where: { id: bId, tenantId: TENANT_A() } }));
+    expect(cross).toBeNull();
+  });
+});
+
 describe('RLS isolation — rooms (política helper-based: app_property_in_tenant)', () => {
   it('rooms: withTenant(A) só vê quartos de A; sem GUC → 0 linhas', async () => {
     const own = await withTenant(app, TENANT_A(), (tx) => tx.room.findMany());
