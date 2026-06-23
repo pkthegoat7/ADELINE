@@ -55,6 +55,8 @@ function MercadoPagoSection() {
   const qc = useQueryClient();
   const [token, setToken] = useState('');
   const [showToken, setShowToken] = useState(false);
+  const [secret, setSecret] = useState('');
+  const [showSecret, setShowSecret] = useState(false);
 
   const { data: settings, isLoading } = useQuery({
     queryKey: ['admin-settings'],
@@ -62,6 +64,21 @@ function MercadoPagoSection() {
   });
 
   const currentToken = settings?.find((s) => s.key === 'mp_access_token');
+  const currentSecret = settings?.find((s) => s.key === 'mp_webhook_secret');
+
+  const saveSecret = useMutation({
+    mutationFn: () =>
+      api('/admin/settings', {
+        method: 'PUT',
+        body: JSON.stringify({ key: 'mp_webhook_secret', value: secret.trim() }),
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin-settings'] });
+      setSecret('');
+      toast.success('Assinatura secreta salva. Os webhooks do Mercado Pago serão validados.');
+    },
+    onError: (err: Error) => toast.error('Erro ao salvar', err.message),
+  });
 
   const save = useMutation({
     mutationFn: () =>
@@ -166,6 +183,50 @@ function MercadoPagoSection() {
             <Save className="w-4 h-4" />
             {save.isPending ? 'Salvando…' : 'Salvar token'}
           </button>
+
+          <div className="border-t border-line pt-4">
+            {currentSecret && (
+              <div className="text-sm mb-2">
+                <span className="text-ink-muted">Assinatura secreta atual: </span>
+                <code className="text-ink bg-surface-sunken px-2 py-0.5 rounded text-xs">
+                  {currentSecret.value}
+                </code>
+              </div>
+            )}
+            <label htmlFor="mp-secret" className="block text-sm font-medium text-ink mb-1">
+              {currentSecret ? 'Nova assinatura secreta (webhook)' : 'Assinatura secreta (webhook)'}
+            </label>
+            <div className="relative">
+              <input
+                id="mp-secret"
+                type={showSecret ? 'text' : 'password'}
+                value={secret}
+                onChange={(e) => setSecret(e.target.value)}
+                className="input-base w-full pr-10"
+                placeholder="Cole aqui a assinatura secreta do webhook"
+              />
+              <button
+                type="button"
+                onClick={() => setShowSecret(!showSecret)}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-ink-muted hover:text-ink p-1"
+              >
+                {showSecret ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
+            <p className="text-xs text-ink-muted mt-1">
+              Encontre em{' '}
+              <span className="font-medium">mercadopago.com.br/developers → Suas integrações → Webhooks → Assinatura secreta</span>.
+              Valida a origem das notificações de pagamento e assinatura.
+            </p>
+            <button
+              onClick={() => saveSecret.mutate()}
+              disabled={!secret.trim() || saveSecret.isPending}
+              className="btn-primary px-5 py-2 text-sm disabled:opacity-50 mt-3"
+            >
+              <Save className="w-4 h-4" />
+              {saveSecret.isPending ? 'Salvando…' : 'Salvar assinatura'}
+            </button>
+          </div>
         </div>
       )}
     </div>
