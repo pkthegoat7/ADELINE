@@ -4,6 +4,7 @@ import { LogOut } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { api } from '@/lib/api';
+import { clearMeCache } from '@/lib/me-cache';
 import { Spinner } from '@/components/ui/Spinner';
 
 export function LogoutButton() {
@@ -13,6 +14,7 @@ export function LogoutButton() {
   async function onLogout() {
     setLoading(true);
     await api('/auth/logout', { method: 'POST' }).catch(() => undefined);
+    clearMeCache();
     router.replace('/login');
     router.refresh();
   }
