@@ -109,7 +109,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }, [mobileOpen]);
 
   return (
-    <div className="min-h-screen flex bg-surface text-ink">
+    <div className="h-screen overflow-hidden flex bg-surface text-ink">
       {/* Backdrop mobile */}
       {mobileOpen && (
         <button
@@ -244,7 +244,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       </aside>
 
       {/* ============================== MAIN ============================== */}
-      <main className="flex-1 min-w-0 flex flex-col overflow-x-hidden md:overflow-x-auto bg-surface">
+      <main className="flex-1 min-w-0 min-h-0 flex flex-col overflow-y-auto overflow-x-hidden md:overflow-x-auto bg-surface">
         {/* Topbar */}
         <header className="sticky top-0 z-20 backdrop-blur-md bg-surface/80 border-b border-line-soft">
           <div className="flex items-center justify-between gap-3 px-4 md:px-6 py-3 md:py-3.5">
