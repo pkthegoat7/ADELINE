@@ -1,0 +1,100 @@
+<svg viewBox="0 0 1200 1560" xmlns="http://www.w3.org/2000/svg" font-family="'Poppins','Trebuchet MS',Verdana,sans-serif">
+  <defs>
+    <!-- COLOR MARK (light backgrounds) -->
+    <symbol id="markColor" viewBox="0 0 240 240">
+      <ellipse cx="120" cy="216" rx="100" ry="11" fill="#C7BEB2"/>
+      <polygon points="120,24 28,210 120,210" fill="#ED7D1A"/>
+      <polygon points="120,24 212,210 120,210" fill="#F2ECE1"/>
+      <g stroke="#BF5F0E" stroke-width="3" stroke-linecap="round" opacity="0.35">
+        <line x1="97" y1="70" x2="118" y2="70"/>
+        <line x1="78" y1="110" x2="118" y2="110"/>
+        <line x1="58" y1="150" x2="118" y2="150"/>
+      </g>
+      <polygon points="120,94 90,186 150,186" fill="#FAF6EF" stroke="#1B1B1B" stroke-width="5.5" stroke-linejoin="round"/>
+      <line x1="102" y1="150" x2="138" y2="150" stroke="#1B1B1B" stroke-width="5.5" stroke-linecap="round"/>
+      <line x1="120" y1="28" x2="120" y2="94" stroke="#1B1B1B" stroke-width="5.5" stroke-linecap="round"/>
+      <polygon points="120,24 28,210 212,210" fill="none" stroke="#1B1B1B" stroke-width="9" stroke-linejoin="round"/>
+    </symbol>
+
+    <!-- REVERSED MARK (dark backgrounds) -->
+    <symbol id="markRev" viewBox="0 0 240 240">
+      <polygon points="120,24 28,210 120,210" fill="#ED7D1A"/>
+      <polygon points="120,24 212,210 120,210" fill="#F2ECE1"/>
+      <g stroke="#BF5F0E" stroke-width="3" stroke-linecap="round" opacity="0.4">
+        <line x1="97" y1="70" x2="118" y2="70"/>
+        <line x1="78" y1="110" x2="118" y2="110"/>
+        <line x1="58" y1="150" x2="118" y2="150"/>
+      </g>
+      <polygon points="120,94 90,186 150,186" fill="#231F1B" stroke="#F2ECE1" stroke-width="5.5" stroke-linejoin="round"/>
+      <line x1="102" y1="150" x2="138" y2="150" stroke="#F2ECE1" stroke-width="5.5" stroke-linecap="round"/>
+      <line x1="120" y1="28" x2="120" y2="94" stroke="#F2ECE1" stroke-width="5.5" stroke-linecap="round"/>
+      <polygon points="120,24 28,210 212,210" fill="none" stroke="#F2ECE1" stroke-width="9" stroke-linejoin="round"/>
+    </symbol>
+  </defs>
+
+  <rect width="1200" height="1560" fill="#FAF7F1"/>
+
+  <!-- HEADER -->
+  <text x="80" y="92" font-size="16" font-weight="700" fill="#ED7D1A" letter-spacing="6">IDENTIDADE DE MARCA</text>
+  <text x="78" y="172" font-size="90" font-weight="700" fill="#1B1B1B" letter-spacing="-2">adelina</text>
+
+  <!-- HERO: primary signature -->
+  <rect x="80" y="220" width="1040" height="360" rx="22" fill="#FFFFFF"/>
+  <text x="110" y="264" font-size="14" font-weight="700" fill="#B9B0A4" letter-spacing="4">ASSINATURA PRINCIPAL</text>
+  <use href="#markColor" x="319" y="300" width="200" height="200"/>
+  <text x="559" y="432" font-size="92" font-weight="700" fill="#1B1B1B" letter-spacing="-2">adelina</text>
+
+  <!-- VARIATIONS -->
+  <rect x="80" y="632" width="500" height="296" rx="22" fill="#FFFFFF"/>
+  <text x="110" y="676" font-size="14" font-weight="700" fill="#B9B0A4" letter-spacing="4">SÍMBOLO</text>
+  <use href="#markColor" x="240" y="700" width="180" height="180"/>
+
+  <rect x="620" y="632" width="500" height="296" rx="22" fill="#1B1B1B"/>
+  <text x="650" y="676" font-size="14" font-weight="700" fill="#7E766B" letter-spacing="4">VERSÃO NEGATIVA</text>
+  <use href="#markRev" x="678" y="712" width="150" height="150"/>
+  <text x="858" y="812" font-size="56" font-weight="700" fill="#F2ECE1" letter-spacing="-1">adelina</text>
+
+  <!-- COLOR PALETTE -->
+  <rect x="80" y="966" width="6" height="20" rx="3" fill="#ED7D1A"/>
+  <text x="100" y="983" font-size="18" font-weight="700" fill="#1B1B1B" letter-spacing="2">PALETA DE CORES</text>
+
+  <g>
+    <rect x="80"  y="1006" width="192" height="110" rx="14" fill="#ED7D1A"/>
+    <text x="80"  y="1146" font-size="17" font-weight="700" fill="#1B1B1B">Telha</text>
+    <text x="80"  y="1168" font-size="14" fill="#9C9389">#ED7D1A</text>
+
+    <rect x="292" y="1006" width="192" height="110" rx="14" fill="#1B1B1B"/>
+    <text x="292" y="1146" font-size="17" font-weight="700" fill="#1B1B1B">Grafite</text>
+    <text x="292" y="1168" font-size="14" fill="#9C9389">#1B1B1B</text>
+
+    <rect x="504" y="1006" width="192" height="110" rx="14" fill="#F2ECE1" stroke="#E4DCCF" stroke-width="1.5"/>
+    <text x="504" y="1146" font-size="17" font-weight="700" fill="#1B1B1B">Areia</text>
+    <text x="504" y="1168" font-size="14" fill="#9C9389">#F2ECE1</text>
+
+    <rect x="716" y="1006" width="192" height="110" rx="14" fill="#9C9389"/>
+    <text x="716" y="1146" font-size="17" font-weight="700" fill="#1B1B1B">Pedra</text>
+    <text x="716" y="1168" font-size="14" fill="#9C9389">#9C9389</text>
+
+    <rect x="928" y="1006" width="192" height="110" rx="14" fill="#FAF7F1" stroke="#E4DCCF" stroke-width="1.5"/>
+    <text x="928" y="1146" font-size="17" font-weight="700" fill="#1B1B1B">Neve</text>
+    <text x="928" y="1168" font-size="14" fill="#9C9389">#FAF7F1</text>
+  </g>
+
+  <!-- TYPOGRAPHY -->
+  <rect x="80" y="1224" width="6" height="20" rx="3" fill="#ED7D1A"/>
+  <text x="100" y="1241" font-size="18" font-weight="700" fill="#1B1B1B" letter-spacing="2">TIPOGRAFIA</text>
+
+  <rect x="80" y="1264" width="1040" height="240" rx="22" fill="#FFFFFF"/>
+
+  <text x="130" y="1400" font-size="130" font-weight="700" fill="#ED7D1A" letter-spacing="-3">Aa</text>
+  <text x="130" y="1440" font-size="20" font-weight="700" fill="#1B1B1B" letter-spacing="2">POPPINS</text>
+  <text x="130" y="1466" font-size="15" fill="#9C9389">Logotipo &amp; títulos</text>
+
+  <line x1="600" y1="1300" x2="600" y2="1468" stroke="#ECE7DE" stroke-width="2"/>
+
+  <text x="650" y="1340" font-size="34" font-weight="600" fill="#1B1B1B">Inter</text>
+  <text x="650" y="1372" font-size="15" font-weight="700" fill="#9C9389" letter-spacing="2">TEXTO CORRIDO &amp; INTERFACE</text>
+  <text x="650" y="1414" font-size="16" fill="#4A453F">Hospedagem boutique, gestão simples.</text>
+  <text x="650" y="1440" font-size="16" fill="#4A453F">Reservas, canais e operação em um só lugar.</text>
+  <text x="650" y="1466" font-size="16" fill="#4A453F">AaBbCc · 0123456789</text>
+</svg>

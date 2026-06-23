@@ -21,18 +21,18 @@
   --line: 235 225 205;               /* sand-200 */
   --line-soft: 245 239 228;          /* sand-100 */
 
-  /* Paleta brand completa (terracota — default) — 11 shades */
-  --brand-50:  251 245 238;
-  --brand-100: 245 230 211;
-  --brand-200: 236 206 170;
-  --brand-300: 223 176 125;
-  --brand-400: 209 143 87;
-  --brand-500: 194 115 58;
-  --brand-600: 168 90 44;
-  --brand-700: 135 69 40;
-  --brand-800: 110 58 37;
-  --brand-900: 90 49 32;
-  --brand-950: 50 24 16;
+  /* Paleta brand completa (adelina telha #ED7D1A — default) — 11 shades */
+  --brand-50:  253 247 237;
+  --brand-100: 251 235 211;
+  --brand-200: 247 212 165;
+  --brand-300: 243 184 107;
+  --brand-400: 240 155 60;
+  --brand-500: 237 125 26;
+  --brand-600: 200 96 14;
+  --brand-700: 160 74 11;
+  --brand-800: 128 60 13;
+  --brand-900: 104 49 11;
+  --brand-950: 57 26 6;
   /* Aliases semanticos (sobrescritos no .dark pra brilho maior) */
   --brand: var(--brand-500);
   --brand-soft: var(--brand-100);
