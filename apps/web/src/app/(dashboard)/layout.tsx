@@ -183,7 +183,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </button>
 
         {/* Navegação */}
-        <nav className="flex-1 px-3 py-5 space-y-0.5 relative">
+        <nav className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-3 py-5 space-y-0.5 relative">
           <div className="px-3 pb-2 text-[10px] uppercase text-ink-muted dark:text-zinc-400/50 font-semibold tracking-[0.18em]">
             Operação
           </div>
