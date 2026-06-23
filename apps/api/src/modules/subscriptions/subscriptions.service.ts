@@ -3,6 +3,7 @@ import { Cron } from '@nestjs/schedule';
 import { MercadoPagoConfig, PreApproval, PreApprovalPlan } from 'mercadopago';
 import { addMonths } from 'date-fns';
 import { PrismaService } from '../../common/prisma/prisma.service';
+import { verifyMpSignature } from '../../common/mp-webhook';
 import { AuthService } from '../auth/auth.service';
 import { LEGAL_DOC_VERSION } from '../legal/legal.tokens';
 
@@ -153,8 +154,47 @@ export class SubscriptionsService {
     return { initPoint };
   }
 
-  async handleWebhook(type: string, dataId: string): Promise<void> {
+  /** Lê o secret de assinatura do webhook (mesmo do módulo de pagamentos). */
+  private async webhookSecret(): Promise<string | null> {
+    const setting = await this.prisma.systemSetting.findUnique({
+      where: { key: 'mp_webhook_secret' },
+    });
+    return setting?.value || process.env.MP_WEBHOOK_SECRET || null;
+  }
+
+  /**
+   * Valida a assinatura `x-signature` do Mercado Pago. Fail-closed em produção:
+   * sem secret configurado, o webhook é rejeitado (igual ao módulo de pagamentos).
+   * O handler ainda re-busca a preapproval no MP, então não há injeção de dados —
+   * a validação evita disparos forjados de re-sync de status.
+   */
+  private async isSignatureValid(
+    dataId: string,
+    headers: { signature?: string; requestId?: string },
+  ): Promise<boolean> {
+    const secret = await this.webhookSecret();
+    if (!secret) {
+      if (process.env.NODE_ENV === 'production') {
+        this.logger.error('mp_webhook_secret ausente em produção — webhook de assinatura rejeitado (fail-closed).');
+        return false;
+      }
+      this.logger.warn('mp_webhook_secret não configurado (não-produção) — assinatura não verificada.');
+      return true;
+    }
+    return verifyMpSignature(secret, dataId, headers);
+  }
+
+  async handleWebhook(
+    type: string,
+    dataId: string,
+    headers: { signature?: string; requestId?: string } = {},
+  ): Promise<void> {
     if (type !== 'subscription_preapproval') return;
+
+    if (!(await this.isSignatureValid(dataId, headers))) {
+      this.logger.warn(`Webhook de assinatura com assinatura inválida (data.id ${dataId}) — ignorado.`);
+      return;
+    }
 
     const preapproval = new PreApproval(await this.mpClient());
     const mp = await preapproval.get({ id: dataId });

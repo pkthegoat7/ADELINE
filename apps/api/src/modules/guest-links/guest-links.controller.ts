@@ -42,9 +42,18 @@ const EXT_MIME: Record<string, string> = {
 };
 
 const SEGMENT_RE = /^[a-zA-Z0-9._-]+$/;
+// Bloqueia segmentos que escapam do diretório mesmo passando no SEGMENT_RE
+// (`.` e `..` casam com o regex). Defesa em profundidade — a URL assinada já
+// impede que um atacante forje um caminho de travessia.
+const isSafeSegment = (s: string): boolean => SEGMENT_RE.test(s) && s !== '.' && s !== '..';
 
 function docSignature(relPath: string, exp: number): string {
   const secret = process.env.AUTH_JWT_SECRET ?? '';
+  if (secret.length < 32) {
+    // Mesmo guard do jwtSecret(): um secret vazio/curto tornaria as URLs
+    // assinadas forjáveis. Falha fechado em vez de assinar com secret fraco.
+    throw new Error('AUTH_JWT_SECRET ausente ou curto demais (mínimo 32 caracteres).');
+  }
   return createHmac('sha256', secret).update(`${relPath}|${exp}`).digest('hex').slice(0, 32);
 }
 // Só imagem/PDF: bloqueia HTML/SVG (XSS armazenado via URL assinada)
@@ -203,7 +212,7 @@ export class GuestLinksController {
     const relPath = `${tenantId}/${token}/${name}`;
     const expNum = Number(exp);
     if (
-      ![tenantId, token, name].every((s) => SEGMENT_RE.test(s)) ||
+      ![tenantId, token, name].every(isSafeSegment) ||
       !Number.isFinite(expNum) ||
       expNum < Date.now() / 1000
     ) {

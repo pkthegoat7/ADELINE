@@ -1,8 +1,9 @@
 import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { MercadoPagoConfig, Payment as MpPayment, Preference } from 'mercadopago';
-import { createHmac, randomBytes, timingSafeEqual } from 'crypto';
+import { randomBytes } from 'crypto';
 import { differenceInCalendarDays, format } from 'date-fns';
 import { PrismaService } from '../../common/prisma/prisma.service';
+import { verifyMpSignature } from '../../common/mp-webhook';
 import { TenantSettingsService } from '../../common/tenant-settings.service';
 import { publicWebUrl } from '../../common/public-url';
 import { WhatsappService } from '../whatsapp/whatsapp.service';
@@ -223,26 +224,7 @@ export class PaymentsService {
       this.logger.warn('mp_webhook_secret não configurado (não-produção) — assinatura não verificada.');
       return true;
     }
-    if (!headers.signature) return false;
-    const parts = Object.fromEntries(
-      headers.signature.split(',').map((p) => p.split('=').map((s) => s.trim())),
-    );
-    const ts = parts['ts'];
-    const v1 = parts['v1'];
-    if (!ts || !v1) return false;
-    const manifest =
-      `id:${dataId.toLowerCase()};` +
-      (headers.requestId ? `request-id:${headers.requestId};` : '') +
-      `ts:${ts};`;
-    const expected = createHmac('sha256', secret).update(manifest).digest('hex');
-    try {
-      return (
-        expected.length === v1.length &&
-        timingSafeEqual(Buffer.from(expected), Buffer.from(v1))
-      );
-    } catch {
-      return false;
-    }
+    return verifyMpSignature(secret, dataId, headers);
   }
 
   /** Webhook do MP: liquida o pagamento. Idempotente por mpPaymentId. */
