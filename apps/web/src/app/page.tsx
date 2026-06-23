@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { motion, useScroll, useTransform } from 'framer-motion';
 import Link from 'next/link';
 import { AdelinaMark } from '@/components/brand/Logo';
 import { api } from '@/lib/api';
@@ -89,6 +90,11 @@ export default function Home() {
 
   const cycleSuffix = '/mês';
 
+  // Parallax sutil das camadas de fundo conforme o scroll (framer-motion).
+  const { scrollY } = useScroll();
+  const blobY1 = useTransform(scrollY, [0, 1200], [0, 170]);
+  const blobY2 = useTransform(scrollY, [0, 1400], [0, -130]);
+
   async function handleSubscribe() {
     if (loading) return;
     setLoading(true);
@@ -115,18 +121,20 @@ export default function Home() {
   return (
     <main className="relative min-h-screen overflow-hidden">
       {/* Ornamentos de fundo */}
-      <div
+      <motion.div
         aria-hidden
         className="pointer-events-none absolute -top-48 -right-48 w-[42rem] h-[42rem] rounded-full opacity-30 blur-3xl"
         style={{
+          y: blobY1,
           background:
             'radial-gradient(circle, rgb(var(--brand) / 0.55), rgb(var(--gold) / 0.15) 60%, transparent 75%)',
         }}
       />
-      <div
+      <motion.div
         aria-hidden
         className="pointer-events-none absolute top-[38rem] -left-40 w-[32rem] h-[32rem] rounded-full opacity-20 blur-3xl"
         style={{
+          y: blobY2,
           background: 'radial-gradient(circle, rgb(var(--brand-deep) / 0.45), transparent 70%)',
         }}
       />
@@ -149,14 +157,10 @@ export default function Home() {
             <Link href="/login" className="btn-secondary px-4 py-2 text-sm">
               Entrar
             </Link>
-            <button
-              onClick={handleSubscribe}
-              disabled={loading}
-              className="btn-primary px-4 py-2 text-sm disabled:opacity-60 disabled:cursor-not-allowed"
-            >
-              {loading ? 'Redirecionando…' : 'Assinar'}
+            <a href="#preco" className="btn-primary px-4 py-2 text-sm">
+              Assinar
               <ArrowRight className="w-3.5 h-3.5" />
-            </button>
+            </a>
           </div>
         </nav>
       </header>
@@ -295,7 +299,7 @@ export default function Home() {
 
       {/* ───────────────────────── Recursos ───────────────────────── */}
       <section id="recursos" className="relative max-w-6xl mx-auto px-6 py-20">
-        <div className="text-center mb-12">
+        <Reveal className="text-center mb-12">
           <div className="eyebrow flex items-center justify-center gap-2 mb-3">
             <span className="ornament">◆</span>
             <span>Recursos</span>
@@ -308,45 +312,57 @@ export default function Home() {
             Do check-in ao fechamento do mês, em uma interface pensada para o dia a
             dia da recepção.
           </p>
-        </div>
+        </Reveal>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          <FeatureCard
-            icon={<CalendarRange className="w-5 h-5" />}
-            title="Calendário unificado"
-            sub="Todos os quartos numa timeline — disponibilidade, bloqueios e reservas num só lugar."
-          />
-          <FeatureCard
-            icon={<Plug className="w-5 h-5" />}
-            title="Canais bidirecionais"
-            sub="Sincronização iCal com Airbnb e Booking a cada 5 minutos, nos dois sentidos."
-          />
-          <FeatureCard
-            icon={<Shield className="w-5 h-5" />}
-            title="Anti-overbooking"
-            sub="Trava de concorrência no banco e reconciliação noturna automática."
-          />
-          <FeatureCard
-            icon={<ClipboardCheck className="w-5 h-5" />}
-            title="Reservas organizadas"
-            sub="Código humano por reserva, status claros e histórico completo de cada estadia."
-          />
-          <FeatureCard
-            icon={<BedDouble className="w-5 h-5" />}
-            title="Quartos e tipos"
-            sub="Cadastre categorias, andares e status de limpeza — pronto para o housekeeping."
-          />
-          <FeatureCard
-            icon={<Users className="w-5 h-5" />}
-            title="Hóspedes centralizados"
-            sub="Ficha única por hóspede, mesmo quando a reserva chega pelos canais."
-          />
-        </div>
+        <motion.div
+          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
+          variants={revealContainer}
+          initial="hidden"
+          whileInView="show"
+          viewport={{ once: true, margin: '-60px' }}
+        >
+          {[
+            {
+              icon: <CalendarRange className="w-5 h-5" />,
+              title: 'Calendário unificado',
+              sub: 'Todos os quartos numa timeline — disponibilidade, bloqueios e reservas num só lugar.',
+            },
+            {
+              icon: <Plug className="w-5 h-5" />,
+              title: 'Canais bidirecionais',
+              sub: 'Sincronização iCal com Airbnb e Booking a cada 5 minutos, nos dois sentidos.',
+            },
+            {
+              icon: <Shield className="w-5 h-5" />,
+              title: 'Anti-overbooking',
+              sub: 'Trava de concorrência no banco e reconciliação noturna automática.',
+            },
+            {
+              icon: <ClipboardCheck className="w-5 h-5" />,
+              title: 'Reservas organizadas',
+              sub: 'Código humano por reserva, status claros e histórico completo de cada estadia.',
+            },
+            {
+              icon: <BedDouble className="w-5 h-5" />,
+              title: 'Quartos e tipos',
+              sub: 'Cadastre categorias, andares e status de limpeza — pronto para o housekeeping.',
+            },
+            {
+              icon: <Users className="w-5 h-5" />,
+              title: 'Hóspedes centralizados',
+              sub: 'Ficha única por hóspede, mesmo quando a reserva chega pelos canais.',
+            },
+          ].map((f) => (
+            <motion.div key={f.title} variants={revealItem}>
+              <FeatureCard icon={f.icon} title={f.title} sub={f.sub} />
+            </motion.div>
+          ))}
+        </motion.div>
       </section>
 
       {/* ───────────────────────── Como funciona ───────────────────────── */}
       <section id="como-funciona" className="relative max-w-6xl mx-auto px-6 py-20">
-        <div className="text-center mb-12">
+        <Reveal className="text-center mb-12">
           <div className="eyebrow flex items-center justify-center gap-2 mb-3">
             <span className="ornament">◆</span>
             <span>Como funciona</span>
@@ -355,30 +371,42 @@ export default function Home() {
           <h2 className="font-display text-3xl sm:text-4xl font-bold text-ink tracking-tight">
             No ar em três passos
           </h2>
-        </div>
+        </Reveal>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <StepCard
-            n="1"
-            title="Cadastre a pousada"
-            sub="Propriedade, tipos de quarto e tarifas — leva poucos minutos."
-          />
-          <StepCard
-            n="2"
-            title="Conecte os canais"
-            sub="Cole os links iCal do Airbnb e do Booking. A sincronização começa sozinha."
-          />
-          <StepCard
-            n="3"
-            title="Opere pela timeline"
-            sub="Reservas dos canais aparecem no calendário; as suas são exportadas de volta."
-          />
-        </div>
+        <motion.div
+          className="grid grid-cols-1 md:grid-cols-3 gap-4"
+          variants={revealContainer}
+          initial="hidden"
+          whileInView="show"
+          viewport={{ once: true, margin: '-60px' }}
+        >
+          {[
+            {
+              n: '1',
+              title: 'Cadastre a pousada',
+              sub: 'Propriedade, tipos de quarto e tarifas — leva poucos minutos.',
+            },
+            {
+              n: '2',
+              title: 'Conecte os canais',
+              sub: 'Cole os links iCal do Airbnb e do Booking. A sincronização começa sozinha.',
+            },
+            {
+              n: '3',
+              title: 'Opere pela timeline',
+              sub: 'Reservas dos canais aparecem no calendário; as suas são exportadas de volta.',
+            },
+          ].map((s) => (
+            <motion.div key={s.n} variants={revealItem}>
+              <StepCard n={s.n} title={s.title} sub={s.sub} />
+            </motion.div>
+          ))}
+        </motion.div>
       </section>
 
       {/* ───────────────────────── Preço ───────────────────────── */}
       <section id="preco" className="relative max-w-6xl mx-auto px-6 py-20">
-        <div className="text-center mb-12">
+        <Reveal className="text-center mb-12">
           <div className="eyebrow flex items-center justify-center gap-2 mb-3">
             <span className="ornament">◆</span>
             <span>Preço</span>
@@ -390,9 +418,9 @@ export default function Home() {
           <p className="text-ink-soft mt-3 max-w-lg mx-auto">
             Tudo incluso num só valor. Sem limites de quartos, sem taxa por reserva.
           </p>
-        </div>
+        </Reveal>
 
-        <div className="max-w-md mx-auto">
+        <Reveal className="max-w-md mx-auto">
           <div className="surface-card glow-border p-8 text-center">
             <div className="font-display font-bold text-lg text-ink mb-1">Adelina PMS</div>
             <div className="mb-6">
@@ -450,12 +478,12 @@ export default function Home() {
               )}
             </button>
           </div>
-        </div>
+        </Reveal>
       </section>
 
       {/* ───────────────────────── CTA final ───────────────────────── */}
       <section className="relative max-w-6xl mx-auto px-6 pb-20">
-        <div className="relative overflow-hidden rounded-2xl glow-border">
+        <Reveal className="relative overflow-hidden rounded-2xl glow-border">
           <div
             aria-hidden
             className="absolute inset-0"
@@ -486,7 +514,7 @@ export default function Home() {
               </button>
             </div>
           </div>
-        </div>
+        </Reveal>
       </section>
 
       {/* ───────────────────────── Footer ───────────────────────── */}
@@ -508,6 +536,38 @@ export default function Home() {
         </div>
       </footer>
     </main>
+  );
+}
+
+// ── Helpers de scroll-reveal (framer-motion) ──
+const EASE: [number, number, number, number] = [0.16, 1, 0.3, 1];
+
+const revealContainer = {
+  hidden: {},
+  show: { transition: { staggerChildren: 0.08, delayChildren: 0.05 } },
+};
+const revealItem = {
+  hidden: { opacity: 0, y: 24 },
+  show: { opacity: 1, y: 0, transition: { duration: 0.55, ease: EASE } },
+};
+
+function Reveal({
+  children,
+  className,
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <motion.div
+      className={className}
+      initial={{ opacity: 0, y: 28 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: '-80px' }}
+      transition={{ duration: 0.6, ease: EASE }}
+    >
+      {children}
+    </motion.div>
   );
 }
 
