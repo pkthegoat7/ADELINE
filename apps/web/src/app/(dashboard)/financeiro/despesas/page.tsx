@@ -409,7 +409,7 @@ function ExpenseModal({
             />
           </label>
         </div>
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <label className="block">
             <span className="text-xs text-ink-muted">Data</span>
             <input

@@ -76,8 +76,8 @@ function TenantsList() {
       {isLoading && <div className="text-sm text-ink-muted">Carregando…</div>}
 
       {data && (
-        <div className="surface-card overflow-hidden">
-          <table className="w-full text-sm">
+        <div className="surface-card overflow-x-auto scrollbar-thin">
+          <table className="w-full text-sm min-w-[640px]">
             <thead className="bg-surface-sunken/60 border-b border-line text-ink-muted text-[10px] uppercase tracking-[0.18em]">
               <tr>
                 <th className="text-left p-3 font-semibold">Pousada</th>
