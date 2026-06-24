@@ -261,7 +261,16 @@ function LoginShell({ children, loading }: { children?: React.ReactNode; loading
             children
           )}
 
-          <p className="text-[11px] text-ink-muted text-center mt-7">
+          <p className="text-sm text-ink-soft text-center mt-7">
+            Ainda não é assinante?{' '}
+            <Link
+              href="/#preco"
+              className="font-medium text-brand-600 hover:text-brand-700 hover:underline transition-colors"
+            >
+              Conheça os planos
+            </Link>
+          </p>
+          <p className="text-[11px] text-ink-muted text-center mt-2">
             Acesso restrito a colaboradores autorizados.
           </p>
         </div>
