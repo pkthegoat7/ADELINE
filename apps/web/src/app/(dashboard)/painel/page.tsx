@@ -24,6 +24,7 @@ import { cn } from '@/lib/cn';
 import { useCan } from '@/lib/use-permissions';
 import { Sparkline } from '@/components/Sparkline';
 import { AnimatedNumber } from '@/components/AnimatedNumber';
+import { PayablesDueCard } from '@/components/PayablesDueCard';
 import { useUI } from '@/lib/ui-store';
 import { Modal } from '@/components/ui/Modal';
 
@@ -324,6 +325,9 @@ export default function DashboardPage() {
           />
         </div>
       </section>
+
+      {/* Contas a vencer (só financeiro) */}
+      {canFinance && <PayablesDueCard />}
 
       {/* Próximas chegadas + canais */}
       <section className="grid grid-cols-1 lg:grid-cols-3 gap-4">
