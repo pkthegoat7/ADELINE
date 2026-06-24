@@ -10,7 +10,9 @@ import {
   startOfMonth,
   subDays,
 } from 'date-fns';
-import { TenantId } from '../../common/decorators/tenant.decorator';
+import { TenantId, CurrentUser, type AuthContext } from '../../common/decorators/tenant.decorator';
+import { can } from '../../common/permissions';
+import { redactFinancials } from './dashboard.access';
 import { PrismaService } from '../../common/prisma/prisma.service';
 
 @ApiTags('dashboard')
@@ -69,7 +71,11 @@ export class DashboardController {
   }
 
   @Get('summary')
-  async summary(@TenantId() tenantId: string, @Query('propertyId') propertyId?: string) {
+  async summary(
+    @TenantId() tenantId: string,
+    @CurrentUser() user: AuthContext,
+    @Query('propertyId') propertyId?: string,
+  ) {
     const today = new Date();
     const todayStart = startOfDay(today);
     const todayEnd = endOfDay(today);
@@ -77,7 +83,7 @@ export class DashboardController {
     const monthEnd = endOfMonth(today);
     const weekAhead = endOfDay(addDays(today, 7));
 
-    return this.prisma.withTenant(tenantId, async (tx) => {
+    const summary = await this.prisma.withTenant(tenantId, async (tx) => {
       const where = propertyId ? { propertyId } : {};
 
       // Quartos ativos
@@ -251,6 +257,8 @@ export class DashboardController {
         channels,
       };
     });
+
+    return redactFinancials(summary, can(user.role, 'expense:read'));
   }
 }
 
