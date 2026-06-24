@@ -4,7 +4,6 @@ import { Suspense, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { api } from '@/lib/api';
 import { writeMeCache, type MeSnapshot } from '@/lib/me-cache';
 import {
   ArrowLeft,
@@ -56,15 +55,16 @@ function LoginForm() {
         const msg = Array.isArray(json.message) ? json.message.join('; ') : json.message;
         throw new Error(msg ?? 'Falha no login');
       }
-      // Semeia o /me (papel + super-admin) no cache do React Query e no localStorage
-      // ANTES de navegar — assim a sidebar já renderiza a aba certa sem esperar o
-      // fetch, inclusive em navegador novo (1º acesso, sem snapshot prévio).
-      try {
-        const me = await api<MeSnapshot>('/me');
-        qc.setQueryData(['me'], me);
-        writeMeCache(me);
-      } catch {
-        /* sem bloqueio: a sidebar busca o /me normalmente */
+      // A resposta do login JÁ traz user (com isSuperAdmin) e tenant.name — semeia
+      // o cache do React Query e o localStorage ANTES de navegar, sem depender de
+      // uma 2ª chamada (/me) que pode atrasar. Assim a aba super-admin aparece na
+      // hora, inclusive em navegador novo (1º acesso). O /me roda em segundo plano
+      // (invalidate) só p/ enriquecer com appearance/tenant completos.
+      if (json?.user) {
+        const seed: MeSnapshot = { user: json.user, tenant: json.tenant };
+        qc.setQueryData(['me'], seed);
+        writeMeCache(seed);
+        qc.invalidateQueries({ queryKey: ['me'] });
       }
       router.replace(next as never);
       router.refresh();

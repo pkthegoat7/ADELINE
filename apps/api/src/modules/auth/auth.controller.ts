@@ -72,7 +72,12 @@ export class AuthController {
     const { email, password } = LoginSchema.parse(body);
     const result = await this.auth.login(email, password);
     res.header('Set-Cookie', this.auth.sessionCookie(result.token));
-    return result;
+    // isSuperAdmin já na resposta do login → a sidebar mostra a aba super-admin
+    // imediatamente, sem depender de uma 2ª chamada ao /me.
+    return {
+      ...result,
+      user: { ...result.user, isSuperAdmin: isSuperAdmin(result.user.email) },
+    };
   }
 
   @Public()

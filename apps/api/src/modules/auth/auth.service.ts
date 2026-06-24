@@ -43,7 +43,7 @@ export class AuthService {
     const user = await this.prisma.withSystem((tx) =>
       tx.user.findUnique({
         where: { email: email.toLowerCase().trim() },
-        include: { tenant: { select: { status: true } } },
+        include: { tenant: { select: { status: true, name: true } } },
       }),
     );
     // Mesma mensagem pra usuário inexistente e senha errada (evita enumeração)
@@ -63,6 +63,8 @@ export class AuthService {
     return {
       token,
       user: { id: user.id, email: user.email, fullName: user.fullName, role: user.role },
+      // Nome da pousada já vai na resposta p/ a sidebar renderizar sem 2ª chamada.
+      tenant: { name: user.tenant.name },
     };
   }
 
