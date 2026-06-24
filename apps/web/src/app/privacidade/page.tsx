@@ -1,5 +1,5 @@
 import { fetchLegalDoc } from '@/lib/legal';
-import { LegalLayout } from '../termos/page';
+import { LegalLayout } from '@/components/LegalLayout';
 
 export const dynamic = 'force-dynamic';
 
