@@ -93,6 +93,54 @@ export function buildCashflow(receipts: ReceiptRow[], payments: PaymentOutRow[])
   return { totalIn: round2(totalIn), totalOut: round2(totalOut), net: round2(totalIn - totalOut), daily };
 }
 
+export interface PayableRow {
+  id: string;
+  dueDate: string; // ISO yyyy-mm-dd
+  description: string;
+  supplier: string | null;
+  category: string;
+  propertyName: string | null;
+  amount: number;
+}
+export interface PayablesBuckets {
+  overdue: PayableRow[];
+  today: PayableRow[];
+  upcoming: PayableRow[];
+  counts: { overdue: number; today: number; upcoming: number };
+  totals: { overdue: number; today: number; upcoming: number };
+}
+
+/** Adiciona `days` a uma data ISO yyyy-mm-dd (UTC, sem fuso). */
+function addDaysIso(iso: string, days: number): string {
+  const d = new Date(`${iso}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
+export function bucketPayablesDue(rows: PayableRow[], today: string, days: number): PayablesBuckets {
+  const horizon = addDaysIso(today, days);
+  const overdue: PayableRow[] = [];
+  const todayList: PayableRow[] = [];
+  const upcoming: PayableRow[] = [];
+  for (const row of rows) {
+    if (row.dueDate < today) overdue.push(row);
+    else if (row.dueDate === today) todayList.push(row);
+    else if (row.dueDate <= horizon) upcoming.push(row);
+  }
+  const byDate = (a: PayableRow, b: PayableRow) => a.dueDate.localeCompare(b.dueDate);
+  const sum = (arr: PayableRow[]) => round2(arr.reduce((s, x) => s + x.amount, 0));
+  overdue.sort(byDate);
+  todayList.sort(byDate);
+  upcoming.sort(byDate);
+  return {
+    overdue,
+    today: todayList,
+    upcoming,
+    counts: { overdue: overdue.length, today: todayList.length, upcoming: upcoming.length },
+    totals: { overdue: sum(overdue), today: sum(todayList), upcoming: sum(upcoming) },
+  };
+}
+
 export function aggregateReceipts(rows: ReceiptRow[]): ReceiptsReport {
   const byMethodMap = new Map<ReceiptMethod, MethodTotal>();
   let total = 0;

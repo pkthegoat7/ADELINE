@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { aggregateReceipts, aggregatePayments, buildCashflow, type ReceiptRow, type PaymentOutRow } from './reports.calc';
+import { aggregateReceipts, aggregatePayments, buildCashflow, bucketPayablesDue, type ReceiptRow, type PaymentOutRow, type PayableRow } from './reports.calc';
 
 const r = (over: Partial<ReceiptRow>): ReceiptRow => ({
   id: 'x', paidAt: '2026-06-01', guestName: 'João', reservationCode: 'ADL-1',
@@ -67,5 +67,30 @@ describe('aggregatePayments', () => {
       { key: 'utilities', amount: 150, count: 2 },
       { key: 'cleaning', amount: 20, count: 1 },
     ]);
+  });
+});
+
+const due = (over: Partial<PayableRow>): PayableRow => ({
+  id: 'x', dueDate: '2026-06-10', description: 'Conta', supplier: null,
+  category: 'utilities', propertyName: null, amount: 100, ...over,
+});
+
+describe('bucketPayablesDue', () => {
+  it('separa vencidas / hoje / a vencer (≤ N dias) e descarta além de N', () => {
+    const out = bucketPayablesDue(
+      [
+        due({ id: 'a', dueDate: '2026-06-08', amount: 10 }), // vencida
+        due({ id: 'b', dueDate: '2026-06-10', amount: 20 }), // hoje
+        due({ id: 'c', dueDate: '2026-06-15', amount: 30 }), // a vencer (dentro de 7)
+        due({ id: 'd', dueDate: '2026-06-30', amount: 40 }), // fora da janela
+      ],
+      '2026-06-10',
+      7,
+    );
+    expect(out.overdue.map((x) => x.id)).toEqual(['a']);
+    expect(out.today.map((x) => x.id)).toEqual(['b']);
+    expect(out.upcoming.map((x) => x.id)).toEqual(['c']);
+    expect(out.counts).toEqual({ overdue: 1, today: 1, upcoming: 1 });
+    expect(out.totals).toEqual({ overdue: 10, today: 20, upcoming: 30 });
   });
 });
