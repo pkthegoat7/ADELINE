@@ -55,7 +55,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                   var dark;
                   if (t === 'dark') dark = true;
                   else if (t === 'light') dark = false;
-                  else dark = prefersDark;
+                  // Sem preferência explícita: a landing ('/') é escura por padrão;
+                  // demais rotas seguem o sistema.
+                  else dark = (location.pathname === '/') ? true : prefersDark;
                   if (dark) h.classList.add('dark');
 
                   var ap = localStorage.getItem('adelina-appearance');
