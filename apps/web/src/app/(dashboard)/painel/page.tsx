@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { cn } from '@/lib/cn';
+import { useCan } from '@/lib/use-permissions';
 import { Sparkline } from '@/components/Sparkline';
 import { AnimatedNumber } from '@/components/AnimatedNumber';
 import { useUI } from '@/lib/ui-store';
@@ -44,9 +45,9 @@ interface DashboardSummary {
   todayCheckIns: ReservationSummary[];
   todayCheckOuts: ReservationSummary[];
   upcomingArrivals: ReservationSummary[];
-  monthRevenue: { value: number; reservationCount: number };
-  adr: number;
-  revPar: number;
+  monthRevenue: { value: number; reservationCount: number } | null;
+  adr: number | null;
+  revPar: number | null;
   occupancySeries: Array<{ date: string; occupied: number; total: number; percent: number }>;
   channels: Array<{
     id: string;
@@ -73,6 +74,8 @@ const BRL = (v: number) =>
 export default function DashboardPage() {
   const propertyId = process.env.NEXT_PUBLIC_DEMO_PROPERTY_ID ?? '';
   const openReservation = useUI((s) => s.openReservation);
+  const can = useCan();
+  const canFinance = can('expense:read');
 
   // Aviso de "você já tem o sistema": acionado quando um usuário JÁ logado
   // clica em "Assinar" na landing e é mandado pra cá com ?ja-assinante=1.
@@ -185,30 +188,34 @@ export default function DashboardPage() {
           accent
           loading={isLoading}
         />
-        <MetricCard
-          label="Receita do mês"
-          value={data?.monthRevenue.value ?? 0}
-          format={BRL}
-          sub={`${data?.monthRevenue.reservationCount ?? 0} reservas`}
-          icon={DollarSign}
-          loading={isLoading}
-        />
-        <MetricCard
-          label="ADR"
-          value={data?.adr ?? 0}
-          format={BRL}
-          sub="Receita média por diária"
-          icon={TrendingUp}
-          loading={isLoading}
-        />
-        <MetricCard
-          label="RevPAR"
-          value={data?.revPar ?? 0}
-          format={BRL}
-          sub="Receita por quarto disponível"
-          icon={Activity}
-          loading={isLoading}
-        />
+        {canFinance && (
+          <>
+            <MetricCard
+              label="Receita do mês"
+              value={data?.monthRevenue?.value ?? 0}
+              format={BRL}
+              sub={`${data?.monthRevenue?.reservationCount ?? 0} reservas`}
+              icon={DollarSign}
+              loading={isLoading}
+            />
+            <MetricCard
+              label="ADR"
+              value={data?.adr ?? 0}
+              format={BRL}
+              sub="Receita média por diária"
+              icon={TrendingUp}
+              loading={isLoading}
+            />
+            <MetricCard
+              label="RevPAR"
+              value={data?.revPar ?? 0}
+              format={BRL}
+              sub="Receita por quarto disponível"
+              icon={Activity}
+              loading={isLoading}
+            />
+          </>
+        )}
       </section>
 
       {/* Sparkline + chegadas/saídas */}
