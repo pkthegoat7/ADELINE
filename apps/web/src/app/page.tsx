@@ -189,13 +189,35 @@ export default function Home() {
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mt-9">
-            <Link href="/login" className="btn-primary px-7 py-3 text-sm group">
+            <button
+              onClick={handleSubscribe}
+              disabled={loading}
+              className="btn-primary px-7 py-3 text-sm group disabled:opacity-60"
+            >
+              {loading ? 'Redirecionando…' : 'Assinar agora'}
+              {!loading && (
+                <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
+              )}
+            </button>
+            <Link href="/login" className="btn-secondary px-7 py-3 text-sm">
               Entrar no sistema
-              <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
             </Link>
-            <Link href="/calendario" className="btn-secondary px-7 py-3 text-sm">
-              Ver calendário
-            </Link>
+          </div>
+
+          {/* Faixa de confiança — pontos factuais, sem prova social fabricada */}
+          <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 mt-6 text-xs text-ink-muted">
+            <span className="flex items-center gap-1.5">
+              <Check className="w-3.5 h-3.5 text-emerald-500" />
+              Sincroniza a cada 5 min
+            </span>
+            <span className="flex items-center gap-1.5">
+              <Check className="w-3.5 h-3.5 text-emerald-500" />
+              Sem fidelidade — cancele quando quiser
+            </span>
+            <span className="flex items-center gap-1.5">
+              <Check className="w-3.5 h-3.5 text-emerald-500" />
+              Dados protegidos (LGPD)
+            </span>
           </div>
         </div>
 
