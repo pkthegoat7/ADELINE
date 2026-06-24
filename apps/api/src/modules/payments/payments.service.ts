@@ -1,8 +1,10 @@
 import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { MercadoPagoConfig, Payment as MpPayment, Preference } from 'mercadopago';
+import { PaymentMethod } from '@adelina/db';
 import { randomBytes } from 'crypto';
 import { differenceInCalendarDays, format } from 'date-fns';
 import { PrismaService } from '../../common/prisma/prisma.service';
+import { computePaymentStatus } from './payment-status';
 import { verifyMpSignature } from '../../common/mp-webhook';
 import { TenantSettingsService } from '../../common/tenant-settings.service';
 import { publicWebUrl } from '../../common/public-url';
@@ -286,5 +288,42 @@ export class PaymentsService {
     });
 
     this.logger.log(`PaymentLink ${link.id} pago (mp ${pay.id}).`);
+  }
+
+  /** Registra um recebimento manual (dinheiro/pix/cartão) numa reserva e recalcula o status. */
+  async recordReceipt(
+    tenantId: string,
+    reservationId: string,
+    input: { amount: number; method: PaymentMethod; paidAt?: string; note?: string },
+  ) {
+    return this.prisma.withTenant(tenantId, async (tx) => {
+      const reservation = await tx.reservation.findFirst({
+        where: { id: reservationId, tenantId },
+        select: { id: true, totalAmount: true },
+      });
+      if (!reservation) throw new NotFoundException('Reserva não encontrada.');
+
+      await tx.payment.create({
+        data: {
+          reservationId,
+          amount: input.amount,
+          method: input.method,
+          status: 'paid',
+          paidAt: input.paidAt ? new Date(input.paidAt) : new Date(),
+          metadata: input.note ? { note: input.note } : undefined,
+        },
+      });
+
+      const paid = await tx.payment.findMany({
+        where: { reservationId, status: 'paid' },
+        select: { amount: true },
+      });
+      const totalPaid = paid.reduce((s, p) => s + Number(p.amount), 0);
+      await tx.reservation.update({
+        where: { id: reservationId },
+        data: { paymentStatus: computePaymentStatus(totalPaid, Number(reservation.totalAmount)) },
+      });
+      return { ok: true, totalPaid };
+    });
   }
 }
