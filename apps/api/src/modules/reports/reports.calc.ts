@@ -65,6 +65,34 @@ export function aggregatePayments(rows: PaymentOutRow[]): PaymentsReport {
   };
 }
 
+export interface CashflowDay { date: string; inflow: number; outflow: number; net: number; }
+export interface CashflowReport {
+  totalIn: number;
+  totalOut: number;
+  net: number;
+  daily: CashflowDay[];
+}
+
+export function buildCashflow(receipts: ReceiptRow[], payments: PaymentOutRow[]): CashflowReport {
+  const days = new Map<string, CashflowDay>();
+  const dayOf = (date: string): CashflowDay => {
+    const cur = days.get(date) ?? { date, inflow: 0, outflow: 0, net: 0 };
+    days.set(date, cur);
+    return cur;
+  };
+  for (const r of receipts) dayOf(r.paidAt).inflow = round2(dayOf(r.paidAt).inflow + r.amount);
+  for (const p of payments) dayOf(p.paidAt).outflow = round2(dayOf(p.paidAt).outflow + p.amount);
+  const daily = [...days.values()].sort((a, b) => a.date.localeCompare(b.date));
+  let totalIn = 0;
+  let totalOut = 0;
+  for (const d of daily) {
+    d.net = round2(d.inflow - d.outflow);
+    totalIn += d.inflow;
+    totalOut += d.outflow;
+  }
+  return { totalIn: round2(totalIn), totalOut: round2(totalOut), net: round2(totalIn - totalOut), daily };
+}
+
 export function aggregateReceipts(rows: ReceiptRow[]): ReceiptsReport {
   const byMethodMap = new Map<ReceiptMethod, MethodTotal>();
   let total = 0;

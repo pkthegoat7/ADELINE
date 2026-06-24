@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { aggregateReceipts, aggregatePayments, type ReceiptRow, type PaymentOutRow } from './reports.calc';
+import { aggregateReceipts, aggregatePayments, buildCashflow, type ReceiptRow, type PaymentOutRow } from './reports.calc';
 
 const r = (over: Partial<ReceiptRow>): ReceiptRow => ({
   id: 'x', paidAt: '2026-06-01', guestName: 'João', reservationCode: 'ADL-1',
@@ -30,6 +30,22 @@ describe('aggregateReceipts', () => {
 const p = (over: Partial<PaymentOutRow>): PaymentOutRow => ({
   id: 'x', type: 'expense', paidAt: '2026-06-01', description: 'Luz',
   counterparty: 'CEMIG', category: 'utilities', propertyName: 'Casa', amount: 100, ...over,
+});
+
+describe('buildCashflow', () => {
+  it('consolida entradas - saídas com quebra diária ordenada', () => {
+    const receipts = [r({ paidAt: '2026-06-01', amount: 100 }), r({ paidAt: '2026-06-02', amount: 40 })];
+    const payments = [p({ paidAt: '2026-06-01', amount: 30 }), p({ paidAt: '2026-06-03', amount: 10 })];
+    const out = buildCashflow(receipts, payments);
+    expect(out.totalIn).toBe(140);
+    expect(out.totalOut).toBe(40);
+    expect(out.net).toBe(100);
+    expect(out.daily).toEqual([
+      { date: '2026-06-01', inflow: 100, outflow: 30, net: 70 },
+      { date: '2026-06-02', inflow: 40, outflow: 0, net: 40 },
+      { date: '2026-06-03', inflow: 0, outflow: 10, net: -10 },
+    ]);
+  });
 });
 
 describe('aggregatePayments', () => {
