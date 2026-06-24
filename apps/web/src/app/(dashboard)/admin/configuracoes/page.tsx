@@ -80,6 +80,17 @@ function MercadoPagoSection() {
     onError: (err: Error) => toast.error('Erro ao salvar', err.message),
   });
 
+  const removeSecret = useMutation({
+    mutationFn: () =>
+      api('/admin/settings/mp_webhook_secret', { method: 'DELETE' }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin-settings'] });
+      setSecret('');
+      toast.success('Assinatura secreta removida. Os webhooks ficam sem validação até cadastrar uma nova.');
+    },
+    onError: (err: Error) => toast.error('Erro ao remover', err.message),
+  });
+
   const save = useMutation({
     mutationFn: () =>
       api('/admin/settings', {
@@ -186,11 +197,29 @@ function MercadoPagoSection() {
 
           <div className="border-t border-line pt-4">
             {currentSecret && (
-              <div className="text-sm mb-2">
-                <span className="text-ink-muted">Assinatura secreta atual: </span>
-                <code className="text-ink bg-surface-sunken px-2 py-0.5 rounded text-xs">
-                  {currentSecret.value}
-                </code>
+              <div className="flex items-center justify-between gap-3 flex-wrap mb-2">
+                <div className="text-sm">
+                  <span className="text-ink-muted">Assinatura secreta atual: </span>
+                  <code className="text-ink bg-surface-sunken px-2 py-0.5 rounded text-xs">
+                    {currentSecret.value}
+                  </code>
+                </div>
+                <button
+                  onClick={() => {
+                    if (
+                      confirm(
+                        'Remover a assinatura secreta? Os webhooks do Mercado Pago deixam de ser validados até você cadastrar uma nova.',
+                      )
+                    ) {
+                      removeSecret.mutate();
+                    }
+                  }}
+                  disabled={removeSecret.isPending}
+                  className="btn-ghost text-xs text-danger hover:text-danger disabled:opacity-50"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  {removeSecret.isPending ? 'Removendo…' : 'Remover assinatura'}
+                </button>
               </div>
             )}
             <label htmlFor="mp-secret" className="block text-sm font-medium text-ink mb-1">
