@@ -14,6 +14,9 @@ import {
   DEFAULT_APPEARANCE,
   DENSITY_LABELS,
   RADIUS_LABELS,
+  STYLE_LABELS,
+  FONT_LABELS,
+  BG_LABELS,
   applyToHtml,
   normalizeAppearance,
   saveCached,
@@ -22,6 +25,9 @@ import {
   type BrandPreset,
   type Density,
   type Radius,
+  type StylePreset,
+  type FontPreset,
+  type BgPreset,
 } from '@/lib/appearance';
 
 interface MeResponse {
@@ -268,6 +274,78 @@ function AppearanceSection({ serverAppearance }: { serverAppearance: unknown }) 
                     style={{ borderRadius: previewRadius }}
                   />
                   {RADIUS_LABELS[r]}
+                </button>
+              );
+            })}
+          </div>
+        </Field>
+
+        {/* Estilo */}
+        <Field label="Estilo">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            {(Object.keys(STYLE_LABELS) as StylePreset[]).map((s) => {
+              const active = draft.style === s;
+              return (
+                <button
+                  key={s}
+                  onClick={() => patch({ style: s })}
+                  className={cn(
+                    'px-3 py-2 text-sm rounded-[var(--radius-control)] border transition-all',
+                    active
+                      ? 'border-brand-400 bg-brand-50/60 text-ink dark:bg-white/[0.06]'
+                      : 'border-line text-ink-soft hover:border-brand-400/40 hover:text-ink',
+                  )}
+                >
+                  {STYLE_LABELS[s]}
+                </button>
+              );
+            })}
+          </div>
+          <p className="text-[11px] text-ink-muted mt-2">
+            Muda profundidade e superfícies do sistema. "Vidro" usa efeito translúcido.
+          </p>
+        </Field>
+
+        {/* Fonte */}
+        <Field label="Fonte">
+          <div className="flex gap-2">
+            {(Object.keys(FONT_LABELS) as FontPreset[]).map((fk) => {
+              const active = draft.font === fk;
+              return (
+                <button
+                  key={fk}
+                  onClick={() => patch({ font: fk })}
+                  className={cn(
+                    'flex-1 px-3 py-2 text-sm rounded-[var(--radius-control)] border transition-all',
+                    active
+                      ? 'border-brand-400 bg-brand-50/60 text-ink dark:bg-white/[0.06]'
+                      : 'border-line text-ink-soft hover:border-brand-400/40 hover:text-ink',
+                  )}
+                >
+                  {FONT_LABELS[fk]}
+                </button>
+              );
+            })}
+          </div>
+        </Field>
+
+        {/* Fundo */}
+        <Field label="Fundo">
+          <div className="flex gap-2">
+            {(Object.keys(BG_LABELS) as BgPreset[]).map((bk) => {
+              const active = draft.bg === bk;
+              return (
+                <button
+                  key={bk}
+                  onClick={() => patch({ bg: bk })}
+                  className={cn(
+                    'flex-1 px-3 py-2 text-sm rounded-[var(--radius-control)] border transition-all',
+                    active
+                      ? 'border-brand-400 bg-brand-50/60 text-ink dark:bg-white/[0.06]'
+                      : 'border-line text-ink-soft hover:border-brand-400/40 hover:text-ink',
+                  )}
+                >
+                  {BG_LABELS[bk]}
                 </button>
               );
             })}
