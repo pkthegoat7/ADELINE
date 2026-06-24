@@ -2,8 +2,9 @@
 
 import { useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, Pencil, Trash2, Search, Filter, MessageCircle, XCircle, CreditCard } from 'lucide-react';
+import { Plus, Pencil, Trash2, Search, Filter, MessageCircle, XCircle, CreditCard, BadgeDollarSign } from 'lucide-react';
 import { SendRegistrationLinkModal } from '@/components/SendRegistrationLinkModal';
+import { RecordReceiptModal } from '@/components/RecordReceiptModal';
 import { motion } from 'framer-motion';
 import { api } from '@/lib/api';
 import { useCan } from '@/lib/use-permissions';
@@ -63,6 +64,7 @@ export default function ReservationsPage() {
   const [filter, setFilter] = useState<StatusFilter>('all');
   const [fichaFor, setFichaFor] = useState<Reservation | null>(null);
   const [payModal, setPayModal] = useState<{ id: string; total: number } | null>(null);
+  const [receiptFor, setReceiptFor] = useState<string | null>(null);
 
   const { data, isLoading } = useQuery({
     queryKey: ['reservations'],
@@ -311,6 +313,16 @@ export default function ReservationsPage() {
                               <CreditCard className="w-4 h-4" />
                             </button>
                           )}
+                          {can('payment:record') && (
+                            <button
+                              onClick={() => setReceiptFor(r.id)}
+                              disabled={isCancelled}
+                              data-tip="Registrar recebimento"
+                              className="p-1.5 text-ink-muted hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 rounded-md disabled:opacity-30 disabled:cursor-not-allowed active:scale-95 transition-all"
+                            >
+                              <BadgeDollarSign className="w-4 h-4" />
+                            </button>
+                          )}
                           {can('reservation:write') && (
                             <button
                               onClick={() => startEdit(r)}
@@ -397,6 +409,10 @@ export default function ReservationsPage() {
           reservationTotal={payModal.total}
           onClose={() => setPayModal(null)}
         />
+      )}
+
+      {receiptFor && (
+        <RecordReceiptModal reservationId={receiptFor} onClose={() => setReceiptFor(null)} />
       )}
     </div>
   );
