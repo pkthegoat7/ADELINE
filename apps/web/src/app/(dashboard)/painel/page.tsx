@@ -98,6 +98,19 @@ export default function DashboardPage() {
     refetchInterval: 60_000,
   });
 
+  // Reusa o cache de ['me'] já carregado no layout do dashboard p/ a saudação.
+  const { data: me } = useQuery({
+    queryKey: ['me'],
+    queryFn: () => api<{ tenant?: { name?: string } }>('/me'),
+  });
+  const greeting = (() => {
+    const h = new Date().getHours();
+    if (h < 12) return 'Bom dia';
+    if (h < 18) return 'Boa tarde';
+    return 'Boa noite';
+  })();
+  const tenantName = me?.tenant?.name;
+
   const todayLabel = format(new Date(), "EEEE, dd 'de' MMMM", { locale: ptBR });
   const occSeries = data?.occupancySeries ?? [];
   const avg30 =
@@ -155,10 +168,15 @@ export default function DashboardPage() {
         <div>
           <div className="flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-ink-muted mb-1">
             <span className="ornament">◆</span>
-            <span>Hoje</span>
+            <span>{todayLabel.charAt(0).toUpperCase() + todayLabel.slice(1)}</span>
           </div>
           <h2 className="font-serif text-2xl sm:text-3xl tracking-serif text-ink">
-            {todayLabel.charAt(0).toUpperCase() + todayLabel.slice(1)}
+            {greeting}
+            {tenantName ? (
+              <>
+                , <span className="text-brand-600 dark:text-brand-400">{tenantName}</span>
+              </>
+            ) : null}
           </h2>
         </div>
         <div className="flex items-center gap-2 text-xs text-ink-muted">
@@ -173,8 +191,9 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* Cards de métricas */}
-      <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 stagger">
+      {/* Cards de métricas — sempre 3 não-financeiros; +3 financeiros p/ quem
+          tem expense:read. Grid de 3 colunas reflui sem buracos nos dois casos. */}
+      <section className="grid grid-cols-2 lg:grid-cols-3 gap-4 stagger">
         <MetricCard
           label="Ocupação"
           value={data?.occupancy.percent ?? 0}
@@ -186,6 +205,22 @@ export default function DashboardPage() {
           }
           icon={BedDouble}
           accent
+          loading={isLoading}
+        />
+        <MetricCard
+          label="Chegadas hoje"
+          value={data?.todayCheckIns.length ?? 0}
+          format={(n) => `${Math.round(n)}`}
+          sub="check-ins programados"
+          icon={CalendarCheck}
+          loading={isLoading}
+        />
+        <MetricCard
+          label="Saídas hoje"
+          value={data?.todayCheckOuts.length ?? 0}
+          format={(n) => `${Math.round(n)}`}
+          sub="check-outs programados"
+          icon={LogOut}
           loading={isLoading}
         />
         {canFinance && (
