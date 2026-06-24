@@ -2,9 +2,9 @@ const BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3333';
 
 export async function api<T = unknown>(
   path: string,
-  init: RequestInit = {},
+  init: RequestInit & { raw?: boolean } = {},
 ): Promise<T> {
-  const { headers, ...rest } = init;
+  const { headers, raw, ...rest } = init;
   const res = await fetch(`${BASE}/api${path}`, {
     ...rest,
     // Sessão via cookie httpOnly compartilhado entre web e api
@@ -28,5 +28,7 @@ export async function api<T = unknown>(
     }
     throw new Error(msg || `API ${res.status}`);
   }
+  // raw: devolve o Response cru (ex.: download de CSV via .blob())
+  if (raw) return res as unknown as T;
   return res.json() as Promise<T>;
 }
