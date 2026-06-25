@@ -78,14 +78,15 @@ export class PaymentsController {
   @Post('pay/webhook')
   async webhook(@Body() body: unknown, @Req() req: FastifyRequest) {
     const parsed = body as { type?: string; data?: { id?: string } };
-    const query = req.query as { type?: string; 'data.id'?: string };
+    const query = req.query as { type?: string; 'data.id'?: string; tenant?: string };
     const type = parsed?.type ?? query?.type;
     const dataId = parsed?.data?.id ?? query?.['data.id'];
-    if (type && dataId) {
+    const tenantId = query?.tenant;
+    if (type && dataId && tenantId) {
       await this.payments.handleWebhook(type, String(dataId), {
         signature: req.headers['x-signature'] as string | undefined,
         requestId: req.headers['x-request-id'] as string | undefined,
-      });
+      }, String(tenantId));
     }
     return { ok: true };
   }
