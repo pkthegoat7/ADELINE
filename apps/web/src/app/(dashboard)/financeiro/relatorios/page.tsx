@@ -88,15 +88,18 @@ export default function RelatoriosPage() {
   };
 
   return (
-    <div className="space-y-6 print:space-y-3">
+    <div className="p-4 md:p-6 lg:p-8 space-y-5 max-w-[1400px] print:p-0 print:space-y-3">
       {/* Cabeçalho */}
-      <div className="print:hidden">
+      <header className="print:hidden">
         <div className="flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-ink-muted mb-1">
-          Financeiro
+          <span className="ornament">◆</span>
+          <span>Financeiro</span>
         </div>
         <h2 className="font-serif text-2xl sm:text-3xl tracking-serif text-ink">Relatórios</h2>
-        <p className="text-sm text-ink-muted mt-1">Recebimentos, pagamentos e fluxo de caixa por período.</p>
-      </div>
+        <p className="text-sm text-ink-muted mt-1">
+          Recebimentos, pagamentos e fluxo de caixa por período.
+        </p>
+      </header>
 
       {/* Cabeçalho de impressão */}
       <div className="hidden print:block">
@@ -106,54 +109,61 @@ export default function RelatoriosPage() {
         </p>
       </div>
 
-      {/* Abas + filtros + export */}
-      <div className="flex flex-wrap items-end justify-between gap-3 print:hidden">
-        <div className="flex gap-2">
-          {(['receipts', 'payments', 'cashflow'] as Tab[]).map((t) => (
-            <button
-              key={t}
-              onClick={() => setTab(t)}
-              className={`px-3 py-1.5 rounded-lg text-sm transition-colors ${
-                tab === t ? 'bg-brand-600 text-white' : 'bg-surface-2 text-ink-muted hover:text-ink'
-              }`}
-            >
-              {TAB_LABEL[t]}
-            </button>
-          ))}
-        </div>
-        <div className="flex flex-wrap items-end gap-2">
-          <label className="text-xs text-ink-muted">
-            De
-            <input
-              type="date"
-              className="input-base block"
-              value={from}
-              onChange={(e) => setFrom(e.target.value)}
-            />
-          </label>
-          <label className="text-xs text-ink-muted">
-            Até
-            <input
-              type="date"
-              className="input-base block"
-              value={to}
-              onChange={(e) => setTo(e.target.value)}
-            />
-          </label>
-          <div className="w-48">
-            <Select
-              value={propertyId}
-              onChange={setPropertyId}
-              options={[
-                { value: '', label: 'Todas as propriedades' },
-                ...((properties ?? []).map((p) => ({ value: p.id, label: p.name }))),
-              ]}
-            />
-          </div>
+      {/* Abas */}
+      <div className="flex flex-wrap gap-1.5 print:hidden" role="tablist">
+        {(['receipts', 'payments', 'cashflow'] as Tab[]).map((t) => (
+          <button
+            key={t}
+            role="tab"
+            aria-selected={tab === t}
+            onClick={() => setTab(t)}
+            className={`px-3.5 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+              tab === t
+                ? 'bg-brand-600 text-white shadow-sm'
+                : 'bg-surface-2 text-ink-muted hover:text-ink'
+            }`}
+          >
+            {TAB_LABEL[t]}
+          </button>
+        ))}
+      </div>
+
+      {/* Filtros + export */}
+      <div className="flex flex-wrap items-end gap-3 print:hidden">
+        <Field label="De" className="w-[9.5rem]">
+          <input
+            type="date"
+            className="input-base w-full"
+            value={from}
+            onChange={(e) => setFrom(e.target.value)}
+          />
+        </Field>
+        <Field label="Até" className="w-[9.5rem]">
+          <input
+            type="date"
+            className="input-base w-full"
+            value={to}
+            onChange={(e) => setTo(e.target.value)}
+          />
+        </Field>
+        <Field label="Propriedade" className="w-56">
+          <Select
+            value={propertyId}
+            onChange={setPropertyId}
+            options={[
+              { value: '', label: 'Todas as propriedades' },
+              ...((properties ?? []).map((p) => ({ value: p.id, label: p.name }))),
+            ]}
+          />
+        </Field>
+        <div className="ml-auto flex items-center gap-2">
           <button onClick={downloadCsv} className="btn-secondary inline-flex items-center gap-1.5">
             <FileDown size={15} /> CSV
           </button>
-          <button onClick={() => window.print()} className="btn-secondary inline-flex items-center gap-1.5">
+          <button
+            onClick={() => window.print()}
+            className="btn-secondary inline-flex items-center gap-1.5"
+          >
             <Printer size={15} /> PDF
           </button>
         </div>
@@ -161,7 +171,7 @@ export default function RelatoriosPage() {
 
       {/* Conteúdo por aba */}
       {isLoading ? (
-        <p className="text-ink-muted">Carregando…</p>
+        <p className="text-ink-muted py-12 text-center">Carregando…</p>
       ) : tab === 'receipts' ? (
         <ReceiptsView data={data} />
       ) : tab === 'payments' ? (
@@ -170,6 +180,24 @@ export default function RelatoriosPage() {
         <CashflowView data={data} />
       )}
     </div>
+  );
+}
+
+/** Campo rotulado: rótulo padronizado acima do controle, alinhado na base. */
+function Field({
+  label,
+  className,
+  children,
+}: {
+  label: string;
+  className?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <label className={`block ${className ?? ''}`}>
+      <span className="block text-xs uppercase tracking-wide text-ink-muted mb-1.5">{label}</span>
+      {children}
+    </label>
   );
 }
 
@@ -184,14 +212,32 @@ function Card({ title, value, tone }: { title: string; value: string; tone?: 'in
   );
 }
 
-function Table({ head, rows }: { head: string[]; rows: (string | number)[][] }) {
+/**
+ * `align`: índices das colunas (0-based) que devem alinhar à direita —
+ * valores monetários/numéricos. Essas colunas recebem `num-tabular`.
+ */
+function Table({
+  head,
+  rows,
+  align = [],
+}: {
+  head: string[];
+  rows: (string | number)[][];
+  align?: number[];
+}) {
+  const isRight = (j: number) => align.includes(j);
   return (
-    <div className="overflow-x-auto rounded-lg border border-line">
+    <div className="overflow-x-auto rounded-lg border border-line bg-surface-card print:border-0">
       <table className="w-full text-sm">
-        <thead className="text-left text-ink-muted border-b border-line">
+        <thead className="text-ink-muted border-b border-line bg-surface-2/40">
           <tr>
-            {head.map((h) => (
-              <th key={h} className="px-3 py-2 font-medium">
+            {head.map((h, j) => (
+              <th
+                key={h}
+                className={`px-3 py-2.5 font-medium whitespace-nowrap ${
+                  isRight(j) ? 'text-right' : 'text-left'
+                }`}
+              >
                 {h}
               </th>
             ))}
@@ -200,15 +246,20 @@ function Table({ head, rows }: { head: string[]; rows: (string | number)[][] }) 
         <tbody>
           {rows.length === 0 ? (
             <tr>
-              <td colSpan={head.length} className="px-3 py-8 text-center text-ink-muted">
+              <td colSpan={head.length} className="px-3 py-10 text-center text-ink-muted">
                 Sem dados no período.
               </td>
             </tr>
           ) : (
             rows.map((r, i) => (
-              <tr key={i} className="border-b border-line/60">
+              <tr key={i} className="border-b border-line/60 last:border-0 hover:bg-surface-2/30">
                 {r.map((c, j) => (
-                  <td key={j} className="px-3 py-2 num-tabular">
+                  <td
+                    key={j}
+                    className={`px-3 py-2.5 ${
+                      isRight(j) ? 'text-right num-tabular text-ink' : 'text-ink-soft'
+                    }`}
+                  >
                     {c}
                   </td>
                 ))}
@@ -234,6 +285,7 @@ function ReceiptsView({ data }: { data: any }) {
       </div>
       <Table
         head={['Data', 'Hóspede', 'Reserva', 'Propriedade', 'Método', 'Valor']}
+        align={[5]}
         rows={data.rows.map((r: any) => [
           r.paidAt,
           r.guestName,
@@ -259,6 +311,7 @@ function PaymentsView({ data }: { data: any }) {
       </div>
       <Table
         head={['Data', 'Tipo', 'Descrição', 'Fornecedor/Prop.', 'Categoria', 'Propriedade', 'Valor']}
+        align={[6]}
         rows={data.rows.map((r: any) => [
           r.paidAt,
           r.type === 'payout' ? 'Repasse' : 'Despesa',
@@ -277,13 +330,14 @@ function CashflowView({ data }: { data: any }) {
   if (!data) return null;
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <Card title="Entradas" value={brl(data.totalIn)} tone="in" />
         <Card title="Saídas" value={brl(data.totalOut)} tone="out" />
         <Card title="Resultado" value={brl(data.net)} tone="net" />
       </div>
       <Table
         head={['Dia', 'Entradas', 'Saídas', 'Saldo']}
+        align={[1, 2, 3]}
         rows={data.daily.map((d: any) => [d.date, brl(d.inflow), brl(d.outflow), brl(d.net)])}
       />
     </div>
