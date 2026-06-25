@@ -16,4 +16,19 @@ describe('toCsv', () => {
     const csv = toCsv(['a', 'b'], [[null as unknown as string, '']]);
     expect(csv).toBe('a,b\n,');
   });
+
+  it('neutraliza injeção de fórmula em strings (=,+,-,@) com apóstrofo', () => {
+    const csv = toCsv(
+      ['nome'],
+      [['=HYPERLINK("http://x")'], ['+1'], ['-cmd'], ['@SUM(A1)'], ['João']],
+    );
+    expect(csv).toBe(
+      'nome\n"\'=HYPERLINK(""http://x"")"\n\'+1\n\'-cmd\n\'@SUM(A1)\nJoão',
+    );
+  });
+
+  it('NÃO prefixa números negativos (saldo -10 fica intacto)', () => {
+    const csv = toCsv(['dia', 'saldo'], [['2026-06-01', -10]]);
+    expect(csv).toBe('dia,saldo\n2026-06-01,-10');
+  });
 });

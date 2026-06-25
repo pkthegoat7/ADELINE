@@ -107,6 +107,7 @@ export class AuthController {
   }
 
   /** Usuário logado troca a própria senha. */
+  @Throttle({ strict: { limit: 5, ttl: 60_000 } })
   @Patch('password')
   async changePassword(@CurrentUser() user: AuthContext, @Body() body: unknown) {
     const { currentPassword, newPassword } = ChangePasswordSchema.parse(body);

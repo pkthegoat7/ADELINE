@@ -35,7 +35,7 @@ export class AuthService {
   ) {}
 
   hashPassword(plain: string): Promise<string> {
-    return hash(plain, 10);
+    return hash(plain, 12);
   }
 
   async login(email: string, password: string) {
