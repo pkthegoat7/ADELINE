@@ -23,6 +23,7 @@ export type Capability =
   | 'settings:manage' // aparência, termos, whatsapp, templates
   | 'payment:link' // gerar link de pagamento
   | 'payment:record' // registrar recebimento manual (dinheiro/pix/cartão)
+  | 'payment:account' // configurar a conta MP de recebimento da pousada (owner)
   | 'team:manage' // logins/permissões
   | 'expense:read' // ver despesas/financeiro
   | 'expense:manage' // criar/editar/excluir despesa
@@ -48,6 +49,7 @@ const CAPABILITY_ROLES: Record<Capability, readonly Role[]> = {
   'settings:manage': ['owner', 'manager'],
   'payment:link': ['owner', 'manager', 'receptionist'],
   'payment:record': ['owner', 'manager', 'receptionist'],
+  'payment:account': ['owner'],
   'team:manage': ['owner', 'manager'],
   'expense:read': ['owner', 'manager'],
   'expense:manage': ['owner', 'manager'],
