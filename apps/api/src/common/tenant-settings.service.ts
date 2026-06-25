@@ -18,9 +18,24 @@ export const TENANT_SETTING_KEYS = [
   'payment_terms_of_service',
   'payment_lgpd_consent',
   'payment_link_auto_whatsapp',
+  'payment_mp_access_token',
+  'payment_mp_webhook_secret',
 ] as const;
 
 export type TenantSettingKey = (typeof TENANT_SETTING_KEYS)[number];
+
+/** Chaves cujo valor é segredo e NÃO pode voltar em texto puro pro web. */
+export const SENSITIVE_TENANT_KEYS = [
+  'payment_mp_access_token',
+  'payment_mp_webhook_secret',
+] as const satisfies readonly TenantSettingKey[];
+
+/** Mascara um segredo deixando só os últimos 4 caracteres. '' continua ''. */
+export function maskSecret(value: string): string {
+  if (!value) return '';
+  if (value.length <= 4) return '••••';
+  return `••••${value.slice(-4)}`;
+}
 
 @Injectable()
 export class TenantSettingsService {
@@ -37,6 +52,8 @@ export class TenantSettingsService {
         map.get('payment_terms_of_service') || DEFAULT_TERMS_OF_SERVICE,
       payment_lgpd_consent: map.get('payment_lgpd_consent') || DEFAULT_LGPD_CONSENT,
       payment_link_auto_whatsapp: map.get('payment_link_auto_whatsapp') || 'false',
+      payment_mp_access_token: map.get('payment_mp_access_token') || '',
+      payment_mp_webhook_secret: map.get('payment_mp_webhook_secret') || '',
     };
   }
 

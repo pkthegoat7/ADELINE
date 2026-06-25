@@ -94,6 +94,7 @@ export default function SettingsPage() {
           {can('settings:manage') && <MessageTemplatesSection />}
 
           {can('settings:manage') && <PagamentosSettings />}
+          {can('payment:account') && <PaymentAccountSettings />}
 
           <section className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-sm text-amber-900">
             <strong>Em construção:</strong> edição de dados, gerenciamento de usuários e integrações
@@ -517,7 +518,7 @@ function PagamentosSettings() {
         payment_terms_of_service: string;
         payment_lgpd_consent: string;
         payment_link_auto_whatsapp: string;
-      }>('/configuracoes'),
+      }>('/settings'),
   });
 
   useEffect(() => {
@@ -605,6 +606,203 @@ function PagamentosSettings() {
           >
             {save.isPending ? 'Salvando…' : 'Salvar'}
           </button>
+        </>
+      )}
+    </section>
+  );
+}
+
+function PaymentAccountSettings() {
+  const qc = useQueryClient();
+  const [token, setToken] = useState('');
+  const [secret, setSecret] = useState('');
+  const [showGuide, setShowGuide] = useState(false);
+
+  const { data, isLoading } = useQuery({
+    queryKey: ['tenant-settings'],
+    queryFn: () =>
+      api<{ payment_mp_access_token: string; payment_mp_webhook_secret: string }>('/settings'),
+  });
+  const { data: me } = useQuery({
+    queryKey: ['me'],
+    queryFn: () => api<{ user: { tenantId: string } }>('/me'),
+  });
+
+  const configured =
+    !!data?.payment_mp_access_token && !!data?.payment_mp_webhook_secret;
+  const apiBase = process.env.NEXT_PUBLIC_API_URL ?? '';
+  const webhookUrl = me
+    ? `${apiBase}/api/payments/pay/webhook?tenant=${me.user.tenantId}`
+    : '';
+
+  const save = useMutation({
+    mutationFn: async () => {
+      await api('/settings/payment-account', {
+        method: 'PUT',
+        body: JSON.stringify({
+          accessToken: token.trim() || undefined,
+          webhookSecret: secret.trim() || undefined,
+        }),
+      });
+    },
+    onSuccess: () => {
+      setToken('');
+      setSecret('');
+      qc.invalidateQueries({ queryKey: ['tenant-settings'] });
+      toast.success('Conta de recebimento salva');
+    },
+    onError: (err: Error) => toast.error('Erro ao salvar', { description: err.message }),
+  });
+
+  const copyWebhook = () => {
+    navigator.clipboard.writeText(webhookUrl);
+    toast.success('URL do webhook copiada');
+  };
+
+  return (
+    <section className="surface-card p-5 space-y-4">
+      <div>
+        <h2 className="font-semibold text-ink flex items-center gap-2">
+          <CreditCard className="w-4 h-4 text-brand-600" /> Conta de recebimento (Mercado Pago)
+        </h2>
+        <p className="text-xs text-ink-muted mt-0.5">
+          Onde o dinheiro dos links de pagamento das suas reservas vai cair.
+        </p>
+      </div>
+
+      {isLoading ? (
+        <div className="text-sm text-ink-muted">Carregando…</div>
+      ) : (
+        <>
+          <div
+            className={cn(
+              'flex items-center gap-2 rounded-lg px-3 py-2 text-sm',
+              configured
+                ? 'bg-emerald-500/10 text-emerald-600'
+                : 'bg-amber-500/10 text-amber-600',
+            )}
+          >
+            {configured ? (
+              <>
+                <Check className="w-4 h-4" /> Conta configurada — links de pagamento ativos.
+              </>
+            ) : (
+              <>
+                <AlertTriangle className="w-4 h-4" /> Conta ainda não configurada — os links de
+                pagamento ficam indisponíveis até você preencher abaixo.
+              </>
+            )}
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-ink mb-1">
+              Access Token do Mercado Pago
+            </label>
+            <input
+              type="password"
+              autoComplete="off"
+              value={token}
+              onChange={(e) => setToken(e.target.value)}
+              placeholder={
+                data?.payment_mp_access_token
+                  ? `Salvo: ${data.payment_mp_access_token} (deixe vazio p/ manter)`
+                  : 'APP_USR-…'
+              }
+              className="input-base w-full text-sm font-mono"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-ink mb-1">
+              Assinatura secreta (webhook)
+            </label>
+            <input
+              type="password"
+              autoComplete="off"
+              value={secret}
+              onChange={(e) => setSecret(e.target.value)}
+              placeholder={
+                data?.payment_mp_webhook_secret
+                  ? `Salvo: ${data.payment_mp_webhook_secret} (deixe vazio p/ manter)`
+                  : 'cole a assinatura secreta do webhook'
+              }
+              className="input-base w-full text-sm font-mono"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-ink mb-1">URL do webhook</label>
+            <div className="flex gap-2">
+              <input
+                readOnly
+                value={webhookUrl}
+                className="input-base w-full text-sm font-mono text-ink-muted"
+              />
+              <button onClick={copyWebhook} className="btn-secondary text-sm whitespace-nowrap">
+                Copiar
+              </button>
+            </div>
+          </div>
+
+          <button
+            onClick={() => save.mutate()}
+            disabled={save.isPending}
+            className="btn-primary text-sm disabled:opacity-50"
+          >
+            {save.isPending ? 'Salvando…' : 'Salvar conta de recebimento'}
+          </button>
+
+          <div className="border-t border-line pt-3">
+            <button
+              onClick={() => setShowGuide((v) => !v)}
+              className="text-sm text-brand-600 hover:underline"
+            >
+              {showGuide ? '▾' : '▸'} Como configurar (passo a passo)
+            </button>
+            {showGuide && (
+              <ol className="mt-3 space-y-2 text-sm text-ink-soft list-decimal pl-5">
+                <li>
+                  Crie ou entre na sua conta{' '}
+                  <a
+                    href="https://www.mercadopago.com.br/"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-brand-600 underline"
+                  >
+                    Mercado Pago
+                  </a>
+                  .
+                </li>
+                <li>
+                  <strong>Access Token:</strong> no painel do MP, vá em{' '}
+                  <em>Seu negócio → Configurações → Credenciais de produção</em>, copie o{' '}
+                  <strong>Access Token</strong> (começa com <code>APP_USR-</code>) e cole no 1º
+                  campo aqui.
+                </li>
+                <li>
+                  <strong>Webhook:</strong> no painel do MP, vá em{' '}
+                  <em>Suas integrações → Webhooks</em>, cole a <strong>URL do webhook</strong>{' '}
+                  acima, marque o evento <strong>"Pagamentos"</strong> e salve. Depois copie a{' '}
+                  <strong>Assinatura secreta</strong> e cole no 2º campo aqui.
+                </li>
+                <li>
+                  Clique em <strong>Salvar</strong>. Pronto: os links das suas reservas passam a
+                  cair na sua conta e dão baixa automática quando o hóspede paga.
+                </li>
+                <li>
+                  <a
+                    href="https://www.mercadopago.com.br/developers/pt/docs/your-integrations/notifications/webhooks"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-brand-600 underline"
+                  >
+                    Ajuda oficial do Mercado Pago
+                  </a>{' '}
+                  (caso a tela do MP mude).
+                </li>
+              </ol>
+            )}
+          </div>
         </>
       )}
     </section>

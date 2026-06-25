@@ -9,6 +9,7 @@ import { verifyMpSignature } from '../../common/mp-webhook';
 import { TenantSettingsService } from '../../common/tenant-settings.service';
 import { publicWebUrl } from '../../common/public-url';
 import { WhatsappService } from '../whatsapp/whatsapp.service';
+import { assertMpToken, paymentWebhookUrl } from './payments.account';
 
 const LINK_TTL_DAYS = 7;
 
@@ -22,16 +23,11 @@ export class PaymentsService {
     private readonly whatsapp: WhatsappService,
   ) {}
 
-  private async mpClient(): Promise<MercadoPagoConfig> {
-    const setting = await this.prisma.systemSetting.findUnique({
-      where: { key: 'mp_access_token' },
-    });
-    const token = setting?.value || process.env.MP_ACCESS_TOKEN;
-    if (!token) {
-      throw new BadRequestException(
-        'Mercado Pago não configurado. Peça ao administrador para configurar o token.',
-      );
-    }
+  /** Client MP usando o access token DA POUSADA (sem fallback global). */
+  private async mpClient(tenantId: string): Promise<MercadoPagoConfig> {
+    const token = assertMpToken(
+      await this.settings.get(tenantId, 'payment_mp_access_token'),
+    );
     return new MercadoPagoConfig({ accessToken: token });
   }
 
@@ -53,6 +49,10 @@ export class PaymentsService {
     if (reservation.status === 'cancelled') {
       throw new BadRequestException('Não é possível gerar link para reserva cancelada.');
     }
+
+    // Garante que a pousada já configurou a conta de recebimento — falha cedo,
+    // antes de gerar/enviar um link que não daria pra pagar.
+    await this.mpClient(tenantId);
 
     const token = randomBytes(16).toString('hex');
     const expiresAt = new Date(Date.now() + LINK_TTL_DAYS * 24 * 60 * 60 * 1000);
@@ -167,7 +167,7 @@ export class PaymentsService {
       }),
     );
 
-    const preference = new Preference(await this.mpClient());
+    const preference = new Preference(await this.mpClient(link.tenantId));
     const apiUrl = process.env.PUBLIC_API_URL ?? 'http://localhost:3333';
     const result = await preference.create({
       body: {
@@ -183,7 +183,7 @@ export class PaymentsService {
         external_reference: link.id,
         back_urls: { success: `${publicWebUrl()}/pagamento/${token}?status=sucesso` },
         auto_return: 'approved',
-        notification_url: `${apiUrl}/api/payments/pay/webhook`,
+        notification_url: paymentWebhookUrl(apiUrl, link.tenantId),
       },
     });
 
@@ -199,25 +199,25 @@ export class PaymentsService {
     return { initPoint: result.init_point };
   }
 
-  /** Lê o secret de assinatura do webhook (configurável por painel; env de fallback). */
-  private async webhookSecret(): Promise<string | null> {
-    const setting = await this.prisma.systemSetting.findUnique({
-      where: { key: 'mp_webhook_secret' },
-    });
-    return setting?.value || process.env.MP_WEBHOOK_SECRET || null;
+  /** Secret de assinatura do webhook DA POUSADA (sem fallback global). */
+  private async webhookSecret(tenantId: string): Promise<string | null> {
+    const value = await this.settings.get(tenantId, 'payment_mp_webhook_secret');
+    return value || null;
   }
 
   /**
    * Valida a assinatura `x-signature` do Mercado Pago (HMAC-SHA256).
    * Manifest: `id:<data.id>;request-id:<x-request-id>;ts:<ts>;`.
-   * Retorna true se o secret não estiver configurado (validação opt-in) — o
-   * handler ainda re-busca o pagamento no MP, então não há injeção de dados.
+   * EM PRODUÇÃO é fail-closed: sem o secret da pousada, retorna false (rejeita).
+   * Fora de produção, sem secret, retorna true (validação opt-in) p/ facilitar
+   * testes — o handler ainda re-busca o pagamento no MP, então não há injeção.
    */
   private async isSignatureValid(
     dataId: string,
     headers: { signature?: string; requestId?: string },
+    tenantId: string,
   ): Promise<boolean> {
-    const secret = await this.webhookSecret();
+    const secret = await this.webhookSecret(tenantId);
     if (!secret) {
       if (process.env.NODE_ENV === 'production') {
         this.logger.error('mp_webhook_secret ausente em produção — webhook rejeitado (fail-closed).');
@@ -234,15 +234,26 @@ export class PaymentsService {
     type: string,
     dataId: string,
     headers: { signature?: string; requestId?: string } = {},
+    tenantId?: string,
   ): Promise<void> {
-    if (type !== 'payment' || !dataId) return;
+    if (type !== 'payment' || !dataId || !tenantId) return;
 
-    if (!(await this.isSignatureValid(dataId, headers))) {
+    if (!(await this.isSignatureValid(dataId, headers, tenantId))) {
       this.logger.warn(`Webhook com assinatura inválida (data.id ${dataId}) — ignorado.`);
       return;
     }
 
-    const mpPayment = new MpPayment(await this.mpClient());
+    // Token pode ter sido removido depois do link criado: degrada em no-op
+    // (responde 200 ao MP) em vez de estourar 400 e disparar retries.
+    let mpPayment: MpPayment;
+    try {
+      mpPayment = new MpPayment(await this.mpClient(tenantId));
+    } catch {
+      this.logger.warn(
+        `Webhook: conta de recebimento da pousada ${tenantId} não configurada — ignorado.`,
+      );
+      return;
+    }
     const pay = await mpPayment.get({ id: dataId });
     if (pay.status !== 'approved') return;
 
