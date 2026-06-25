@@ -208,8 +208,9 @@ export class PaymentsService {
   /**
    * Valida a assinatura `x-signature` do Mercado Pago (HMAC-SHA256).
    * Manifest: `id:<data.id>;request-id:<x-request-id>;ts:<ts>;`.
-   * Retorna true se o secret não estiver configurado (validação opt-in) — o
-   * handler ainda re-busca o pagamento no MP, então não há injeção de dados.
+   * EM PRODUÇÃO é fail-closed: sem o secret da pousada, retorna false (rejeita).
+   * Fora de produção, sem secret, retorna true (validação opt-in) p/ facilitar
+   * testes — o handler ainda re-busca o pagamento no MP, então não há injeção.
    */
   private async isSignatureValid(
     dataId: string,
@@ -242,7 +243,17 @@ export class PaymentsService {
       return;
     }
 
-    const mpPayment = new MpPayment(await this.mpClient(tenantId));
+    // Token pode ter sido removido depois do link criado: degrada em no-op
+    // (responde 200 ao MP) em vez de estourar 400 e disparar retries.
+    let mpPayment: MpPayment;
+    try {
+      mpPayment = new MpPayment(await this.mpClient(tenantId));
+    } catch {
+      this.logger.warn(
+        `Webhook: conta de recebimento da pousada ${tenantId} não configurada — ignorado.`,
+      );
+      return;
+    }
     const pay = await mpPayment.get({ id: dataId });
     if (pay.status !== 'approved') return;
 
